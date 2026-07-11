@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Authorized for implementation; P00 and P01 complete, P02 queued |
+| Status | P00–P07 complete; P08A Files approved for evidence; P08B Preview blocked pending D02 security policy |
 | Plan owner | Codex (active implementation agent) |
 | Design reviewer | Unassigned |
 | Engineering reviewer | Unassigned |
@@ -179,7 +179,7 @@ this table in the same change that advances a phase.
 | P05 — Fleet and Overview | P04 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P05 implementation evidence](evidence/web-console-mantine/phase-05/0173407bc/) | [Approved — P05 Fleet/Overview SS01–SS04](evidence/web-console-mantine/phase-05/0173407bc/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P06 — Terminal | P05 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P06 implementation evidence](evidence/web-console-mantine/phase-06/9bc8d4107/) | [Approved — P06 Terminal SS01–SS03](evidence/web-console-mantine/phase-06/9bc8d4107/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P07 — Observability | P06 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P07 implementation evidence](evidence/web-console-mantine/phase-07/91e1b2688/) | [Approved — P07 Observability SS01–SS04](evidence/web-console-mantine/phase-07/91e1b2688/) | P08B Preview policy remains P08B-only | 2026-07-11 |
-| P08 — Files and Preview | P07 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | Preview isolation approval for 8B | 2026-07-11 |
+| P08 — Files and Preview | P07 | Blocked (P08A complete; P08B pending) | 4/5 (P08A) | 4/6 | Codex / Security reviewer unassigned for P08B | [Approved P08A Files evidence](evidence/web-console-mantine/phase-08/f1073cd29/) | [P08A Files portion of SS01 plus SS02–SS03 approved; P08-SS04 blocked](evidence/web-console-mantine/phase-08/f1073cd29/) | D02 Preview isolation approval and security test policy required for 8B | 2026-07-11 |
 | P09 — Remove Radix | P08 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P10 — Remove Tailwind | P09 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P11 — Dependency cleanup | P10 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -775,14 +775,14 @@ approval, Preview controls.
 
 **Acceptance criteria:**
 
-- [ ] **P08-AC01:** Tree roles, arrows, Home/End, expansion, typeahead,
+- [x] **P08-AC01:** Tree roles, arrows, Home/End, expansion, typeahead,
   virtualization, focus, async loading, and the explicit first-2,000-entry
   truncation label pass.
-- [ ] **P08-AC02:** CodeMirror is not recreated by data/mode/poll changes and
+- [x] **P08-AC02:** CodeMirror is not recreated by data/mode/poll changes and
   preserves focus, selection, viewport, undo, and draft.
-- [ ] **P08-AC03:** Conflict visibly preserves the local draft; edit/paging/
+- [x] **P08-AC03:** Conflict visibly preserves the local draft; edit/paging/
   blame limits and lack of CAS/metadata remain accurate.
-- [ ] **P08-AC04:** Desktop panes and narrow Drawers have one scroll owner,
+- [x] **P08-AC04:** Desktop panes and narrow Drawers have one scroll owner,
   containment, keyboard access, focus trap, and restoration.
 - [ ] **P08-AC05:** Preview passes the approved origin/sandbox, loading/error,
   navigation, and responsive tests; Mantine is not treated as isolation.
@@ -791,16 +791,36 @@ approval, Preview controls.
 
 **Required screenshot evidence:**
 
-- [ ] **P08-SS01:** Files and approved Preview at all four viewports.
-- [ ] **P08-SS02:** Desktop tree/editor/blame and narrow tree/blame Drawers with
+- [ ] **P08-SS01:** P08A Files is captured at all four viewports in the
+  [P08A evidence pack](evidence/web-console-mantine/phase-08/f1073cd29/);
+  approved Preview capture remains blocked pending D02.
+- [x] **P08-SS02:** Desktop tree/editor/blame and narrow tree/blame Drawers with
   keyboard focus and one scroll owner.
-- [ ] **P08-SS03:** Tree truncation, long-file paging, CodeMirror selection,
+- [x] **P08-SS03:** Tree truncation, long-file paging, CodeMirror selection,
   blame, and conflict with local draft preserved.
 - [ ] **P08-SS04:** Preview loading, blocked/error, and successful states under
   the approved isolation design. Missing 8B evidence is a blocker, not N/A.
 
 **Rollback boundary:** 8A may be reviewed while 8B is blocked. Preview changes
 remain isolated and revertible without reverting Files.
+
+**P08A Files completion record — P08 remains blocked:** Console revisions
+`39fd78c25`, `cce02b584`, and `f1073cd29` migrate the Files navigator and editor chrome to
+Mantine. The lazy flat tree retains semantic roles, roving keyboard behavior,
+typeahead, virtualized mounting, async expansion, and the exact first-2,000
+API truncation notice. Files uses desktop panes and focus-restoring narrow
+Drawers; CodeMirror owns its direct scroll viewport and uses compartments to
+reconfigure line numbers, editability, and blame without recreating the editor
+through paging, conflicts, or local-draft edits. The
+[P08A evidence pack](evidence/web-console-mantine/phase-08/f1073cd29/)
+records 11 dedicated Files browser checks, the conflict unit contract, a
+production build, ten zero-difference screenshot triads, four normal
+viewports, expanded/blame, narrow Drawer, paging, conflict, and Axe coverage.
+Codex self-reviewed the Files boundary. P08-AC05, phase-wide P08-AC06,
+P08-SS01's Preview portion, and P08-SS04 are intentionally unchecked: P08B
+cannot begin until the unassigned D02 security reviewer approves a dedicated
+untrusted Preview origin and sandbox/CSP boundary plus its required browser
+tests. Mantine does not satisfy that isolation requirement.
 
 ### P09 — Remove local Radix architecture
 

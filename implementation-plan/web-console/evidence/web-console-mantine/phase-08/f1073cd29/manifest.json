@@ -1,0 +1,103 @@
+{
+  "phase": "P08A",
+  "status": "Approved — Files migration only; P08B Preview security-blocked",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "f1073cd29",
+    "implementationCommit": "39fd78c25",
+    "worktree": "clean",
+    "immutable": true,
+    "scope": "Mantine Files navigator/editor chrome, virtual file tree, breadcrumbs, scope control, blame, conflict UI, CodeMirror compartments/paging, narrow Drawers, and P08A browser evidence. Preview controls and all origin/sandbox/proxy behavior are excluded pending D02."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"]
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npx playwright test tests/browser/P08FilesFixture.spec.ts",
+      "result": "pass: 11 dedicated P08A Files browser checks verified without snapshot update"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npx vitest run tests/trust/FileView.test.tsx",
+      "result": "pass: 1 FileView conflict contract"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; existing bundle-size advisory only"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    },
+    {
+      "command": "compare -metric AE reference/<file> actual/<file> diff/<file>",
+      "result": "pass: 0 (0) for every one of 9 screenshot pairs"
+    }
+  ],
+  "coverage": {
+    "P08_AC01": "The dedicated browser fixture verifies tree/treeitem roles, Arrow/Home/End behavior, lazy directory expansion, typeahead, focus after virtual mounting, fewer than 128 mounted rows for the 2,000-entry response, and the explicit first-2,000-entry API label.",
+    "P08_AC02": "The fixture tags a CodeMirror DOM instance, pages from 2,000 to 4,000 lines, scrolls CodeMirror's direct viewport to line 4,000, enables blame, enters editing, and reaches a concurrent-change conflict without recreating the editor or losing the local draft. Compartments reconfigure line numbers, editability, and blame without replacing EditorState.",
+    "P08_AC03": "The fixture exercises a 4,000-line page boundary, blame owner label, and a server mismatch that presents the preserved local-draft conflict controls. The existing 1 MiB edit threshold remains explicit in production code. UI text retains the absence of a CAS/metadata claim.",
+    "P08_AC04": "Desktop Files uses a bounded tree pane and CodeMirror's direct scroller; 375px uses Mantine navigator and blame Drawers. Browser tests prove Escape focus restoration and Axe reports no violations.",
+    "P08_AC05": "Blocked: Preview remains untouched until D02 approves an origin/sandbox/CSP boundary and its tests.",
+    "P08_AC06": "Partial: P08A automated reports and triads are approved; P08B has no approved policy, tests, or screenshots, so phase-wide approval is not granted."
+  },
+  "blocker": {
+    "decision": "D02 — Preview origin/sandbox isolation policy",
+    "owner": "Security reviewer — unassigned",
+    "status": "Open; same-origin unsandboxed Preview is prohibited",
+    "requiredBeforeP08B": "Choose and approve the dedicated untrusted-origin and sandbox/CSP boundary; document product constraints; supply positive and negative origin, authenticated API, navigation, popup, form, download, permission, asset, WebSocket, and allowed-embed tests."
+  },
+  "triad": {
+    "reference": "Approved committed P08A Playwright snapshot",
+    "actual": "Same-commit capture",
+    "diff": "ImageMagick compare output; all changed-pixel counts are zero",
+    "artifactCount": 30
+  },
+  "requirements": {
+    "P08A_SS01": [
+      "p08-files-375x812-darwin.png",
+      "p08-files-768x1024-darwin.png",
+      "p08-files-1024x768-darwin.png",
+      "p08-files-1440x900-darwin.png"
+    ],
+    "P08_SS02": [
+      "p08-files-tree-blame-1440x900-darwin.png",
+      "p08-files-navigator-drawer-375x812-darwin.png",
+      "p08-files-blame-drawer-375x812-darwin.png"
+    ],
+    "P08_SS03": [
+      "p08-files-paged-1440x900-darwin.png",
+      "p08-files-paged-selection-1440x900-darwin.png",
+      "p08-files-conflict-1440x900-darwin.png"
+    ],
+    "P08_SS04": "Blocked pending D02; no Preview artifact exists or is represented as N/A."
+  },
+  "screenshots": [
+    { "base": "p08-files-1024x768-darwin.png", "sha256": "62b6a90fcf08578e4907940faf98cbca306a445efa59c9d661eee05ac2aad1e5", "changedPixels": 0 },
+    { "base": "p08-files-1440x900-darwin.png", "sha256": "05e5357e8e015ed04bdbe88558a3bb3d1037d48dc65279cefe3eb48fff94d597", "changedPixels": 0 },
+    { "base": "p08-files-375x812-darwin.png", "sha256": "675e23b98561746a0f0e06da5e0304735e8e696a4462cd6cc289d81cc5a68fff", "changedPixels": 0 },
+    { "base": "p08-files-768x1024-darwin.png", "sha256": "e1f6c304b8d133a88ec7da52eadc9356c811c71147c5f102b536e564d5d40935", "changedPixels": 0 },
+    { "base": "p08-files-blame-drawer-375x812-darwin.png", "sha256": "c8449dc8a682c1532019c12ebe7ad6cc3328c0e2a995a5469f10c36f6c659007", "changedPixels": 0 },
+    { "base": "p08-files-conflict-1440x900-darwin.png", "sha256": "343f370ecb077cc409888172383e8bd948979fcb194e8c9716c5a965c6bcb59d", "changedPixels": 0 },
+    { "base": "p08-files-navigator-drawer-375x812-darwin.png", "sha256": "6f2a2d7e1531bf99ead06382ee50f69a25fdf85439fc97a2bc60d507b149f5a0", "changedPixels": 0 },
+    { "base": "p08-files-paged-1440x900-darwin.png", "sha256": "56b0c9a7484e5fda3b0a9b5f416832ef36f36a51ebc40bbfb0b381c8e3e18d74", "changedPixels": 0 },
+    { "base": "p08-files-paged-selection-1440x900-darwin.png", "sha256": "7f2a4b55384438b32675accc869c33fc7530aef2ba3493fd90069584213f60b7", "changedPixels": 0 },
+    { "base": "p08-files-tree-blame-1440x900-darwin.png", "sha256": "a8d960f9f2fcc0b89dc7cc4f320f6127c62ae85895c0d663c8b701ac3ade4fe0", "changedPixels": 0 }
+  ],
+  "review": {
+    "reviewedAt": "2026-07-11T19:34:00+08:00",
+    "design": "Approved by Codex for P08A Files scope after visual inspection; external human reviewer remains unassigned.",
+    "engineering": "Approved by Codex for P08A after the recorded Mantine migration, virtual-tree/editor-state, test, build, and zero-diff evidence.",
+    "accessibility": "Approved by Codex for P08A scope: tree keyboard handling, explicit truncation text, labelled editor, narrow Drawer focus restoration, and zero Axe violations.",
+    "security": "No P08B security approval. Preview isolation remains blocked at D02.",
+    "decision": "P08A Files evidence is approved. It is not P08 completion and does not authorize Preview changes."
+  }
+}
