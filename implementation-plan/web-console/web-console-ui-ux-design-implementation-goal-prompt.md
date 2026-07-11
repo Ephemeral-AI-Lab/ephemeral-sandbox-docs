@@ -1,6 +1,6 @@
 /goal Implement the complete EphemeralOS web-console UI/UX design and Mantine migration through production-ready verification; do not stop at docs, a prototype, or partial conversion.
 
-Read `ephemeral-sandbox/web/console` and every document in `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/`. The proposal and migration plan are authoritative; obtain an authorized superseding/amendment record for the historical Tailwind/Radix decision before P00 is Ready. Verify version-sensitive choices with official Mantine docs.
+Read `ephemeral-sandbox/web/console` and every document in `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/web-console/`. The proposal and migration plan are authoritative; obtain an authorized superseding/amendment record for the historical Tailwind/Radix decision before P00 is Ready. Verify version-sensitive choices with official Mantine docs.
 
 Complete P00–P12 in order and keep the app buildable. Update each phase’s status, gates, acceptance count, ownership, blockers, commands, commits, and evidence links. Lock fixtures, acceptance IDs, screenshot cases, checks, and rollback before starting; never advance on failure.
 

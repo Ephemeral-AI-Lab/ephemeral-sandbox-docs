@@ -11,10 +11,10 @@
 | Created | 2026-07-11 |
 | Last updated | 2026-07-11 |
 | Console root | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox/web/console` |
-| Design proposal | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-ux-design-proposal.md` |
-| Earlier technology record | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-tech-stack-and-library-options.md` |
-| Superseding decision record | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-mantine-tdr-amendment.md` |
-| Evidence root | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/evidence/web-console-mantine/` |
+| Design proposal | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-ux-design-proposal.md` |
+| Earlier technology record | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-tech-stack-and-library-options.md` |
+| Superseding decision record | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-mantine-tdr-amendment.md` |
+| Evidence root | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/web-console/evidence/web-console-mantine/` |
 
 ## 1. Purpose and required outcome
 

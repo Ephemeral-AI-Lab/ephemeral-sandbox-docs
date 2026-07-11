@@ -15,7 +15,7 @@ The audit covered:
   sandbox pages, API types, polling code, and relevant backend response contracts
   under `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox/web/console`.
 - The existing technology decision record at
-  `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-tech-stack-and-library-options.md`.
+  `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-tech-stack-and-library-options.md`.
 - Current official Mantine 9.4.1 documentation for React compatibility,
   installation, theming, responsive styles, overlays, accessibility, tables,
   trees, comboboxes, scrolling, notifications, and testing.
