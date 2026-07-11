@@ -178,7 +178,7 @@ this table in the same change that advances a phase.
 | P04 — Shell and navigation | P03 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P04 implementation evidence](evidence/web-console-mantine/phase-04/8139d292a/) | [Approved — P04 Shell/navigation SS01–SS03](evidence/web-console-mantine/phase-04/8139d292a/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P05 — Fleet and Overview | P04 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P05 implementation evidence](evidence/web-console-mantine/phase-05/0173407bc/) | [Approved — P05 Fleet/Overview SS01–SS04](evidence/web-console-mantine/phase-05/0173407bc/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P06 — Terminal | P05 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P06 implementation evidence](evidence/web-console-mantine/phase-06/9bc8d4107/) | [Approved — P06 Terminal SS01–SS03](evidence/web-console-mantine/phase-06/9bc8d4107/) | P08B Preview policy remains P08B-only | 2026-07-11 |
-| P07 — Observability | P06 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P07 — Observability | P06 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P07 implementation evidence](evidence/web-console-mantine/phase-07/91e1b2688/) | [Approved — P07 Observability SS01–SS04](evidence/web-console-mantine/phase-07/91e1b2688/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P08 — Files and Preview | P07 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | Preview isolation approval for 8B | 2026-07-11 |
 | P09 — Remove Radix | P08 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P10 — Remove Tailwind | P09 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -713,33 +713,51 @@ stabilizing live-table/chart/trace behavior.
 
 **Acceptance criteria:**
 
-- [ ] **P07-AC01:** All observability surfaces use Mantine and retain route/URL
+- [x] **P07-AC01:** All observability surfaces use Mantine and retain route/URL
   compatibility.
-- [ ] **P07-AC02:** Event filters send absolute thresholds and Pause stops
+- [x] **P07-AC02:** Event filters send absolute thresholds and Pause stops
   polling; last-good/stale/error/resume states pass.
-- [ ] **P07-AC03:** Table sorting, expansion, selection, semantics, and keyboard
+- [x] **P07-AC03:** Table sorting, expansion, selection, semantics, and keyboard
   focus survive polling with bounded rendering at target volume.
-- [ ] **P07-AC04:** Trace events use backend offset/event shape; discovery is
+- [x] **P07-AC04:** Trace events use backend offset/event shape; discovery is
   labelled as partial while derived from the last 200 events; the first-500
   layer-detail limit is explicit; 2,000 spans meet detail/waterfall gates; only
   explicit audit correlations link.
-- [ ] **P07-AC05:** uPlot instances update incrementally, summaries are
+- [x] **P07-AC05:** uPlot instances update incrementally, summaries are
   accessible, ResizeObserver is stable, and chart performance passes.
-- [ ] **P07-AC06:** Route, polling, correlation, accessibility, performance, and
+- [x] **P07-AC06:** Route, polling, correlation, accessibility, performance, and
   screenshot evidence are Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P07-SS01:** Resources, Events, Traces, Layers, and logs at all four
+- [x] **P07-SS01:** Resources, Events, Traces, Layers, and logs at all four
   viewports.
-- [ ] **P07-SS02:** Paused/stale/error Events and focused/expanded Table at 375
+- [x] **P07-SS02:** Paused/stale/error Events and focused/expanded Table at 375
   and 1440.
-- [ ] **P07-SS03:** Resource charts/summaries, selected span, explicit links,
+- [x] **P07-SS03:** Resource charts/summaries, selected span, explicit links,
   2,000-span tree, and waterfall overflow at 1440.
-- [ ] **P07-SS04:** Narrow detail Drawer and independent waterfall scroll at 375.
+- [x] **P07-SS04:** Narrow detail Drawer and independent waterfall scroll at 375.
 
 **Rollback boundary:** subviews may be reverted separately, but the phase does
 not complete until all observability subviews share one approved architecture.
+
+**Completion record:** Console revision `91e1b2688` migrates Resources, the
+Events/log stream, Traces, and Layers to Mantine. Events retain absolute
+backend thresholds and pause their query; TanStack Table drives sorting and
+row identity while measured-scale TanStack Virtual bounds 2,000 rows. Resources
+keep four uPlot instances stable across incremental data updates and a
+`ResizeObserver`, with labelled numerical summaries. Traces retain the backend
+offset/event shape, last-200-event discovery limitation, an iterative 2,000-span
+flattening model, explicit Event trace links only, virtual waterfall, and
+narrow Drawer. Layer detail retains and labels the backend first-500 limit. The
+[P07 evidence pack](evidence/web-console-mantine/phase-07/91e1b2688/) records
+Node 24.14.0 unit/build/browser passes (17 files/34 tests and 161 browser
+checks), 27 dedicated Observability checks, 22 zero-difference screenshot
+triads, polling/table/trace debugging record, four-view Axe coverage, and
+responsive visual review. Codex self-reviewed the committed P07 boundary after
+visual inspection. External human design, engineering, and accessibility
+reviewers remain unassigned; P08 may consume P07. P08B Preview isolation
+remains a separate security gate.
 
 ### P08 — Files and approved Preview
 

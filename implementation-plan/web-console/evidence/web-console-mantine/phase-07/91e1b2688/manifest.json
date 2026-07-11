@@ -1,0 +1,86 @@
+{
+  "phase": "P07",
+  "status": "Approved — Observability migration only",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "91e1b2688",
+    "worktree": "clean",
+    "immutable": true,
+    "scope": "Mantine Resources, Events/log stream, Traces and Layers; TanStack Table and measured Events virtualization; incremental uPlot summaries; 2,000-span virtual waterfall; P07 browser evidence. Files/Preview, Radix/Tailwind/dependency cleanup, release gate, and P08B Preview isolation remain later work."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"]
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 17 files, 34 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; existing bundle-size advisory only"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH CI=1 npx playwright test tests/browser/P07ObservabilityFixture.spec.ts",
+      "result": "pass: 27 dedicated P07 browser checks verified without snapshot update"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH CI=1 npm run test:e2e",
+      "result": "pass: 161 Chromium browser tests"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    },
+    {
+      "command": "compare -metric AE reference/<file> actual/<file> diff/<file>",
+      "result": "pass: 0 (0) for every one of 22 screenshot pairs"
+    }
+  ],
+  "coverage": {
+    "P07_AC01": "ResourcesView, EventsView, TracesView, and LayerStackView use Mantine surfaces and controls while preserving their existing routes and deep links.",
+    "P07_AC02": "The fixture freezes time, supplies 2,000 events, verifies Tail-off query quiescence after the paused state settles, resumes into a last-good stale error, and preserves selection/expanded attributes.",
+    "P07_AC03": "TanStack Table supplies the Events sort/row model; the fixture verifies timestamp/name sorting, keyboard selection, expanded attributes, and fewer than 128 mounted Event rows at 2,000 inputs.",
+    "P07_AC04": "The trace fixture uses backend offset/event nodes, discovery remains sourced from the last 200 events, the layer detail explicitly says first 500, and 2,000 spans retain bounded virtual rows, detail, and a native overflow owner. Event trace links are explicit identifiers only.",
+    "P07_AC05": "Resources maintains four uPlot canvases across a resize, exposes labelled numerical summaries, updates plot data without recreation, and uses ResizeObserver rather than a window resize listener.",
+    "P07_AC06": "Dedicated 27-check browser suite, unit/build runs, full 161-check browser suite, Axe, screenshot triads, and visual review are recorded in this pack."
+  },
+  "screenshots": [
+    { "base": "p07-events-375x812-darwin.png", "sha256": "e1c688ff41aec58db94aa89c33974be6ef15f7924396727c1f3c3abc0da41f6e", "changedPixels": 0 },
+    { "base": "p07-events-768x1024-darwin.png", "sha256": "4a59d98d47df310856b8366f678dec69a9100268196415218022cb4b2dc2c979", "changedPixels": 0 },
+    { "base": "p07-events-1024x768-darwin.png", "sha256": "b7391618f4e8dbf19d82dc79cdb6067df4d30944334afa28c5cd69b441a3c076", "changedPixels": 0 },
+    { "base": "p07-events-1440x900-darwin.png", "sha256": "f127981b09d819834de7821bc260c82e2e7e5691c851130201a14b598b3bfa0b", "changedPixels": 0 },
+    { "base": "p07-events-paused-stale-expanded-375x812-darwin.png", "sha256": "e1a2b62a58a3eb601316c760daad1e5cad97547cd0b310d4a1d986ffa9361c88", "changedPixels": 0 },
+    { "base": "p07-events-paused-stale-expanded-1440x900-darwin.png", "sha256": "f99224c98d97a572049f143f84f96c3c8a2891040e9f8597935f9f035a8e007c", "changedPixels": 0 },
+    { "base": "p07-resources-375x812-darwin.png", "sha256": "a2782b3a0790fa3010ffab91e7309e313194083d07135b36caf2b1b58b0cd179", "changedPixels": 0 },
+    { "base": "p07-resources-768x1024-darwin.png", "sha256": "a437d862007616cd2b61d2df75935da77619bf6654f27f1f9212ce4c8e8cbe1b", "changedPixels": 0 },
+    { "base": "p07-resources-1024x768-darwin.png", "sha256": "26f0aa1c7065ab657ab4c9b6a17a56b15d15a9245020b36e587d23f74f18fcac", "changedPixels": 0 },
+    { "base": "p07-resources-1440x900-darwin.png", "sha256": "9b1ac5f186ae37f5caf2ade76f5c7f5182d4dfee8d87802cf1112fedfbedf166", "changedPixels": 0 },
+    { "base": "p07-layers-375x812-darwin.png", "sha256": "0fb46169f8350d8e2923e518e33d88895e82ddecd5992f8dd550e693f7a7966a", "changedPixels": 0 },
+    { "base": "p07-layers-768x1024-darwin.png", "sha256": "5ba2fe1905db305bea3484d534179614443a887e1410c49128c1e9489cea9964", "changedPixels": 0 },
+    { "base": "p07-layers-1024x768-darwin.png", "sha256": "654076086c7932c4118869ae83daae120cb091e8805819857a423fe47b2abab4", "changedPixels": 0 },
+    { "base": "p07-layers-1440x900-darwin.png", "sha256": "d1aaed3fd261a7380817a9185373c5b15d45013eddf4979dcdb1fa8133b275df", "changedPixels": 0 },
+    { "base": "p07-traces-375x812-darwin.png", "sha256": "3ffacc435a08fe7d9c8e958cb1da5b7fb180db19392369d7355f8f0436eed73e", "changedPixels": 0 },
+    { "base": "p07-traces-768x1024-darwin.png", "sha256": "0ea54c58fbb4013463993aa6c00f14ffd307929d2423891f88ecb07e361846ba", "changedPixels": 0 },
+    { "base": "p07-traces-1024x768-darwin.png", "sha256": "5649ae169f49ad25f1cbcfb9daef0b0816362c932d0afcf30dc9337b377b78e3", "changedPixels": 0 },
+    { "base": "p07-traces-1440x900-darwin.png", "sha256": "536a723ccf47d749df0582c4007a08914b7ff756298d2c78c42d02639d57bed9", "changedPixels": 0 },
+    { "base": "p07-traces-span-detail-1440x900-darwin.png", "sha256": "e08dd613658e1e12459ef3d26036c0f7d3b098f6ef870cdd52368240588a6e03", "changedPixels": 0 },
+    { "base": "p07-traces-2k-mid-1440x900-darwin.png", "sha256": "56df2a6ec3882bb4f8e418d374bffdc7c0853a0894509a7ac6c715b1cf7fe0bc", "changedPixels": 0 },
+    { "base": "p07-traces-drawer-375x812-darwin.png", "sha256": "ff97a24ca087dabcc2a72993cec01c5eadcb3417e442b7c38fd7dd6c701980e5", "changedPixels": 0 },
+    { "base": "p07-traces-drawer-overflow-375x812-darwin.png", "sha256": "3ffacc435a08fe7d9c8e958cb1da5b7fb180db19392369d7355f8f0436eed73e", "changedPixels": 0 }
+  ],
+  "review": {
+    "reviewedAt": "2026-07-11T19:18:00+08:00",
+    "design": "Approved by Codex for P07 Observability scope after visual inspection; external human reviewer remains unassigned.",
+    "engineering": "Approved by Codex after the recorded Mantine migration, polling, table/chart/trace virtualization, test, build, browser, and zero-diff evidence.",
+    "accessibility": "Approved by Codex for P07 scope: keyboard-selectable Events rows, labelled summaries, narrow Trace Drawer, explicit limits, and no Axe violations in all four P07 views.",
+    "decision": "P07 Observability evidence is approved. It is not final production-screen visual approval and does not advance Preview isolation."
+  }
+}
