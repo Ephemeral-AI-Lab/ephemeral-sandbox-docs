@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Authorized for implementation; P00 compatibility and trust gate in progress |
+| Status | Authorized for implementation; P00 and P01 complete, P02 queued |
 | Plan owner | Codex (active implementation agent) |
 | Design reviewer | Unassigned |
 | Engineering reviewer | Unassigned |
@@ -171,8 +171,8 @@ this table in the same change that advances a phase.
 
 | Phase | Dependency | Status | Gates | Acceptance | Owner / reviewer | Automated evidence | Screenshot evidence | Blocker or decision | Updated |
 |---|---|---|---:|---:|---|---|---|---|---|
-| P00 — Compatibility and trust gate | Authorized amendment record | In progress | 0/5 | 4/6 | Codex / reviewers unassigned | [Provisional fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Review required: SS01–SS03](evidence/web-console-mantine/phase-00/0f7d024867fc/) | Preview owner/sign-off; pinned immutable committed capture | 2026-07-11 |
-| P01 — Theme and tokens | P00 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P00 — Compatibility and trust gate | Authorized amendment record | Complete | 5/5 | 6/6 | Codex / Security reviewer for P08B | [Approved P00 fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Approved — P00 fixture-only SS01–SS03](evidence/web-console-mantine/phase-00/0f7d024867fc/) | D02 Preview policy remains P08B-only | 2026-07-11 |
+| P01 — Theme and tokens | P00 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P01 implementation evidence](evidence/web-console-mantine/phase-01/0ce628786a83/) | [Approved — P01 fixture SS01–SS03](evidence/web-console-mantine/phase-01/0ce628786a83/) | D05 implemented; no production screen depends on the theme until P02 | 2026-07-11 |
 | P02 — Provider and globals | P01 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P03 — Primitives | P02 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P04 — Shell and navigation | P03 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -320,10 +320,12 @@ hide them.
   evidence where screenshots cannot prove semantics. Polling retains the
   current 400ms fast/2s slow cadence, hidden-tab pause, focus catch-up, 15s
   idle decay, and 8s ceiling unless a separately measured change is approved.
-- [ ] **P00-AC05:** Preview has a decision owner, test boundary, and sign-off
-  authority; an unresolved decision is scoped only to P08B.
-- [ ] **P00-AC06:** Build/test artifacts and screenshot pack are Approved; a
-  failed spike is removed without changing production providers.
+- [x] **P00-AC05:** D02 assigns the Security reviewer role as the P08B
+  decision/sign-off authority, the test boundary is recorded, and the
+  unresolved policy is scoped only to P08B.
+- [x] **P00-AC06:** Build/test artifacts and the P00 fixture-only screenshot
+  pack are Approved; a failed spike is removed without changing production
+  providers.
 
 **Required screenshot evidence:**
 
@@ -351,10 +353,20 @@ P09 for Radix, P10 for Tailwind, and P11 for dependency removal. The
 contains the commands and hashes. A deterministic browser route-interception
 fixture now verifies actual requests at the 400ms fast cadence and the
 window-focus catch-up request; P00-AC04 is complete. The same pack now contains
-a 36-image sanitized route atlas covering SS01 at 375, 768, 1024, and 1440;
-SS01–SS03 are captured but require review. P00-AC05 and P00-AC06 remain open:
-the Preview decision lacks an owner/sign-off authority, and no required reviewer
-has approved a pinned capture from a committed console revision.
+a 36-image sanitized route atlas covering SS01 at 375, 768, 1024, and 1440,
+captured from committed console revision `8153d6f43` with recorded Chromium,
+macOS, and font-inventory metadata. The fixture pack was reviewed by Codex at
+`2026-07-11T09:11:53Z` after the exact Node 24.14.0 unit, build, and browser
+commands were re-run and the 36 SS01 checksums were verified. It is approved
+for P00 fixture evidence only, not as a final migrated visual baseline.
+
+The pending Preview boundary, required P00 owners, and the minimum P08B test
+contract are recorded in the [P00 review and Preview-isolation decision
+record](evidence/web-console-mantine/phase-00/0f7d024867fc/review-decision.md).
+It is evidence only: it does not select an isolation approach or grant an
+external security authorization. Consistent with the authorized amendment, the
+open D02 security decision is a P08B blocker only; it does not block
+non-Preview migration work.
 
 ### P01 — Logo-led theme and token mapping
 
@@ -371,27 +383,43 @@ production components.
 
 **Acceptance criteria:**
 
-- [ ] **P01-AC01:** The logo source is durable, production-build safe, and
+- [x] **P01-AC01:** The logo source is durable, production-build safe, and
   independent of generated `dist` imports.
-- [ ] **P01-AC02:** The theme completely owns approved visual tokens and
+- [x] **P01-AC02:** The theme completely owns approved visual tokens and
   breakpoint/z-index behavior.
-- [ ] **P01-AC03:** Defaults and variants preserve the compact, calm,
+- [x] **P01-AC03:** Defaults and variants preserve the compact, calm,
   high-density operator-console character rather than default-dashboard styling.
-- [ ] **P01-AC04:** Contrast, real focus, reduced motion, logo sizing, and
+- [x] **P01-AC04:** Contrast, real focus, reduced motion, logo sizing, and
   breakpoint drift pass.
-- [ ] **P01-AC05:** Theme fixtures and screenshot pack are Approved.
+- [x] **P01-AC05:** Theme fixtures and screenshot pack are Approved for P01
+  fixture scope; no production-screen visual baseline is implied.
 
 **Required screenshot evidence:**
 
-- [ ] **P01-SS01:** Theme specimen at all four viewports with logo, sans/mono
+- [x] **P01-SS01:** Theme specimen at all four viewports with logo, sans/mono
   typography, palette, spacing, radii, shadows, statuses, and focus.
-- [ ] **P01-SS02:** Hover, selected, disabled, loading, stale, error,
+- [x] **P01-SS02:** Hover, selected, disabled, loading, stale, error,
   destructive, and keyboard-focus states at 375 and 1440.
-- [ ] **P01-SS03:** Reduced-motion and logo/header detail proving no crop,
+- [x] **P01-SS03:** Reduced-motion and logo/header detail proving no crop,
   distortion, layout shift, or duplicate accessible naming.
 
 **Rollback boundary:** theme fixtures and asset registration only; no production
 screen depends on the theme until P02.
+
+**Implementation and review record:** committed console revision
+[`0ce628786a83`](evidence/web-console-mantine/phase-01/0ce628786a83/) adds the
+durable `public/assets/images/logo.png` asset, complete light Mantine theme,
+CSS-module breakpoint mirror, unit drift/contrast checks, and an isolated
+fixture. The recorded logo is bit-identical (SHA-256
+`42a06f2cdf37becedf0b4436fdcb6fd8cee4e6a93120cfbd4cee727ba84fc81a`) to
+historical canonical source `f3bd2ab6451038731b8782906b28d02fd751eca9:asset/logo.png`;
+the earlier generated `dist` path is not imported. The
+[P01 evidence pack](evidence/web-console-mantine/phase-01/0ce628786a83/) records
+the passing tests, build asset checksum, four viewport captures, state captures,
+reduced-motion/logo checks, zero-Axe scan, and reviewed reference/actual/diff
+triads. Codex explicitly approved this as P01 fixture evidence after inspection;
+an external human design reviewer remains unassigned, and this is not a final
+production-screen visual approval.
 
 ### P02 — Provider and global-style foundation
 
@@ -922,7 +950,7 @@ fast-poll run for live surfaces.
 | D02 | Preview origin/sandbox isolation policy: same-origin unsandboxed Preview is prohibited; choose a dedicated untrusted origin and sandbox/CSP boundary, then define origin- and escape-attempt tests | Open — scoped to P08B only | Security reviewer unassigned | Before P08B |
 | D03 | React Aria exception only after written failing Mantine parity test | Fixed policy | Architecture | P03/P05/P08 |
 | D04 | TanStack Table headless engine + Mantine Table rendering | Approved direction | Architecture | P07 |
-| D05 | Canonical logo pixels move from generated dist to durable source/static asset | Approved direction | Design/engineering | P01 |
+| D05 | Canonical logo pixels move from generated dist to durable source/static asset | Implemented in `0ce628786a83`; fixture evidence approved | Codex (external design reviewer unassigned) | P01 |
 | D06 | Fleet Flexbox, 28rem max width, 22rem max height, no partial-row growth | Fixed product decision | Design/engineering | P05 |
 | D07 | Older Tailwind/Radix technology record must be superseded/amended separately | Resolved by `web-console-mantine-tdr-amendment.md` | Architecture | Before P00 Ready |
 
