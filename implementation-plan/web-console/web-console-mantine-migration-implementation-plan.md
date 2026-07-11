@@ -824,6 +824,21 @@ tests. The [D02 decision request](web-console-preview-isolation-decision-request
 records the current same-origin assumptions and the approval/test fields needed
 to unblock the work. Mantine does not satisfy that isolation requirement.
 
+**Post-P08A regression audit (`b228980ea`):** The first complete browser
+suite after P08A exposed seven stale cross-route baselines: the P04
+keyboard-focus Files frame, four P00 Files atlas viewports, and the two P00
+trust-file conflict views. Visual comparison confirmed each delta was the
+reviewed Mantine Files surface rather than an unrelated regression, so those
+seven baselines were deliberately refreshed. The mobile trust screenshot then
+revealed a flaky fixture state: its hidden-overflow `#root` was being left at
+either 75px or 89px horizontal scroll after the CodeMirror input click. The
+test now restores and asserts the intended left-origin viewport after the
+conflict interaction; it passed ten fresh-context repetitions. Node 24.14.0
+`npm run test:unit` (17 files / 34 tests), `npm run build`, and the complete
+`npm run test:e2e` suite (172 browser checks) all pass. The Vite bundle-size
+advisory remains non-blocking. This audit approves only the refreshed P08A
+Files regression boundary; P08 remains blocked at D02/P08B.
+
 ### P09 — Remove local Radix architecture
 
 **Objective:** reach zero application Radix usage after every replacement is
