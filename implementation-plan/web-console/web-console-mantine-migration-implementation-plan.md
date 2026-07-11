@@ -171,7 +171,7 @@ this table in the same change that advances a phase.
 
 | Phase | Dependency | Status | Gates | Acceptance | Owner / reviewer | Automated evidence | Screenshot evidence | Blocker or decision | Updated |
 |---|---|---|---:|---:|---|---|---|---|---|
-| P00 — Compatibility and trust gate | Authorized amendment record | In progress | 0/5 | 4/6 | Codex / reviewers unassigned | [Provisional fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Review required: SS02/SS03; SS01 not started](evidence/web-console-mantine/phase-00/0f7d024867fc/) | SS01 sanitized route atlas; Preview owner/sign-off; immutable committed capture | 2026-07-11 |
+| P00 — Compatibility and trust gate | Authorized amendment record | In progress | 0/5 | 4/6 | Codex / reviewers unassigned | [Provisional fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Review required: SS01–SS03](evidence/web-console-mantine/phase-00/0f7d024867fc/) | Preview owner/sign-off; pinned immutable committed capture | 2026-07-11 |
 | P01 — Theme and tokens | P00 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P02 — Provider and globals | P01 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P03 — Primitives | P02 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -327,9 +327,9 @@ hide them.
 
 **Required screenshot evidence:**
 
-- [ ] **P00-SS01:** Pre-migration Shell, Fleet, Overview, Terminal, Resources,
+- [x] **P00-SS01:** Pre-migration Shell, Fleet, Overview, Terminal, Resources,
   Events, Traces, Layers, Files, and Preview at all four standard viewports.
-- [ ] **P00-SS02:** Mantine spike at 375 and 1440 showing theme, form validation,
+- [x] **P00-SS02:** Mantine spike at 375 and 1440 showing theme, form validation,
   real keyboard focus, Modal or Drawer, Tooltip, and notification.
 - [x] **P00-SS03:** Paused Events, publication rejection, and a file conflict
   with its local draft visibly preserved at 375 and 1440.
@@ -350,10 +350,11 @@ P09 for Radix, P10 for Tailwind, and P11 for dependency removal. The
 [provisional fixture pack](evidence/web-console-mantine/phase-00/0f7d024867fc/)
 contains the commands and hashes. A deterministic browser route-interception
 fixture now verifies actual requests at the 400ms fast cadence and the
-window-focus catch-up request; P00-AC04 is complete. P00-AC05 and P00-AC06
-remain open: SS01 is not captured; the P00-SS02 and P00-SS03 screenshots are
-captured but require review; the Preview decision lacks an owner/sign-off
-authority; and no required reviewer has approved the dirty-worktree evidence.
+window-focus catch-up request; P00-AC04 is complete. The same pack now contains
+a 36-image sanitized route atlas covering SS01 at 375, 768, 1024, and 1440;
+SS01–SS03 are captured but require review. P00-AC05 and P00-AC06 remain open:
+the Preview decision lacks an owner/sign-off authority, and no required reviewer
+has approved a pinned capture from a committed console revision.
 
 ### P01 — Logo-led theme and token mapping
 

@@ -14,8 +14,12 @@
     "worktree": "dirty"
   },
   "fixture": {
-    "entry": "web/console/tests/p00/fixture.tsx and web/console/tests/p00/trust-fixture.tsx",
-    "url": "http://127.0.0.1:4173/",
+    "entry": "web/console/tests/p00/{fixture,trust-fixture,atlas-fixture}.tsx",
+    "urls": [
+      "http://127.0.0.1:4173/",
+      "http://127.0.0.1:4173/trust.html",
+      "http://127.0.0.1:4173/atlas.html?route=<route>"
+    ],
     "dataPolicy": "Disposable local fixture; no live sandbox metadata or operator data."
   },
   "environment": {
@@ -25,8 +29,7 @@
     "locale": "en-US",
     "timezone": "UTC",
     "deviceScaleFactor": 1,
-    "desktopViewport": "1440x900",
-    "mobileViewport": "375x812",
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"],
     "limitation": "The Chromium revision, operating-system image, and font inventory were not captured. This pack cannot receive visual approval until that environment is pinned and the fixture is rerun from a committed source revision."
   },
   "automatedEvidence": [
@@ -40,10 +43,25 @@
     },
     {
       "command": "PATH=.../node/bin:$PATH npm run test:e2e",
-      "result": "pass: 6 browser tests (keyboard/portal behavior, Axe, visual regression, request-level polling cadence and focus catch-up, plus desktop/mobile trust-state captures)"
+      "result": "pass: 42 browser tests (keyboard/portal behavior, Axe, visual regression, request-level polling cadence and focus catch-up, 36 sanitized route-atlas captures, plus desktop/mobile trust-state captures)"
     }
   ],
   "screenshots": [
+    {
+      "id": "P00-SS01",
+      "kind": "sanitized pre-migration route atlas",
+      "state": "normal canonical fixture; Shell is present in every sandbox route capture",
+      "routes": ["Fleet", "Overview", "Terminal", "Resources", "Events", "Traces", "Layers", "Files", "Preview"],
+      "viewports": ["375x812", "768x1024", "1024x768", "1440x900"],
+      "artifactCount": 36,
+      "checksums": {
+        "algorithm": "sha256",
+        "file": "screenshots/p00-ss01-route-atlas.sha256"
+      },
+      "test": "npx playwright test tests/browser/RouteAtlasFixture.spec.ts --update-snapshots --workers=4",
+      "result": "pass: 36 route-viewport screenshots",
+      "status": "Review required"
+    },
     {
       "id": "P00-SS02",
       "file": "screenshots/p00-ss02-desktop-idle-1440x900.png",
@@ -109,13 +127,7 @@
       "status": "Review required"
     }
   ],
-  "notCaptured": [
-    {
-      "id": "P00-SS01",
-      "status": "Not started",
-      "reason": "The locally running console exposes a real sandbox identifier. A sanitized deterministic route-atlas fixture has not been prepared."
-    }
-  ],
+  "notCaptured": [],
   "review": {
     "design": "Unassigned",
     "engineering": "Unassigned",

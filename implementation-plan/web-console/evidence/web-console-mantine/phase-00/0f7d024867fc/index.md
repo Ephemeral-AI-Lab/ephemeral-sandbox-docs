@@ -12,18 +12,43 @@ baseline, and not a completion claim. The machine-readable record is in
   transcript, file-conflict, Fleet, ready-polling, and polling-cadence
   contracts.
 - `npm run build`: TypeScript and Vite production build passed.
-- `npm run test:e2e`: six Chromium checks passed: real keyboard focus and
+- `npm run test:e2e`: 42 Chromium checks passed: real keyboard focus and
   portal behavior, an Axe scan with zero violations, deterministic visual
-  regression snapshots, and intercepted request proof of the fast polling
-  cadence plus window-focus catch-up. The other two checks use the sanitized
-  trust fixture to create and capture the visible paused-tail, publication
-  rejection, and preserved-draft states at desktop and mobile viewports.
+  regression snapshots, intercepted request proof of the fast polling cadence
+  plus window-focus catch-up, the 36-image sanitized route atlas, and the two
+  desktop/mobile trust-state captures.
 
 The fixture imports the pinned Mantine 9.4.1 packages and verifies the CSS
 order (`@mantine/core/styles.css` before `@mantine/notifications/styles.css`),
 Combobox virtualization, Tree, CodeMirror, uPlot, form validation, reduced
 motion, Modal focus behavior, Tooltip, and notifications. The P00 fixture is
 test-only; production provider work remains in P02.
+
+## P00-SS01: sanitized pre-migration route atlas
+
+The deterministic atlas mounts the real route components with intercepted,
+typed fixture responses. Every capture uses only `fixture-sandbox` data; it
+does not access a live console route or sandbox. The shared Shell is visible in
+each sandbox-route capture. Preview deliberately has no selected port or
+iframe, so this capture neither bypasses nor approves the outstanding P08B
+isolation decision.
+
+| Route | 375x812 | 768x1024 | 1024x768 | 1440x900 |
+|---|---|---|---|---|
+| Fleet | [375](screenshots/p00-ss01-fleet-375x812.png) | [768](screenshots/p00-ss01-fleet-768x1024.png) | [1024](screenshots/p00-ss01-fleet-1024x768.png) | [1440](screenshots/p00-ss01-fleet-1440x900.png) |
+| Overview | [375](screenshots/p00-ss01-overview-375x812.png) | [768](screenshots/p00-ss01-overview-768x1024.png) | [1024](screenshots/p00-ss01-overview-1024x768.png) | [1440](screenshots/p00-ss01-overview-1440x900.png) |
+| Terminal | [375](screenshots/p00-ss01-terminal-375x812.png) | [768](screenshots/p00-ss01-terminal-768x1024.png) | [1024](screenshots/p00-ss01-terminal-1024x768.png) | [1440](screenshots/p00-ss01-terminal-1440x900.png) |
+| Resources | [375](screenshots/p00-ss01-resources-375x812.png) | [768](screenshots/p00-ss01-resources-768x1024.png) | [1024](screenshots/p00-ss01-resources-1024x768.png) | [1440](screenshots/p00-ss01-resources-1440x900.png) |
+| Events | [375](screenshots/p00-ss01-events-375x812.png) | [768](screenshots/p00-ss01-events-768x1024.png) | [1024](screenshots/p00-ss01-events-1024x768.png) | [1440](screenshots/p00-ss01-events-1440x900.png) |
+| Traces | [375](screenshots/p00-ss01-traces-375x812.png) | [768](screenshots/p00-ss01-traces-768x1024.png) | [1024](screenshots/p00-ss01-traces-1024x768.png) | [1440](screenshots/p00-ss01-traces-1440x900.png) |
+| Layers | [375](screenshots/p00-ss01-layers-375x812.png) | [768](screenshots/p00-ss01-layers-768x1024.png) | [1024](screenshots/p00-ss01-layers-1024x768.png) | [1440](screenshots/p00-ss01-layers-1440x900.png) |
+| Files | [375](screenshots/p00-ss01-files-375x812.png) | [768](screenshots/p00-ss01-files-768x1024.png) | [1024](screenshots/p00-ss01-files-1024x768.png) | [1440](screenshots/p00-ss01-files-1440x900.png) |
+| Preview | [375](screenshots/p00-ss01-preview-375x812.png) | [768](screenshots/p00-ss01-preview-768x1024.png) | [1024](screenshots/p00-ss01-preview-1024x768.png) | [1440](screenshots/p00-ss01-preview-1440x900.png) |
+
+The 36 image digests are recorded in
+[p00-ss01-route-atlas.sha256](screenshots/p00-ss01-route-atlas.sha256).
+Their status is **Review required**: the console source worktree is dirty and
+the browser/OS/font inventory is not yet pinned.
 
 ## P00-SS02: disposable Mantine fixture
 
@@ -53,15 +78,13 @@ changed server file on save. No live console route or sandbox metadata is used.
 
 ## Outstanding required evidence
 
-- **P00-SS01:** not captured. The local live route atlas contains a real
-  sandbox identifier, so it is excluded. Create deterministic sanitized
-  fixtures from existing API types before capture.
-- Pin and record the exact Chromium revision, OS image, and fonts; rerun from
-  a committed console revision before requesting visual approval or promotion.
+All P00 screenshot groups are captured. Pin and record the exact Chromium
+revision, OS image, and fonts, then rerun from a committed console revision
+before requesting visual approval or promotion.
 
 ## Review decision
 
 No design, engineering, accessibility, or security reviewer has approved this
 pack. Screenshot approval, P00 completion, and baseline promotion remain
-blocked on the outstanding captures, a committed source revision, and recorded
+blocked on a pinned capture from a committed source revision and recorded
 reviewer decisions.
