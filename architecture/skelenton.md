@@ -455,7 +455,9 @@ mechanics, how to add an operation); this cluster owns what each operation actua
 agent-facing adapters in depth. The catalog's three domains align 1:1:1 with the three
 CLI binaries and the three MCP `--set` values, so the cluster mirrors that: one
 reference page per domain, then one page per adapter. The old
-`05-surfaces/02-cli-and-mcp.md` page dissolves into pages 04 and 05 here.*
+`05-surfaces/02-cli-and-mcp.md` page dissolves into pages 04 and 05 here. The detailed
+writing plan, complete 26-name census, per-operation argument matrices, expected output
+shapes, and verification checklist live in [`04-operations/SPEC.md`](04-operations/SPEC.md).*
 
 ### `01-management-operations.md` — Management operations: the fleet API
 - **Priority:** P0

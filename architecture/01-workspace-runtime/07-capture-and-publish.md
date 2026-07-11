@@ -214,10 +214,11 @@ Resolved changes land in a staging tree (`LS/stack/layer/write.rs`):
 - Deletes write kernel whiteouts; opaque dirs get the dual encoding —
   `.wh..wh..opq` marker (itself whiteout-encoded) plus the kernel opaque
   xattr (`LS/storage/whiteout.rs:23-100`, → page 01 for the table).
-- A whiteout over an upperdir-only path is **kept**: plan fingerprints it
-  `Absent`-vs-`Absent`, resolve passes it, write persists it
-  (`plan.rs:135-141`, `resolve.rs:108-111`, `write.rs:41-44`). Publish never
-  folds net-effects — that is squash's job (→ page 08).
+- A whiteout over an upperdir-only path is **kept**: plan records an
+  `Absent` expected fingerprint (`plan.rs:77-84`), resolve sees
+  `Absent == Absent` and passes it (`resolve.rs:108-111`), write persists it
+  (`write.rs:41-44`). Publish never folds net-effects — that is squash's job
+  (→ page 08).
 
 The three byte locations and their encodings:
 
@@ -234,6 +235,7 @@ The three byte locations and their encodings:
 | # | Step | Anchor |
 |---|---|---|
 | 1 | digest the aggregated changeset; **no-op if it equals the head layer's `.digest` sidecar** (`created: false`) | `:60-66` |
+| 1b | consume the test failpoint marker if armed (→ page 01 Corrections) | `:68,141-156` |
 | 2 | allocate `L{version+1:06}-{counter:08x}` + staging dir | `:70-72` |
 | 3 | write changes into staging; fsync every file + the dir | `:73-80` |
 | 4 | rename staging → `layers/<id>`; fsync parent | `:82-88` |
@@ -242,11 +244,12 @@ The three byte locations and their encodings:
 | 7 | **prepend** the new `LayerRef`, atomic manifest write | `:105-117` |
 | 8 | best-effort `.bytes` sidecar (`let _ =`) | `:118-122` |
 
-`created: false` happens exactly two ways: an empty resolved changeset
-(`:33-40`) or head-digest dedup (`:60-66`) — and in both, the origin is
+`no_op: true` happens exactly two ways: an empty resolved changeset, which
+returns before the transaction ever starts (`:33-40`), or head-digest dedup
+inside it (`created: false`, `:60-66`) — and in both, the origin is
 discarded before audit, so an idempotent republish mints no blame
-(`:41-46`; `LS/stack/publish/model.rs:55-56`: "Empty when the publish was a
-no-op (nothing committed, so nothing to attribute)").
+(`:38,41-46`; `LS/stack/publish/model.rs:55-56`: "Empty when the publish was
+a no-op (nothing committed, so nothing to attribute)").
 
 ## `publish_rejected`: how rejection reaches the caller
 
@@ -256,13 +259,24 @@ The chain, end to end (§2.5 — the slot doc is quoted in page 04):
 2. attached to the command's exec value
    (`OP/command/service/exec_command.rs:135-146`),
 3. set once by finalize when publish rejects, alongside a span error and a
-   `finalize.publish_failed` event (`OP/…/finalize_session.rs:44-57`),
+   `workspace_session.finalize.publish_failed` event
+   (`OP/…/finalize_session.rs:44-57`),
 4. read on **terminal responses only** (`OP/command/service/yield.rs:84-118`,
    `dto.rs:55-70`),
 5. projected to the wire as `publish_rejected: true` +
    `publish_reject_class`
-   (`OP/operations/registry/command_operations.rs:147-150`), with the full
-   structured reject (path, fingerprints, drop, message) at `:158-176`.
+   (`OP/operations/registry/command_operations.rs:147-150`).
+
+Note what the wire does **not** carry: the slot is
+`FinalizeOutcome { publish_reject_class: &'static str }` — by the time
+finalize sets it, the structured reject's path/fingerprints/drop/message are
+already discarded (`OP/workspace_session/service/model.rs:40-42`). A full
+`publish_reject_value` renderer exists
+(`command_operations.rs:158-177`) but only for the command-*error* details
+branch, which no production code currently constructs (the
+`CommandServiceError::LayerStack(PublishRejected)` variant has an unused
+`From` impl and zero producers in `OP/command/service/` —
+`OP/command/error.rs:39-43`). Callers get the class string, nothing more.
 
 The class taxonomy, cell-checked against both ends
 (`LS/stack/publish/model.rs:117-126` → `OP/…/finalize_session.rs:129-152`):
@@ -270,8 +284,8 @@ The class taxonomy, cell-checked against both ends
 | Reject class (wire) | Trigger | Anchor |
 |---|---|---|
 | `invalid_base_revision` | request's revision triple ≠ its own base manifest (self-consistency, not freshness) | `plan.rs:104-127` |
-| `protected_path` | reserved namespace hit (`manifest.json`/`workspace.json`/`layers`/`staging`/`.layer-metadata`, any `.wh.*` component) — or any non-tolerated protected drop | `route.rs:11-33`, `plan.rs:56-64,155-158` |
-| `source_conflict` | fingerprint mismatch without a clean merge (or on delete/symlink) — carries `{path, expected, actual}` | `resolve.rs:112-131,212-222` |
+| `protected_path` | reserved namespace hit (top-level `manifest.json`/`workspace.json`/`layers`/`staging`; `.layer-metadata` **at any depth**; any `.wh.*` component) — or any non-tolerated protected drop | `route.rs:11-33`, `plan.rs:56-64,155-158` |
+| `source_conflict` | fingerprint mismatch without a clean merge (or on delete/symlink) — the in-process `PublishReject` carries `{path, expected, actual}`; the wire gets the class only | `resolve.rs:112-131,212-222` |
 | `opaque_dir_protected_descendant` | opaque dir hides a protected path | `plan.rs:206-213` |
 | `opaque_dir_mixed_routes` | opaque dir's descendants mix source+ignored | `plan.rs:227-231` |
 | `opaque_dir_expansion_limit` | > 4096 visible descendants | `plan.rs:186-190` |
