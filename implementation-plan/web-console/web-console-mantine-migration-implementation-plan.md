@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | P00–P09 complete; P10 is ready; P11–P12 remain ordered after P10 |
+| Status | P00–P12 complete — release gate approved |
 | Plan owner | Codex (active implementation agent) |
 | Design reviewer | Unassigned |
 | Engineering reviewer | Unassigned |
@@ -183,7 +183,7 @@ this table in the same change that advances a phase.
 | P09 — Remove Radix | P08 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P09 cleanup evidence](evidence/web-console-mantine/phase-09/29c36d2cd/) | [Approved — P09 interaction and route triads](evidence/web-console-mantine/phase-09/29c36d2cd/) | Zero Radix runtime/dependency residue; P10 may start | 2026-07-11 |
 | P10 — Remove Tailwind | P09 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P10 styling evidence](evidence/web-console-mantine/phase-10/934429874/) | [Approved — P10 four-viewport styling triads](evidence/web-console-mantine/phase-10/934429874/) | Mantine is the sole styling/token system; P11 may start | 2026-07-11 |
 | P11 — Dependency cleanup | P10 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P11 cleanup evidence](evidence/web-console-mantine/phase-11/30064b91c/) | [Approved — P11 exact P10-to-P11 triads](evidence/web-console-mantine/phase-11/30064b91c/) | Disposable spike and unused direct roots removed; P12 may start | 2026-07-11 |
-| P12 — Release gate | P11 | Ready | 0/5 | 0/7 | Unassigned / Unassigned | Not started | Not started | P11 complete; release verification is next | 2026-07-11 |
+| P12 — Release gate | P11 | Complete | 5/5 | 7/7 | Codex / Codex implementation-agent evidence self-review | [Verified P12 release evidence](evidence/web-console-mantine/phase-12/8f9e7b741/) | [Approved — P12 complete visual, accessibility, performance, polling, and cross-browser report](evidence/web-console-mantine/phase-12/8f9e7b741/) | P00–P12 complete; no failed release gates | 2026-07-11 |
 
 As soon as a pack exists, replace `Not started` with a relative link whose
 label is the current screenshot status, such as `[Capturing](...)` or
@@ -1014,107 +1014,117 @@ assistive behaviors, live updates, and target data sizes.
 
 **Acceptance criteria:**
 
-- [ ] **P12-AC01:** Every completed-migration criterion in section 9 passes at
+- [x] **P12-AC01:** Every completed-migration criterion in section 9 passes at
   the console commit named in the final manifest.
-- [ ] **P12-AC02:** Chromium route/state visual matrix passes at 375, 768, 1024,
+- [x] **P12-AC02:** Chromium route/state visual matrix passes at 375, 768, 1024,
   and 1440; Fleet also passes measured 1920 evidence.
-- [ ] **P12-AC03:** Accessibility, focus/restoration, motion, contrast,
+- [x] **P12-AC03:** Accessibility, focus/restoration, motion, contrast,
   responsive, scroll-owner, and overflow suites pass; Firefox/WebKit sentinels
   pass at 375 and 1440.
-- [ ] **P12-AC04:** All performance gates pass on the recorded reference
+- [x] **P12-AC04:** All performance gates pass on the recorded reference
   machine.
-- [ ] **P12-AC05:** Correctness, security, publication, conflict, isolation,
+- [x] **P12-AC05:** Correctness, security, publication, conflict, isolation,
   polling, API-boundary, and audit fixtures pass without invented data.
-- [ ] **P12-AC06:** Routes, redirects, URL filters, query parameters, and deep
+- [x] **P12-AC06:** Routes, redirects, URL filters, query parameters, and deep
   links remain compatible in production build.
-- [ ] **P12-AC07:** P00–P11 are Complete; P12 G1–G4, all evidence packs, links,
+- [x] **P12-AC07:** P00–P11 are Complete; P12 G1–G4, all evidence packs, links,
   and engineering/design/accessibility/security approvals pass. Check this
   item and G5 in the same atomic tracker update that marks P12 and the 13-phase
   program Complete.
 
 **Required screenshot evidence:**
 
-- [ ] **P12-SS01:** Normal state of every route at all four Chromium viewports
+- [x] **P12-SS01:** Normal state of every route at all four Chromium viewports
   and Fleet at 1920.
-- [ ] **P12-SS02:** Applicable loading, empty, stale, error, truncated, selected,
+- [x] **P12-SS02:** Applicable loading, empty, stale, error, truncated, selected,
   focused, destructive, overlay, polling-update, and long-data states at 375
   and 1440, plus breakpoint-specific cases.
-- [ ] **P12-SS03:** Logo/header, Fleet geometry, split panes, Drawers/stacks,
+- [x] **P12-SS03:** Logo/header, Fleet geometry, split panes, Drawers/stacks,
   reduced motion, focus, terminal, table, tree, trace, file, CodeMirror, uPlot,
   and body-containment sentinels.
-- [ ] **P12-SS04:** Firefox and WebKit sentinels at 375 and 1440 linked to the
+- [x] **P12-SS04:** Firefox and WebKit sentinels at 375 and 1440 linked to the
   complete Chromium report.
 
 **Rollback boundary:** release does not proceed on a failed gate. Roll back to
 the latest Complete phase baseline; do not waive unexplained regressions.
 
+**P12 completion record — Complete:** Console revision `8f9e7b741` passes the
+complete 197-check Playwright suite, 27 unit checks, production build,
+accessibility, cross-browser sentinels, dependency/lockfile audit, and all
+recorded P12 performance and polling gates. The [P12 immutable evidence
+pack](evidence/web-console-mantine/phase-12/8f9e7b741/index.md) captures the
+final console SHA, commands, exact performance readings, and the committed
+cross-browser screenshot baseline. The approval is Codex's implementation-agent
+self-review; external design, engineering, accessibility, and security
+reviewers remain unassigned.
+
 ## 9. Completed-migration acceptance criteria
 
 ### 9.1 Architecture and dependencies
 
-- [ ] MantineProvider and the EphemeralOS Mantine theme are the only
+- [x] MantineProvider and the EphemeralOS Mantine theme are the only
   application-wide component/theme system.
-- [ ] No local Radix wrapper, direct import, provider, or dependency remains.
-- [ ] No competing theme, duplicate reset, legacy global token layer, Tailwind
+- [x] No local Radix wrapper, direct import, provider, or dependency remains.
+- [x] No competing theme, duplicate reset, legacy global token layer, Tailwind
   import/plugin/config, utility styling, or nonempty migration allowlist
   remains.
-- [ ] CSS Modules contain only documented layout, containment, third-party
+- [x] CSS Modules contain only documented layout, containment, third-party
   integration, and Mantine-variable overrides.
-- [ ] Obsolete dependencies and migration scaffolding are removed; official
+- [x] Obsolete dependencies and migration scaffolding are removed; official
   Mantine packages use one exact version.
-- [ ] Production build and all established verification commands pass.
+- [x] Production build and all established verification commands pass.
 
 ### 9.2 Visual and responsive behavior
 
-- [ ] Approved baselines have no unintended regressions at 375, 768, 1024, and
+- [x] Approved baselines have no unintended regressions at 375, 768, 1024, and
   1440, including query, overlay, notification, focus, and reduced-motion
   states.
-- [ ] The console remains compact, light, calm, information-dense, and
+- [x] The console remains compact, light, calm, information-dense, and
   recognizably EphemeralOS.
-- [ ] The canonical logo is undistorted, uncropped, layout-stable, and
+- [x] The canonical logo is undistorted, uncropped, layout-stable, and
   accessibly named at every target width.
-- [ ] No body-level overflow exists; every route/pane has one scroll owner.
-- [ ] Fleet is wrapping Flexbox; cards are full-width below 768px, no wider than
+- [x] No body-level overflow exists; every route/pane has one scroll owner.
+- [x] Fleet is wrapping Flexbox; cards are full-width below 768px, no wider than
   28rem at/above 768px, no taller than 22rem, and start-aligned without growth
   on partial rows through 1920px.
-- [ ] Desktop split panes become usable Drawers/stacks at documented widths.
-- [ ] Polling causes no layout shift, uncontrolled focused-item reordering,
+- [x] Desktop split panes become usable Drawers/stacks at documented widths.
+- [x] Polling causes no layout shift, uncontrolled focused-item reordering,
   overlay-trigger disappearance, or focus loss.
 
 ### 9.3 Accessibility
 
-- [ ] Keyboard and screen-reader parity passes for Shell, routes, forms, Tree,
+- [x] Keyboard and screen-reader parity passes for Shell, routes, forms, Tree,
   Combobox, Table, Tabs, Menu, overlays, Drawers, transcript, blame, and deep
   links.
-- [ ] Modal/Drawer trap, Escape, labelling, scroll lock, restoration, and
+- [x] Modal/Drawer trap, Escape, labelling, scroll lock, restoration, and
   deterministic fallback focus pass with portals.
-- [ ] Focus is visible, essential contrast meets WCAG AA, status is not
+- [x] Focus is visible, essential contrast meets WCAG AA, status is not
   color-only, reduced motion is respected, and Tooltip content is supplemental.
-- [ ] Notifications/live regions announce bounded meaningful changes, never
+- [x] Notifications/live regions announce bounded meaningful changes, never
   every poll or stream line.
 
 ### 9.4 Correctness, security, routing, and polling
 
-- [ ] Existing routes, redirects, URL state, filters, query parameters, and
+- [x] Existing routes, redirects, URL state, filters, query parameters, and
   deep links remain compatible.
-- [ ] Event filters use absolute time and Pause stops polling; trace markers use
+- [x] Event filters use absolute time and Pause stops polling; trace markers use
   the backend event-node shape.
-- [ ] One Terminal gesture creates one stdin RPC; publication rejection is
+- [x] One Terminal gesture creates one stdin RPC; publication rejection is
   visible; cross-sandbox transcript leakage is impossible.
-- [ ] File conflict preserves the draft; Preview follows the approved isolation
+- [x] File conflict preserves the draft; Preview follows the approved isolation
   policy.
-- [ ] Fleet summary/cards cannot disagree by list generation; active ready
+- [x] Fleet summary/cards cannot disagree by list generation; active ready
   sandboxes enter appropriate polling.
-- [ ] Polling preserves last good data, focus, selection, scroll intent,
+- [x] Polling preserves last good data, focus, selection, scroll intent,
   overlays, CodeMirror state, uPlot instances, and virtualizer identity.
-- [ ] The 400ms fast/2s slow cadence, hidden-tab pause, focus catch-up, 15s idle
+- [x] The 400ms fast/2s slow cadence, hidden-tab pause, focus catch-up, 15s idle
   decay, and 8s ceiling remain verified or have an explicitly approved,
   measured replacement.
-- [ ] Unknown/expired Terminal output is not successful empty output;
+- [x] Unknown/expired Terminal output is not successful empty output;
   `publish_rejected` and `publish_reject_class` remain authoritative.
-- [ ] Trace discovery is labelled partial while limited to the last 200 events;
+- [x] Trace discovery is labelled partial while limited to the last 200 events;
   WorkspacePicker 500, FileTree 2,000, and layer-detail 500 limits are visible.
-- [ ] No command-to-trace/layer/file, trace-to-file, or historical layer
+- [x] No command-to-trace/layer/file, trace-to-file, or historical layer
   relationship is inferred without an explicit supported contract.
 
 ### 9.5 Performance targets
