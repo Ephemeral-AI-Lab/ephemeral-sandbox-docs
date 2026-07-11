@@ -3,19 +3,23 @@
 Synthesized from a 6-agent exploration of `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 (scopes: operations/adapters, web console, host management plane, daemon + runtime dispatch,
 runtime isolation primitives, observability/config/infra). Date: 2026-07-11.
+Revised the same day after a dedicated 8-topic deep-dive into cluster 01 (workspace
+runtime & storage): that cluster is now 9 dependency-ordered pages with its own writing
+spec at `01-workspace-runtime/SPEC.md`.
 
-This file is the proposed structure for `ephemeral-sandbox-docs/architecture/`: 26 pages
+This file is the proposed structure for `ephemeral-sandbox-docs/architecture/`: 29 pages
 organized into 8 clusters (each cluster = one subdirectory). Clusters are ordered by
 importance; **Workspace runtime & storage is deliberately ranked second** — it is the
-isolation core and the place where the deleted spec (§2.x, C1–C5) must be reconstructed.
-Every page carries its own P0/P1/P2 priority, scope, source components, and open questions.
+isolation core and the place where the deleted spec (§2.x, C1–C5) is recovered from git
+history and reconstructed. Every page carries its own P0/P1/P2 priority, scope, source
+components, and open questions.
 
 ## Directory layout at a glance
 
 ```text
 architecture/
 ├── 00-foundations/                3 pages · P0 P0 P0
-├── 01-workspace-runtime/          6 pages · P0 P0 P0 P0 P0 P1
+├── 01-workspace-runtime/          9 pages · P0 P0 P0 P0 P0 P0 P1 P0 P0 (dependency-ordered)
 ├── 02-security-model/             3 pages · P0 P0 P0
 ├── 03-management-plane/           2 pages · P0 P0
 ├── 04-daemon/                     3 pages · P0 P0 P0
@@ -28,13 +32,18 @@ architecture/
 
 ## Headline findings
 
-1. **The docs must reconstruct a spec that no longer exists.** `docs/` contains only
-   `.DS_Store` (last commit: "chore: remove obsolete docs"), but the code cites the deleted
-   spec constantly — §2.3/§2.5/§2.6 and F1/F5/F10 in workspace-session code, "C1–C5" rules
-   across the live-remount path, "§4.9" in the Docker engine, "spec decision 8" in telemetry.
-   README links to `docs/daemon-http/README.md` and the obsidian migration spec dangle.
-   These architecture pages will be the only written form of invariants that currently live
-   in code comments.
+1. **The deleted spec is recoverable — and partially recovered.** `docs/` contains only
+   `.DS_Store` (last commit `0f7d02486` "chore: remove obsolete docs"), but the code cites
+   the deleted spec constantly — §2.3/§2.5/§2.6 and F1/F5/F10 in workspace-session code,
+   "C1–C5" rules across the live-remount path, "§4.9" in the Docker engine, "spec decision
+   8" in telemetry. README links to `docs/daemon-http/README.md` and the obsidian migration
+   spec dangle. The cluster-01 deep-dive found the squash/remount spec intact in git
+   history — `git show '0f7d02486^:docs/obsidian/ephemeral-os/implementation_plan/squash/spec.md'`
+   (1,420 lines: C1–C6, invariants, lock discipline) plus its 785-line test catalog and the
+   remount-rework docs, all deleted by the same commit. Import these before writing
+   (`01-workspace-runtime/SPEC.md` step 0) and hunt the remaining spec families (§2.x
+   sessions, C3 file-auditability, observability) in the same deleted tree. The
+   architecture pages remain the only *living* form of those invariants.
 2. **Existing coverage is near-zero.** Real docs exist only for the console crate (its own
    README), `config/README.md`, and `e2e/README.md`/`RUNNING.md`. Everything else has at
    most one line in the root README's component table.
@@ -131,82 +140,193 @@ Read first.*
 
 # Cluster 01 — Workspace runtime & storage (`01-workspace-runtime/`)
 
-*The isolation core's mechanics — ranked second by importance. These six pages constantly
-reference each other's invariants (leases, gates, newest-first ordering) and together
-reconstruct the deleted §2.x/C1–C5 spec, making them the highest-decay-risk content in the
-plan. Deep namespace/seccomp mechanics are detailed in `02-security-model/01`; read
-alongside if unfamiliar.*
+*The isolation core's mechanics — ranked second by importance. Restructured 2026-07-11
+after a dedicated 8-topic deep-dive; the full writing spec (per-page outlines, must-state
+invariants, file:line anchors, demo path) lives in `01-workspace-runtime/SPEC.md`. Nine
+pages in **strict dependency order** — each page uses only concepts introduced by earlier
+pages, so the cluster reads front-to-back as a demonstration: two independent roots (`01`
+storage truth, `02` process substrate) meet in `03` (the overlay mount); `04` (sessions)
+orchestrates them; `05`/`06` are the two mutation surfaces; `07` closes the write-back
+loop into the store; `08` is the capstone that touches everything. Deep
+namespace/holder/runner *mechanics* now live here (page `02`) — `02-security-model/01`
+keeps the security analysis. Together these pages carry the recovered-and-reconstructed
+§2.x/C1–C5 spec, the highest-decay-risk content in the plan.*
 
-### `01-workspace-sessions.md` — Workspace sessions: lifecycle, gates, and finalize
+### `00-runtime-tour.md` — The runtime tour: one loop, eight mechanisms *(spine, half page)*
 - **Priority:** P0
-- **Scope:** create → lease → holder spawn → ns-fd capture → veth → overlay mount →
-  execute → capture → destroy, with every rollback edge; the admission gate/ledger
-  discipline and lock ordering (gate → sessions → storage writer); the
-  `Active→Finalizing→FinalizeFailed` finalize state machine; `PublishThenDestroy` implicit
-  sessions (one-shot `exec_command` auto-publishes — and the publish can be rejected
-  *after* the command succeeded, surfaced only as `publish_rejected`); guarded vs faulty
-  destroy and recovery from `FinalizeFailed`. This page replaces the missing §2.x spec.
-- **Sources:** sandbox-runtime operation workspace_session, sandbox-runtime-workspace.
-- **Open questions:** location of the original spec.
+- **Scope:** the workspace lifecycle loop in one diagram (lease → holder → mount →
+  execute/file-ops → capture → publish → squash → remount → destroy → GC); the unified
+  `/eos` data-root map with per-subtree ownership; the cross-topic handoff-artifact table
+  (12 edges, each a documented contract); the demonstration path (each step exercises
+  exactly one page, in page order); reading order for newcomers.
+- **Sources:** `01-workspace-runtime/SPEC.md` synthesis; `operation/src/services.rs`
+  (composition root).
+- **Open questions:** none.
 
-### `02-command-execution.md` — Command execution end-to-end
-- **Priority:** P0
+### `01-layerstack-store.md` — LayerStack: store layout, hashes, leases, and GC
+- **Priority:** P0 *(was `03-layerstack.md`)*
+- **Scope:** on-disk layout (`manifest.json`, `layers/` with counter-based `B*`/`L*`/`S*`
+  ids — **not** content hashes, `staging/`, `.layer-metadata/*.{digest,bytes}` sidecars,
+  `.storage-writer.lock`, `workspace.json`); the **three distinct sha256 roles**
+  (per-layer changeset digest = head-dedup only; manifest root hash = the OCC revision
+  token; base root hash = shared-cache key) plus fingerprint/audit reuse; the newest-first
+  manifest order — constructed at publish-prepend, never re-validated, consumed by every
+  reader; the two-level writer lock (flock lifetime = open `LayerStack`; in-process
+  reentrant RW) and the documented lock order; the RAM-only lease registry +
+  release-time GC (the only GC besides the boot sweep); the fail-closed boot sweep (`B*`
+  never deleted; manifest doubt ⇒ delete nothing); workspace-base seeding (private build
+  vs shared-cache docker volume vs per-sandbox seed archive) and the `workspace.json`
+  binding contract; the boot workspace-root **bind detach**; the three scratch roots
+  (workspace, namespace-execution, gate-probe-in-staging).
+- **Sources:** sandbox-runtime-layerstack (all), `operation/src/services.rs` boot steps,
+  provider-docker archive/runtime (seeding).
+- **Open questions:** `.bytes` sidecars advisory-only confirmation; release-time GC has
+  no explicit `B*` guard (safety rests on the base always being in the active manifest) —
+  add a defensive check?
+
+### `02-namespace-processes.md` — Holder & runner: the namespace process substrate
+- **Priority:** P0 *(new page — mechanics were previously split across
+  `02-security-model/01` and `04-daemon/01`)*
+- **Scope:** one static binary, four personalities, and why single-threaded subprocess
+  bodies exist at all (`unshare`/`setns` with `CLONE_NEWUSER` require a single-threaded
+  caller); the holder — `unshare(NEWUSER|NEWNS|NEWPID[+NEWNET])`, single-entry self
+  uid/gid map, `mount_change("/", PRIVATE|REC)`, the pid-ns init fork trick and why
+  `ns/pid_for_children` not `ns/pid`, the 3-token handshake (`ns-up` → daemon does
+  ns-fd capture/veth/overlay-mount → `net-ready …` → in-ns network config → `ready`);
+  ns-fd capture with **permanently cleared CLOEXEC** (raw fd integers as protocol
+  values); the runner — the `current_exe` re-exec contract (`ForkRunnerLauncher` doesn't
+  fork), the asymmetric-CLOEXEC pipe pair, the global spawn lock, EOF-framed JSON
+  request/result, the four payload kinds (`--shell|--file-op|--mount-overlay|--remount-overlay`),
+  setns join order (user first), the 8 MiB drain-while-waiting; the PDEATHSIG kill chain
+  (daemon→holder SIGKILL; holder→pid-init SIGTERM; init death collapses the pid ns) as
+  the foundation of boot reap; the holder exit-code contract (1/2); env plumbing
+  (`SANDBOX_DAEMON_CONFIG_YAML` hard-required by runners; auth token env-only, never
+  argv).
+- **Sources:** sandbox-runtime-namespace-process, workspace `namespace/*`,
+  namespace-execution `launcher.rs`, daemon main/holder/serve/runner.
+- **Open questions:** holder spawn happens outside the spawn lock (benign asymmetry?);
+  runner fd hygiene — CLOEXEC-cleared ns fds of *other* sessions are visible inside every
+  runner; `SANDBOX_DAEMON_SANDBOX_ID` is set but read by nothing in-repo.
+
+### `03-overlay-mount.md` — The overlay mount: lowerdir order, upper/work, who unmounts *(short)*
+- **Priority:** P0 *(was `04-overlay-mounts.md`)*
+- **Scope:** the raw fsopen → `lowerdir+`×N → `userxattr` → upperdir/workdir →
+  fsconfig_create → fsmount → move_mount sequence (and why not mount(2)/mount(8));
+  fd-pinned NOFOLLOW lowerdirs vs real-path upper/work (kernel restriction); the complete
+  ordering-invariant chain across all eight hops (publish-prepend → manifest → lease →
+  snapshot ref → entry → request JSON → `OverlayHandle` → first `lowerdir+` = highest
+  priority); upper/work under the session run dir (same-fs by construction; per-remount
+  fresh sibling workdir, **same upperdir forever**); the mount executes inside the
+  holder's namespaces via the `--mount-overlay` runner and the RAII guard is deliberately
+  leaked — namespace death is the production unmounter (`Drop`/peel is production-dead;
+  `strict_unmount`/`move_mountpoint` exist for the remount protocol); `/eos` tmpfs masks
+  applied post-mount by the same runner.
+- **Sources:** sandbox-runtime-overlay, workspace `overlay/{dirs,tree}.rs`,
+  namespace-process `setns/mount_overlay.rs`, daemon runner.
+- **Open questions:** kernel floor — the boot 5.8 assert covers neither `lowerdir+`
+  (≥ 6.8) nor `userxattr` (≥ 5.11); the first session mount is the de-facto probe.
+
+### `04-workspace-sessions.md` — Workspace sessions: lifecycle, gates, finalize, network
+- **Priority:** P0 *(was `01-workspace-sessions.md`)*
+- **Scope:** the create sequence with every rollback edge (lease → overlay dirs → holder
+  spawn → ns-fd capture → veth install → overlay mount → net-ready → persist) and destroy
+  with lease + parked-lease release; the admission gate/ledger discipline and the lock
+  order (gate → sessions map → storage writer); the `Active→Finalizing→FinalizeFailed`
+  machine; `PublishThenDestroy` implicit sessions — the publish can be rejected *after*
+  the command succeeded, surfaced only as `publish_rejected`; guarded vs faulty destroy
+  (§2.5/§2.6) and recovery; **network modes** — shared = the *container's* netns (not the
+  host), isolated = bridge + veth with **bridge-port isolation only** (the nft layer was
+  removed in `d3c0538e1`; `rfc1918_egress: deny` is config-accepted but rejected at
+  create; egress is environment-provided); `manager.json` persistence and the
+  PDEATHSIG-backed boot reap; the composition-root service graph and boot order as
+  orientation. This page replaces the missing §2.x spec.
+- **Sources:** sandbox-runtime-workspace (session/lifecycle/service/isolated_network_setup),
+  operation workspace_session, `operation/src/services.rs`.
+- **Open questions:** finalize capture error = silent data loss (span attribute only) —
+  accepted?; `latest_snapshot`/`ReadonlySnapshotHandle` has no production caller.
+
+### `05-command-execution.md` — Command execution end-to-end
+- **Priority:** P0 *(was `02-command-execution.md`)*
 - **Scope:** `exec_command` from dispatch to terminal result — implicit session creation,
-  admission-token RAII, the engine's reserve/spawn/watch registry, the runner spawn dance
-  (asymmetric CLOEXEC pipes, 8 MiB drain-while-waiting), PTY data flow into timestamped
-  transcripts, windowed `read_command_lines` paging, the yield/poll model, stdin +
-  Ctrl-C/Ctrl-D cancel (exit 130, timeout 124), pgid-scoped wait, cgroup placement.
-  Cross-reference the one-Observer-per-process and trace-handoff invariants from
-  `06-config-and-observability/02`.
+  admission-token RAII, the engine's reserve/spawn/watch registry, the runner spawn dance,
+  PTY reality (no controlling terminal, no window size, no raw mode — echo lands in
+  transcripts; stdin containing ETX/EOT cancels, a literal Ctrl-C byte is undeliverable),
+  timestamped transcripts and their lifecycle (unbounded while running; deleted on
+  512-entry terminal eviction, **not** on session destroy), windowed `read_command_lines`
+  paging, the yield/poll model, exit codes 130/124/−signal, pgid-scoped wait, cgroup
+  placement (later the quiesce discovery seed — forward ref to `08`), shell_security
+  hardening hook anchors. Cross-reference the one-Observer-per-process and trace-handoff
+  invariants from `06-config-and-observability/02`.
 - **Sources:** operation command service, namespace-execution, namespace-process
-  shell_exec/shell_security.
-- **Open questions:** unbounded transcript growth until session destroy — accepted?
-
-### `03-layerstack.md` — LayerStack: manifests, leases, and garbage collection
-- **Priority:** P0
-- **Scope:** the content-addressed store; manifest schema v1 and the **newest-first** layer
-  order; the publish OCC transaction (staging fsync → rename → digest sidecar → conflict
-  recheck); the two-level storage writer lock (flock + in-process); the in-memory lease
-  registry and release-time GC; the fail-closed boot sweep (never touches `B*` base
-  layers, deletes nothing on manifest doubt); workspace-base seeding; the dual whiteout
-  encoding (logical `.wh.` markers vs kernel char-dev/xattr) and the reserved-name publish
-  rejection.
-- **Sources:** sandbox-runtime-layerstack, operation layerstack service.
-- **Open questions:** `.bytes` sidecars advisory-only confirmation; same-filesystem
-  assumptions for rename/staging.
-
-### `04-overlay-mounts.md` — Overlay mounts & the newest-first invariant *(short page)*
-- **Priority:** P0
-- **Scope:** the raw fsopen→fsconfig→fsmount→move_mount sequence (never mount(8));
-  `userxattr` for rootless whiteouts; fd-pinned NOFOLLOW lowerdirs; the ordering invariant
-  end-to-end (manifest → lease → OverlayHandle → first `lowerdir+` = highest priority);
-  strict vs peel unmount and who *really* unmounts in production (namespace death — the
-  RAII Drop path is production-dead by design).
-- **Sources:** sandbox-runtime-overlay, namespace-process mount helpers.
-- **Open questions:** none beyond kernel floor.
-
-### `05-live-remount-and-squash.md` — Live remount & squash (reconstructing the C1–C5 protocol)
-- **Priority:** P0
-- **Scope:** the boot kernel gate (fail-safe: unproven ⇒ commit-only squash forever);
-  squash's plan/build/commit with singleflight and lease-block boundaries; the in-memory
-  substitution map; quiesce (cgroup ∪ /proc discovery, SIGSTOP freeze budget, per-task pin
-  inspection); the 9-step staged MS_MOVE switch with MaskGuard (masks restored before any
-  move); outcome classification (identity/migrated/parked/leased/faulty — faulty
-  deliberately `mem::forget`s frozen tasks); the bounded-width remount sweep and
-  blocked-reason attribution.
-- **Sources:** workspace remount, namespace-execution quiesce, namespace-process
-  remount_overlay + gate, operation squash impls.
-- **Open questions:** the original C1–C5 spec; vestigial `runner_pids` allowlist; sweep
-  width vs blocking-pool coupling.
+  shell_exec/shell_security, daemon `runner/shell.rs`.
+- **Open questions:** unbounded transcript growth — accepted?; no boot reaper found for
+  orphaned `/eos/namespace_execution/*` dirs after a crash.
 
 ### `06-file-operations-and-blame.md` — File operations, attribution, and blame
 - **Priority:** P1
-- **Scope:** dual routing (live session via ns-runner vs sessionless against the published
-  stack); owner-string minting rules; audit-gate ordering (blame events land in commit
-  order); the blame pipeline. Note the stale module doc claiming read/write/edit "ship
-  later" — they're implemented.
-- **Sources:** operation file service, layerstack audit.
+- **Scope:** the dual-routing decision (presence of `workspace_session_id`; pre-gate
+  resolve for path mapping, re-resolve under the gate); per-op mechanics — read windows,
+  atomic runner-side writes, edit's exact-string conflict detection and the session-edit
+  non-atomicity window (read and write are two separately-gated runner ops; the
+  sessionless route is an atomic RMW under the exclusive writer lock), one-level list and
+  its HTTP-only exposure; the owner grammar (`workspace_session:<id>` | `operation:<id>` |
+  `original` | `unknown`) and the boundary law (layerstack emits owner-free `Origin`; the
+  file domain mints owners); the NDJSON audit store and the `audit_gate` commit-order
+  guarantee; blame as a pure store read over path-keyed line snapshots (survives squash
+  by construction). Fix in passing: the stale module doc claiming read/write/edit "ship
+  later".
+- **Sources:** operation file service (incl. audit/store), workspace + operation
+  `run_file_op`, layerstack read side.
 - **Open questions:** none blocking.
+
+### `07-capture-and-publish.md` — Capture & publish: from upperdir to layer
+- **Priority:** P0 *(new page — previously smeared across old `01` and `03`)*
+- **Scope:** the host-side upperdir scan (kernel whiteout/opaque **metadata only**; `.wh.`
+  dirent names are user data, rejected fail-closed at publish; `WriteFile` captures are
+  metadata-only references streamed at publish time); protected drops (special files
+  tolerated, non-UTF-8 names fail the whole publish); content fingerprints (sha256,
+  content-only — the executable bit is invisible to conflict detection) as the **real
+  OCC** — the manifest recheck is practically unreachable; gitignore **routing, not
+  filtering** (patterns read from the *base manifest*'s `.gitignore` files; ignored paths
+  skip validation and get wholesale attribution); plan → resolve (three-way merge with
+  8 MiB and Myers-diff caps) → route → layer write (kernel whiteout dual encoding) → the
+  OCC commit (head-digest dedup no-op, staging → fsync → rename → digest sidecar →
+  manifest prepend); the `publish_rejected` class taxonomy and the OnceLock surfacing
+  chain onto the completing command's terminal output; `amend_path` (sessionless RMW —
+  "the three-way merge never runs… nothing to retry"); audit-append ordering (G3/§13).
+  Appendix: projection (`MergedView` consumers; full `project()` is test-only) and the
+  export delta stream (logical `.wh.` encoding — the reverse translation).
+- **Sources:** workspace `overlay/capture.rs` + `capture_changes.rs`, layerstack
+  `stack/publish/**` + `stack/ops/publish.rs` + `stack/layer/write.rs` +
+  `storage/whiteout.rs`, operation layerstack impls, operation finalize.
+- **Open questions:** an empty capture with non-empty protected drops surfaces nowhere;
+  merged-file executable-bit loss — bug or accepted?
+
+### `08-squash-and-live-remount.md` — Squash & live remount (the C1–C5 protocol)
+- **Priority:** P0 *(was `05-live-remount-and-squash.md`)* — **write against the
+  recovered spec**
+  (`git show '0f7d02486^:docs/obsidian/ephemeral-os/implementation_plan/squash/spec.md'`).
+- **Scope:** why remount exists (lease-pinned layers cannot reclaim under live sessions);
+  the boot kernel gate (G1+G2 — a miniature of the production protocol run in a scratch
+  userns; unproven ⇒ commit-only squash forever); squash plan/build/commit (singleflight
+  riding the outcome through the sweep, lease-newest boundaries, ≥2-layer non-`B*`
+  blocks, flatten's newest-wins fold with whiteout collapse + opaque dual encoding, the
+  single `syncfs` durability barrier, substitution recording, plan-lease release as the
+  only GC); lease rewrite (oldest-generation-first contraction, pin-overlap, Identity
+  degradation on any doubt); quiesce (holder-mountinfo check first, cgroup ∪ /proc
+  discovery, SIGSTOP + freeze budget, C4 per-task pin inspection incl. the anon-inode
+  allowlist); the 9-step staged switch (MaskGuard restore-before-move, point-of-no-return
+  = first MS_MOVE success, strict-unmount EBUSY ⇒ park); C5 outcome classification
+  (identity/migrated/parked/leased/faulty — faulty deliberately `mem::forget`s frozen
+  tasks; a missing report is decided by the workspace-mount-id comparison); the
+  bounded-width sweep, blocked-reason attribution, and batched handle persistence.
+- **Sources:** layerstack squash/flatten/rewrite/cleanup, workspace
+  `lifecycle/remount.rs`, namespace-execution `quiesce.rs`, namespace-process `gate.rs` +
+  `setns/remount_overlay.rs`, operation squash impls; the recovered spec +
+  `e2e/manager/management/squash/test_spec.md`.
+- **Open questions:** vestigial `runner_pids` allowlist; sweep width vs blocking-pool
+  coupling; PTY sessions always classify `pinned:cwd_pinned_workspace` ("physics, not
+  policy" per spec C6) — needs an operator-facing note.
 
 # Cluster 02 — Security model & guarantees (`02-security-model/`)
 
@@ -226,11 +346,16 @@ to disappear. All three are cross-cutting pages deduplicated from multiple scope
   `rfc1918_egress: deny` accepted by config but rejected at runtime). Must include the
   topology nuance: the daemon binds `0.0.0.0` inside the container — loopback confinement
   happens only at Docker's host-port publish, and the HTTP listener is unauthenticated.
+  Holder/runner and network-setup *mechanics* are documented in `01-workspace-runtime/02`
+  and `/04`; this page owns the layered security *analysis* of those boundaries.
 - **Sources:** sandbox-provider-docker, sandbox-runtime-namespace-process,
   sandbox-runtime-workspace, sandbox-daemon, sandbox-config.
-- **Open questions:** exact peer-isolation mechanism and egress story for 10.244.0.0/24;
-  official kernel floor (5.8 assert vs 5.11 feature needs vs gate probe as sole authority);
-  support status of `privileged: true`.
+- **Open questions:** peer isolation is now known to be bridge-port isolation only
+  (rtnetlink `isolated(true)` + `mcast_flood(false)`; the nft layer was removed in
+  `d3c0538e1` — the empty `netfilter/` dir is a leftover), so the remaining question is
+  the egress story for 10.244.0.0/24 (no NAT/forwarding installed by this code);
+  official kernel floor (5.8 assert vs `userxattr` ≥ 5.11 vs `lowerdir+` ≥ 6.8 vs gate
+  probe as sole authority); support status of `privileged: true`.
 
 ### `02-tokens-and-trust-boundaries.md` — Tokens & trust boundaries
 - **Priority:** P0
@@ -304,7 +429,9 @@ Deliberately thin — tokens, recovery, and packaging live in clusters 02 and 07
   `ForkRunnerLauncher` doesn't fork); fd-inheritance + the global spawn lock; the holder's
   3-token pipe handshake (`ns-up`/`net-ready`/`ready`); the PDEATHSIG kill chain; the
   exit-code contract (holder 1/2); env-var plumbing (`SANDBOX_DAEMON_*`), auth token never
-  in argv.
+  in argv. Holder/runner internals (handshake tokens, runner wire protocol, payload
+  kinds, setns order) are deep-dived in `01-workspace-runtime/02-namespace-processes.md`;
+  this page keeps the daemon-side process framing and cross-references.
 - **Sources:** sandbox-daemon main/serve/holder/runner/gate_probe, namespace-process,
   namespace-execution launcher.
 - **Open questions:** is `serve --spawn` production or e2e-only; intended AF_UNIX RPC
@@ -450,11 +577,15 @@ prerequisite.*
 
 ## Consolidated open questions for maintainers (blocking doc authorship)
 
-1. **Where is the deleted spec?** (obsidian vault: operation-migration spec, C1–C5 remount
-   rules, §2.x workspace-session invariants, observability spec, `ab_driver.py`). Can it
-   be imported into ephemeral-sandbox-docs? Affects `00-foundations/03`,
-   `01-workspace-runtime/01`, `01-workspace-runtime/05`, `06-config-and-observability/02`,
-   `07-engineering/02`.
+1. **Deleted spec: partially FOUND.** The squash/remount spec (C1–C6), its test catalog,
+   and the remount-rework docs are recoverable from git:
+   `git show '0f7d02486^:docs/obsidian/ephemeral-os/implementation_plan/squash/spec.md'`
+   (all deleted by `0f7d02486`). Action: import into this repo
+   (`01-workspace-runtime/SPEC.md` step 0). Still missing: the §2.x workspace-session
+   spec, the C3 file-auditability spec, the observability spec, `ab_driver.py` —
+   enumerate the same deleted tree with `git log --diff-filter=D --name-only -- docs/`.
+   Affects `00-foundations/03`, `01-workspace-runtime/04`, `01-workspace-runtime/08`,
+   `06-config-and-observability/02`, `07-engineering/02`.
 2. Streaming/auth-field framing: migrate into sandbox-protocol per the boundary law, or
    document co-ownership as intentional?
 3. `LocalSandboxDaemonInstaller` + `manager.local_daemon` config: planned `--backend
@@ -462,8 +593,10 @@ prerequisite.*
 4. Auth-optional gateway (library) and non-loopback binds: supported deployments or
    dev-only? TLS roadmap?
 5. Token rotation: is "restart console after gateway restart" permanent?
-6. Isolated networking: where is peer isolation actually enforced, and what's the egress
-   story?
+6. Isolated networking (answered in part by the cluster-01 deep-dive): peer isolation =
+   bridge-port isolation set via rtnetlink (`isolated(true)`, `mcast_flood(false)`); nft
+   was removed (`d3c0538e1`). Remaining: what provides egress for 10.244.0.0/24 (no
+   NAT/forwarding exists in this code)?
 7. Official kernel floor (5.8 assert vs 5.11 features vs gate-probe-as-authority)?
 8. `rusqlite`/`prost*` workspace deps: planned storage engine or deletable?
 9. Malformed `observability` config section silently defaulting: bug or contract?
@@ -474,14 +607,19 @@ prerequisite.*
     a known gap or added? Who builds `dist/git/*.tar`?
 13. Failed-record and shared-base-volume GC: sanctioned cleanup path?
 14. `/files/list` returning HTTP 200 for dispatch errors: contract or accident?
+15. Finalize failure surfacing: a capture error at finalize is recorded only as a span
+    attribute (the session's changes are silently lost), and an empty capture with
+    non-empty protected drops skips publish so the drops never surface — accepted
+    contract or gap? (`01-workspace-runtime/04` and `/07`.)
 
 ## Suggested writing order
 
-Cluster 00 first (prerequisites for everything), then cluster 01 in full — it is ranked
-second by importance and holds the missing-spec reconstructions with the highest decay
-risk (`01-workspace-sessions`, `02-command-execution`, `05-live-remount-and-squash`).
-Then the remaining P0 pages by cluster order (02 → 03 → 04 → 05/01 → 06/01), then P1,
-then P2.
+Cluster 00 first (prerequisites for everything), then cluster 01 in full **in its
+internal page order (00 → 08)** — the pages are dependency-ordered so the cluster reads
+sequentially; the highest-decay reconstructions are `04-workspace-sessions`,
+`05-command-execution`, `07-capture-and-publish`, and `08-squash-and-live-remount`
+(write 08 against the recovered spec). Then the remaining P0 pages by cluster order
+(02 → 03 → 04 → 05/01 → 06/01), then P1, then P2.
 
 ## Source agent reports
 
@@ -489,3 +627,11 @@ The six per-scope exploration reports (with file:line anchors for every key abst
 were produced by session agents: ops/adapters `a97eb87037a1bf5b3`, console
 `a0cdfa7d9edb12097`, host-mgmt `af79af236a13b1ab0`, daemon `a09d5820264b7b5a2`,
 runtime-prims `aa18271ae6c950247`, obs/config/infra `a82389bbc91c60216`.
+
+The cluster-01 restructure is grounded in a second, 8-topic deep-dive (2026-07-11):
+layerstack/store `ab285c8232cb4c1b7`, sessions/network `a990922faed3870ce`,
+holder/runner `ab090bba22f959521`, command/PTY `a5af6066852642fd4`, squash/remount
+`a9d62ea872d7c4782` (found the recoverable spec in git history), file-ops/blame
+`ae13e9ab6baa1ae49`, overlay `a822ce778471889bc`, capture/publish `a0e4d0230429e2b72`,
+plus a boot/composition pass `a2de128d96c5f5d4a`. Their synthesis and the per-page
+writing spec live in `01-workspace-runtime/SPEC.md`.
