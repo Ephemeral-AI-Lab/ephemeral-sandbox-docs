@@ -511,14 +511,20 @@ shapes, and verification checklist live in [`04-operations/SPEC.md`](04-operatio
 - **Scope:** snapshot as the catalog's only SystemOrSandbox dual-route op (system scope
   → manager aggregating every Ready sandbox; sandbox scope → daemon
   observability-query), trace (`trace_id` default "last"), events (name/since_ms/last_n
-  filters, newest first), cgroup and layerstack (window_ms default 60 s, max 600 s);
+  filters; current wire order oldest-to-newest despite catalog prose saying newest
+  first); cgroup (manager-owned default sandbox scope reads Docker Engine CPU,
+  memory, and block-I/O counters into process-local history also fed by fleet
+  snapshot host sampling;
+  non-sandbox scopes currently expose a manager→daemon `unknown_op` routing gap)
+  and layerstack (window_ms default 60 s, max 600 s);
   selector semantics (absent → system aggregate, present → per-sandbox); what each view
   can and cannot show — request-triggered sampling means idle sandboxes emit nothing
   (pipeline internals in `07-config-and-observability/02`).
 - **Sources:** catalog `observability/*`, sandbox-observability-query, manager
-  aggregate-snapshot impl.
-- **Open questions:** none blocking (sampling-cadence intent lives with
-  `07-config-and-observability/02`).
+  aggregate-snapshot and resource-metrics impls, Docker provider stats API.
+- **Open questions:** should non-sandbox cgroup scopes remain daemon-backed, and if
+  so should the daemon admit this manager-owned catalog route?; sampling-cadence
+  intent lives with `07-config-and-observability/02`.
 
 ### `04-cli.md` — The three CLI binaries
 - **Priority:** P1
@@ -529,19 +535,23 @@ shapes, and verification checklist live in [`04-operations/SPEC.md`](04-operatio
   any I/O); the scope-selector matrix (manager: never; runtime: `--sandbox-id`
   required, deliberately no env/config fallback; observability: optional flag); the
   output contract (result JSON on stdout, error envelope on stderr, exit 0/1/2
-  partition and what each means for scripting); `--progress` (manager-only,
-  create_sandbox-only; `[progress Xs]` frames on stderr, `[Output]` delimiter); the
-  auth chain (flag > `SANDBOX_GATEWAY_AUTH_TOKEN` > wrapper-read
-  `/tmp/eos-gateway.token` > none) and its bypass footgun — invoking binaries directly
-  never reads the token file; wrapper mechanics + the stale-`target/debug` footgun;
+  partition and what each means for scripting); `--progress` (manager-only; the global
+  flag is accepted for every management operation, while the legacy trailing form
+  captured after operation arguments is accepted only by create_sandbox;
+  `[progress Xs]` frames on stderr, `[Output]` delimiter); the auth chain (normally
+  flag > `SANDBOX_GATEWAY_AUTH_TOKEN` > wrapper-read `/tmp/eos-gateway.token` > none,
+  but the library currently validates an environment token before applying a flag
+  override) and its bypass footgun — invoking binaries directly never reads the token
+  file; wrapper mechanics + the stale-`target/debug` footgun;
   Phase 0 freeze as operational reality (fixture pins 18 ops — management 6, runtime 7,
   observability 5; list_docker_images/list_workspace_directories postdate it; help text
   and unknown-op stderr frozen byte-for-byte; fixture edits are API reviews).
 - **Sources:** sandbox-cli (Cargo.toml bins, `projection/`, input.rs, output.rs,
   per-binary mains, tests/{compatibility,projection_integrity,help}.rs + fixtures),
   bin/ wrappers.
-- **Open questions:** `--progress` for the other binaries — planned?; sandbox-id format
-  contract; the always-empty error `details` field — reserved?
+- **Open questions:** `--progress` for the other binaries — planned?; should the global
+  manager flag remain valid for operations that currently emit no progress frames?;
+  sandbox-id format contract; the always-empty error `details` field — reserved?
 
 ### `05-mcp.md` — sandbox-mcp: the tool server
 - **Priority:** P1
@@ -751,9 +761,8 @@ Cluster 00 first (prerequisites for everything), then cluster 01 in full **in it
 internal page order (00 → 08)** — the pages are dependency-ordered so the cluster reads
 sequentially; the highest-decay reconstructions are `04-workspace-sessions`,
 `05-command-execution`, `07-capture-and-publish`, and `08-squash-and-live-remount`
-(write 08 against the recovered spec). Status 2026-07-11: clusters 00, 02, and 03 are fully
-written; cluster 01 is written through page 06 — next are `01/07`, `01/08`, then the
-`01/00` tour. Then the remaining P0 pages by cluster order (04/01 → 04/02 → 05 →
+(write 08 against the recovered spec). Status 2026-07-12: clusters 00, 01, 02, and 03
+are fully written. Next are the remaining P0 pages by cluster order (04/01 → 04/02 → 05 →
 06/01 → 07/01), then P1 (04/03, 04/04, 04/05 with the rest), then P2.
 
 ## Source agent reports

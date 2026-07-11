@@ -516,3 +516,60 @@ Net-new insights folded into page 07:
 - The WS→LS boundary DTO carries **references, not bytes** — `WriteFile
   { source_path into the live upperdir }`; publish streams content at
   commit (`WS/model.rs:434-445`, `capture.rs:84-92,102-105`).
+
+## Page 00 — Runtime tour
+
+The tour introduces no independent runtime claims; it reconciles and links the
+contracts owned by pages 01–08. One planning inconsistency was resolved while
+writing it:
+
+- **One page per demo step** — the page's done condition requires each demo
+  step to name exactly one detail page, while the recovered sample grouped
+  pages 02–04 and pages 06–07 into single steps. The written tour uses nine
+  steps, one for each page in reading order.
+
+## Page 08 — Squash & live remount
+
+Drift (spec claim → reality → anchor):
+
+1. **The runtime boot latch has two checks, not three bits** — the probe
+   combines G1 (overlayfs) and G2 (writable cgroup v2); G3 is the separate
+   boot-cleanup-before-serving invariant exercised by service order and E2E
+   (`NP/gate.rs:1-15`, `OP/services.rs:163-240`).
+2. **C5 persists after the sweep** — the recovered order says refresh/persist,
+   resume, then release. The implementation resumes the task, releases OLD,
+   updates the in-memory session, and performs one batched handle persist after
+   every worker completes (`WS/lifecycle/remount.rs:115-194,276-294`,
+   `OP/layerstack/service/impls/squash.rs:65-78`). This is ordering drift, but it preserves
+   the safety rule that OLD is detached before deletion.
+3. **Sweep width is configuration, not a fixed constant** —
+   `runtime.layerstack.remount_sweep_width` supplies the bound; both the
+   config and operation fallbacks default to 4
+   (`sandbox-config/src/configs/runtime.rs:132-149`,
+   `OP/services.rs:384-400`). The benchmark template's substituted `8` is a
+   test arm, not the product default.
+4. **`runner_pids` is a dormant hook** — production constructs remount inputs
+   with an empty vector, so the pidfd runner-quiescence branch is not currently
+   exercised by live squash (`WS/lifecycle/remount.rs:232-239`).
+5. **Lease rewriting has two low-level outcomes** — the store returns
+   `Identity` or `Replaced`; the parked state is produced later by C5 as
+   `RemountOutcome::Leased` with `parked_lease_id`, not by a third rewrite
+   variant (`LS/stack/lease/rewrite.rs:35-39`,
+   `WS/lifecycle/remount.rs:313-379`).
+6. **Gate and contract labels collide across domains** — boot G1–G3 and
+   remount C3 are unrelated to the file-operation G1–G3/C3 labels used in
+   page 06. Page 08 qualifies every label by domain.
+
+Net-new insights folded into page 08:
+
+- A helper report with `first_move=true` and `mount_verified=true` is still
+  faulty if its detail is not the exact success token; both flags alone are
+  insufficient (`WS/lifecycle/remount.rs:326-379`).
+- A missing report is clean only when the workspace mount ID is readable and
+  unchanged; a changed, absent, or unreadable mount ID is faulty.
+- Strict rollback treats a non-`EBUSY` unmount result after verified success as
+  an arbitrary detail, which C5 deliberately classifies as faulty.
+- Replacement cleanup accepts `release_lease(OLD) == Ok(false)` as migrated;
+  `released_old_lease` merely records whether a row was actually removed.
+- Faulty sessions are destroyed only after all bounded workers finish, so the
+  sweep has a global classification barrier before destructive cleanup.
