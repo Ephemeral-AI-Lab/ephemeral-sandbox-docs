@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Authorized implementation direction; engineering verification in progress |
+| Status | Authorized implementation direction; engineering verification complete — P00–P12 release gate approved |
 | Authority | Active user-provided Web Console UI/UX implementation objective |
 | Decision date | 2026-07-11 |
 | Applies to | `ephemeral-sandbox/web/console` |
@@ -38,9 +38,11 @@ proved.
 ## Dependency and accessibility boundary
 
 The approved first-party runtime package set is `@mantine/core`,
-`@mantine/hooks`, `@mantine/form`, and `@mantine/notifications`, pinned to one
-exact version. Their ownership and compatibility must be reverified against
-official Mantine documentation and the npm registry in P00 and P11.
+`@mantine/hooks`, and `@mantine/notifications`, pinned to one exact version.
+Mantine form controls remain part of the UI system; no separate form-state
+package is installed because no production surface consumes one after P11.
+Their ownership and compatibility must be reverified against official Mantine
+documentation and the npm registry in P00 and P11.
 
 React Aria Components are not approved at this point. They may be introduced
 only after a recorded, reproducible Mantine parity failure shows a necessary

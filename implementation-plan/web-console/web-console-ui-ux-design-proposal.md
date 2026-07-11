@@ -1,6 +1,6 @@
 # EphemeralOS Web Console UI/UX Design Proposal
 
-Status: Design proposal; implementation pending approval
+Status: Implemented — P00–P12 release gate approved; execution status and evidence are maintained in `web-console-mantine-migration-implementation-plan.md`.
 Date: 2026-07-11
 Scope: Complete Mantine migration, console information architecture, and operator workflows
 
@@ -1268,7 +1268,7 @@ each p95 gate and include a 60-second fast-poll run for every live surface.
 
 | Gap | Current evidence | Required decision or contract |
 |---|---|---|
-| Preview isolation | Same-origin iframe without sandbox | Iframe restrictions versus a dedicated untrusted origin |
+| Preview isolation | Opaque-origin `srcdoc` iframe with literal `allow-scripts` sandbox and credential-stripping proxy | Resolved in D02/P08B; retain browser-boundary tests |
 | Command history | Browser-local ledger; active snapshot has only execution ID, operation, and lifecycle | Paginated, redacted, authorized history with timestamps and outcomes |
 | Missing command | Unknown transcript can appear as empty OK | Explicit not-found or expired response |
 | Trace enumeration | UI infers trace IDs from recent events | Trace index with time, duration, root operation, and status |
@@ -1282,6 +1282,8 @@ each p95 gate and include a 60-second fast-poll run for every live surface.
 | Port discovery | No listening-port inventory | Optional endpoint if manual entry proves costly |
 | Rich Fleet filtering | No owner, age, TTL, region, or labels | Do not design these filters without a product requirement and API |
 | Layer trend and sharing | Backend data exists but frontend omits or reduces it | Frontend type and presentation correction |
+
+**P12 disposition (2026-07-11):** Preview isolation is resolved in P08B. The remaining rows are backend-only capabilities, not UI-release blockers: the final console labels backend limits and does not invent fields or relations. P00–P12 trust, pagination, and audit-boundary tests cover those boundaries.
 
 Until those contracts exist, the UI must not imply:
 
