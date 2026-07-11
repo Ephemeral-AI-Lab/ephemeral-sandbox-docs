@@ -181,9 +181,9 @@ this table in the same change that advances a phase.
 | P07 — Observability | P06 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P07 implementation evidence](evidence/web-console-mantine/phase-07/91e1b2688/) | [Approved — P07 Observability SS01–SS04](evidence/web-console-mantine/phase-07/91e1b2688/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P08 — Files and Preview | P07 | Complete | 5/5 | 6/6 | Codex / Codex delegated evidence and security self-review | [P08A Files evidence](evidence/web-console-mantine/phase-08/f1073cd29/); [P08B Preview evidence](evidence/web-console-mantine/phase-08/cfae89ede9/) | [Approved — P08 complete](evidence/web-console-mantine/phase-08/cfae89ede9/) | D02 resolved; P09 may start | 2026-07-11 |
 | P09 — Remove Radix | P08 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P09 cleanup evidence](evidence/web-console-mantine/phase-09/29c36d2cd/) | [Approved — P09 interaction and route triads](evidence/web-console-mantine/phase-09/29c36d2cd/) | Zero Radix runtime/dependency residue; P10 may start | 2026-07-11 |
-| P10 — Remove Tailwind | P09 | Ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | P09 complete; Tailwind removal is next | 2026-07-11 |
-| P11 — Dependency cleanup | P10 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
-| P12 — Release gate | P11 | Not ready | 0/5 | 0/7 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P10 — Remove Tailwind | P09 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P10 styling evidence](evidence/web-console-mantine/phase-10/934429874/) | [Approved — P10 four-viewport styling triads](evidence/web-console-mantine/phase-10/934429874/) | Mantine is the sole styling/token system; P11 may start | 2026-07-11 |
+| P11 — Dependency cleanup | P10 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P11 cleanup evidence](evidence/web-console-mantine/phase-11/30064b91c/) | [Approved — P11 exact P10-to-P11 triads](evidence/web-console-mantine/phase-11/30064b91c/) | Disposable spike and unused direct roots removed; P12 may start | 2026-07-11 |
+| P12 — Release gate | P11 | Ready | 0/5 | 0/7 | Unassigned / Unassigned | Not started | Not started | P11 complete; release verification is next | 2026-07-11 |
 
 As soon as a pack exists, replace `Not started` with a relative link whose
 label is the current screenshot status, such as `[Capturing](...)` or
@@ -971,24 +971,32 @@ scaffolding.
 
 **Acceptance criteria:**
 
-- [ ] **P11-AC01:** Final manifest matches the approved package architecture and
+- [x] **P11-AC01:** Final manifest matches the approved package architecture and
   retained engines; all official Mantine packages share one exact version.
-- [ ] **P11-AC02:** Dead migration code/dependencies are removed and the lockfile
+- [x] **P11-AC02:** Dead migration code/dependencies are removed and the lockfile
   is clean.
-- [ ] **P11-AC03:** Build, unit, dependency, unused-code, and route-smoke checks
+- [x] **P11-AC03:** Build, unit, dependency, unused-code, and route-smoke checks
   pass.
-- [ ] **P11-AC04:** Cleanup artifacts and screenshot pack are Approved with no
+- [x] **P11-AC04:** Cleanup artifacts and screenshot pack are Approved with no
   unexplained visual change.
 
 **Required screenshot evidence:**
 
-- [ ] **P11-SS01:** Shell, Fleet, Terminal, Files, and primitive fixture at 375
+- [x] **P11-SS01:** Shell, Fleet, Terminal, Files, and primitive fixture at 375
   and 1440.
-- [ ] **P11-SS02:** Reference/actual/diff triads against P10; dependency logs are
+- [x] **P11-SS02:** Reference/actual/diff triads against P10; dependency logs are
   sidecars, not screenshot substitutes.
 
 **Rollback boundary:** cleanup is revertible as one dependency/source-only
 change and must not include visual redesign.
+
+**P11 completion record — Complete:** Console revision `30064b91c` removes the
+disposable P00 compatibility spike and unused direct dependency roots, while
+leaving the retained routes and fixtures visually unchanged. The full 180-check
+browser suite passes. The [P11 immutable evidence
+pack](evidence/web-console-mantine/phase-11/30064b91c/index.md) records the
+exact Mantine dependency gate, clean lockfile/direct-graph audit, and ten
+pixel-exact P10-to-P11 screenshot triads.
 
 ### P12 — Full verification and release gate
 
