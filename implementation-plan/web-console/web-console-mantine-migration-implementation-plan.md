@@ -175,7 +175,7 @@ this table in the same change that advances a phase.
 | P01 — Theme and tokens | P00 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P01 implementation evidence](evidence/web-console-mantine/phase-01/0ce628786a83/) | [Approved — P01 fixture SS01–SS03](evidence/web-console-mantine/phase-01/0ce628786a83/) | D05 implemented; P02 now consumes the theme | 2026-07-11 |
 | P02 — Provider and globals | P01 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P02 implementation evidence](evidence/web-console-mantine/phase-02/b042d34ab/) | [Approved — P02 foundation fixture SS01–SS03](evidence/web-console-mantine/phase-02/b042d34ab/) | Radix/Tailwind remain temporary under the removal-only P02 allowlist | 2026-07-11 |
 | P03 — Primitives | P02 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P03 implementation evidence](evidence/web-console-mantine/phase-03/aac65f046/) | [Approved — P03 primitive SS01–SS03](evidence/web-console-mantine/phase-03/aac65f046/) | Package cleanup remains P09; Tailwind removal remains P10 | 2026-07-11 |
-| P04 — Shell and navigation | P03 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P04 — Shell and navigation | P03 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P04 implementation evidence](evidence/web-console-mantine/phase-04/8139d292a/) | [Approved — P04 Shell/navigation SS01–SS03](evidence/web-console-mantine/phase-04/8139d292a/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P05 — Fleet and Overview | P04 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P06 — Terminal | P05 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P07 — Observability | P06 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -545,26 +545,39 @@ may consume the completed primitive foundation.
 
 **Acceptance criteria:**
 
-- [ ] **P04-AC01:** Shell, header, logo, breadcrumbs, route Tabs, and
+- [x] **P04-AC01:** Shell, header, logo, breadcrumbs, route Tabs, and
   Observability navigation use Mantine and preserve density.
-- [ ] **P04-AC02:** All routes, redirects, filters, query parameters, and deep
+- [x] **P04-AC02:** All routes, redirects, filters, query parameters, and deep
   links resolve with correct active navigation.
-- [ ] **P04-AC03:** Every viewport has one main region, one route scroll owner,
+- [x] **P04-AC03:** Every viewport has one main region, one route scroll owner,
   no body overflow, and no clipped focus ring.
-- [ ] **P04-AC04:** Skip/main, narrow navigation, scoped shortcuts, keyboard
+- [x] **P04-AC04:** Skip/main, narrow navigation, scoped shortcuts, keyboard
   focus, and focus restoration pass.
-- [ ] **P04-AC05:** Route/deep-link reports and screenshot pack are Approved.
+- [x] **P04-AC05:** Route/deep-link reports and screenshot pack are Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P04-SS01:** Every Shell/navigation route state at all four viewports.
-- [ ] **P04-SS02:** Narrow navigation Drawer/Menu open at 375 with trigger,
+- [x] **P04-SS01:** Every Shell/navigation route state at all four viewports.
+- [x] **P04-SS02:** Narrow navigation Drawer/Menu open at 375 with trigger,
   backdrop, focused item, and restored focus.
-- [ ] **P04-SS03:** Keyboard focus and bounded route scrolling at 1024 plus
+- [x] **P04-SS03:** Keyboard focus and bounded route scrolling at 1024 plus
   overflow assertions at all widths.
 
 **Rollback boundary:** page content remains unchanged; Shell/navigation changes
 are isolated from Fleet and sandbox feature migrations.
+
+**Implementation and review record (2026-07-11):** committed console revision
+[`8139d292a`](evidence/web-console-mantine/phase-04/8139d292a/) replaces the
+stable application frame with Mantine AppShell/navigation primitives, preserves
+the legacy Layers deep link with search/hash retention, and enforces semantic
+main plus bounded route scrolling. The [P04 evidence pack](evidence/web-console-mantine/phase-04/8139d292a/)
+records the Node 24.14.0 unit/build/browser pass, 36 route-atlas structural
+states across the four standard viewports, legacy redirect coverage, skip/main
+and scoped keyboard/scroll coverage, narrow Drawer focus/Escape/restoration,
+and 38 zero-difference screenshot triads with checksums. Codex self-reviewed
+the committed P04 scope after visual inspection. External human design,
+engineering, and accessibility reviewers remain unassigned; P05 may consume
+the completed frame. P08B Preview isolation remains a separate security gate.
 
 ### P05 — Fleet, creation, WorkspacePicker, and Overview
 

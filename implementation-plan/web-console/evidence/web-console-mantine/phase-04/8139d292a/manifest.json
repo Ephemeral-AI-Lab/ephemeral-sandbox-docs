@@ -1,0 +1,120 @@
+{
+  "phase": "P04",
+  "status": "Approved — Shell and navigation migration only",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "8139d292a",
+    "worktree": "clean",
+    "immutable": true,
+    "scope": "Mantine Shell, navigation, route containment, redirect compatibility, and P04 browser evidence. Fleet/Overview migration, package removal, Tailwind removal, and P08B Preview isolation remain later work."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"]
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 17 files, 32 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; existing bundle-size advisory only"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:e2e",
+      "result": "pass: 110 browser tests, including 39 dedicated P04 checks"
+    },
+    {
+      "command": "compare -metric AE reference/<file> actual/<file> diff/<file>",
+      "result": "pass: 0 (0) for every one of 38 screenshot pairs"
+    }
+  ],
+  "coverage": {
+    "P04_AC01": "Mantine AppShell, canonical Image logo, Breadcrumbs, Tabs, and Observability navigation are covered by route-atlas captures and source contracts.",
+    "P04_AC02": "Nine active route states at four viewports plus legacy Layers redirect with retained search/hash.",
+    "P04_AC03": "36 route/viewport checks assert one main, bounded width, no body overflow, and one scroll owner outside Fleet.",
+    "P04_AC04": "Skip-to-main, scoped tab keyboard navigation, bounded route scroll, narrow Drawer focus, Escape, and focus restoration pass.",
+    "P04_AC05": "The recorded browser, visual-triad, checksum, and review evidence is approved for P04 scope."
+  },
+  "triad": {
+    "reference": "Approved committed Playwright snapshot",
+    "actual": "Same-commit capture",
+    "diff": "ImageMagick compare output; all changed-pixel counts are zero",
+    "artifactCount": 114
+  },
+  "screenshots": [
+    {
+      "id": "P04-SS01",
+      "state": "route-atlas Shell/navigation states; the p00-atlas filename prefix is retained for longitudinal baseline identity",
+      "viewports": ["375x812", "768x1024", "1024x768", "1440x900"],
+      "files": [
+        { "base": "p00-atlas-events-1024x768-darwin.png", "sha256": "664b4d1c32f09489d3b77eadfd1b8e6acda358b2c91b871d8deb3c2f7c9dc23d", "changedPixels": 0 },
+        { "base": "p00-atlas-events-1440x900-darwin.png", "sha256": "c29b3f0684429099f8c3bb8ae2b553a568db6a2d6c7b10ee7e52eac671e945ea", "changedPixels": 0 },
+        { "base": "p00-atlas-events-375x812-darwin.png", "sha256": "456a150fe40fed324daf03ed99126f8921117988d8c0b8cea3eaeaffe0cb8f54", "changedPixels": 0 },
+        { "base": "p00-atlas-events-768x1024-darwin.png", "sha256": "14336c577e3e409aa08ede0543d3610b38d82e90c41b5103fc9f464899724d42", "changedPixels": 0 },
+        { "base": "p00-atlas-files-1024x768-darwin.png", "sha256": "9a32dc995025d026e9ea3f87e1545907eaf2c00ee6e2403ff8bf6a45d7d134e8", "changedPixels": 0 },
+        { "base": "p00-atlas-files-1440x900-darwin.png", "sha256": "9c59ae5a6b88c6e7e898f7c9eac8ae6876828a9531ce8cf313eeefa8697a77ec", "changedPixels": 0 },
+        { "base": "p00-atlas-files-375x812-darwin.png", "sha256": "9c62c409d5386cc2d71639f3d45c6cbcd0cd9ef1df056413862eae8fa9a7898c", "changedPixels": 0 },
+        { "base": "p00-atlas-files-768x1024-darwin.png", "sha256": "447805a8101548c1170fc7cbcf2575ceb139efe0448939d4091181b64f5e3204", "changedPixels": 0 },
+        { "base": "p00-atlas-fleet-1024x768-darwin.png", "sha256": "303223b54597a08e1962e7c937c8bd3a1e7a41e2bade39ee2092577f76fb0dc9", "changedPixels": 0 },
+        { "base": "p00-atlas-fleet-1440x900-darwin.png", "sha256": "de1de55a1dc4a9129fda878128e9292dfa6a853251ed82fb4e883225e966968e", "changedPixels": 0 },
+        { "base": "p00-atlas-fleet-375x812-darwin.png", "sha256": "f796cbb081a8723955ec698c04c0aac30df5feb25962699143fe4fdc360f125f", "changedPixels": 0 },
+        { "base": "p00-atlas-fleet-768x1024-darwin.png", "sha256": "a3291376810d0384e501fcfdd6e3e46a3c886c279a238f035282151633a62541", "changedPixels": 0 },
+        { "base": "p00-atlas-layers-1024x768-darwin.png", "sha256": "bd43bded414bdb8a776a97717175093bab9298ee2e6a159d61064b7ac66f5f05", "changedPixels": 0 },
+        { "base": "p00-atlas-layers-1440x900-darwin.png", "sha256": "6f0b4bc2304ee5e58e83d36ca6c2a44ac58628988fb7aed084a0cf040ae2a2f3", "changedPixels": 0 },
+        { "base": "p00-atlas-layers-375x812-darwin.png", "sha256": "1bd79e7e560b1ef4a15486ec71ae75b69b52c503bb66cc2d0b3cb40177f85d94", "changedPixels": 0 },
+        { "base": "p00-atlas-layers-768x1024-darwin.png", "sha256": "df99c6834db0ee1dea94da4856f4cf3f0e8ec1d9221c08920c9a8c5c965860a4", "changedPixels": 0 },
+        { "base": "p00-atlas-overview-1024x768-darwin.png", "sha256": "1690fc191bd2c5af6205584edc253e9a6dbd851467928387b852e74432644786", "changedPixels": 0 },
+        { "base": "p00-atlas-overview-1440x900-darwin.png", "sha256": "17f4bfd4dfe8ce681e61cb3a5768c91bf9091d8b47032b6a34cbc102fd0b3ce3", "changedPixels": 0 },
+        { "base": "p00-atlas-overview-375x812-darwin.png", "sha256": "fb5c29b48fe423f667145b0b8b993979516eb88dbfb0e78aaa1f97790b060b18", "changedPixels": 0 },
+        { "base": "p00-atlas-overview-768x1024-darwin.png", "sha256": "78c71ac468f516d652baa67e70849531e5f5fbcfbf951907c5b72589d34c22a0", "changedPixels": 0 },
+        { "base": "p00-atlas-preview-1024x768-darwin.png", "sha256": "84e7cc255d312d13fbabe2843d8c334b4e637caa38baf2613e958c515961e757", "changedPixels": 0 },
+        { "base": "p00-atlas-preview-1440x900-darwin.png", "sha256": "c1c7eb07bfac06264aea75c6fb576ec975526c4b3f8dc2eed4fc46fbf8d20d04", "changedPixels": 0 },
+        { "base": "p00-atlas-preview-375x812-darwin.png", "sha256": "20e25ece82c6d487ee2f213c9cf632b71208723657a4a60f4365d8189f3aaf91", "changedPixels": 0 },
+        { "base": "p00-atlas-preview-768x1024-darwin.png", "sha256": "2114996ae8aa6783eda4bf6f272ab2fbddfc9aaa9f6861407b739c8fb821cfcc", "changedPixels": 0 },
+        { "base": "p00-atlas-resources-1024x768-darwin.png", "sha256": "ac3a8b3d6647151dd6f82ac106a964fa4b0c2b5f376409617c509bb4ce3869e4", "changedPixels": 0 },
+        { "base": "p00-atlas-resources-1440x900-darwin.png", "sha256": "8bc6d233512814050e1c160650cf8fbc42598b8eebaeb287283e1599d242f7d1", "changedPixels": 0 },
+        { "base": "p00-atlas-resources-375x812-darwin.png", "sha256": "2bbfa394fa00de6154268040568c560d1ec0ca1df296dff816f5d1e7657439f2", "changedPixels": 0 },
+        { "base": "p00-atlas-resources-768x1024-darwin.png", "sha256": "8e1ead11ca11abcd0258f73917a3a7bd523ca238b0641753be8597a796ef6fe3", "changedPixels": 0 },
+        { "base": "p00-atlas-terminal-1024x768-darwin.png", "sha256": "3ebf1519968a88d13bae5b5473fece82ee4e5912fd60ddbaff9041045c00312d", "changedPixels": 0 },
+        { "base": "p00-atlas-terminal-1440x900-darwin.png", "sha256": "0be4db68152772be0b9f889cd9436cca8e873da294ac1f95e34bdba48b683c33", "changedPixels": 0 },
+        { "base": "p00-atlas-terminal-375x812-darwin.png", "sha256": "faf04f77fc67314200e2f8c3c7c6e2b64978a3fde6d1e39cb7c72595da562cac", "changedPixels": 0 },
+        { "base": "p00-atlas-terminal-768x1024-darwin.png", "sha256": "ba3116ca18bdf836923764869b1a4550a8fd95ed3ed5a73af329e862b59d2972", "changedPixels": 0 },
+        { "base": "p00-atlas-traces-1024x768-darwin.png", "sha256": "724040e896acc627895422779cc0b6a2e6ec1dbdcbf694a79d5d3aad34ce6504", "changedPixels": 0 },
+        { "base": "p00-atlas-traces-1440x900-darwin.png", "sha256": "bbe1c776e05b27e18834df49c555db4c6c5c3a73372d6168b4c75eb6fc697aa5", "changedPixels": 0 },
+        { "base": "p00-atlas-traces-375x812-darwin.png", "sha256": "cec7864bdd035e1ac7171f3cef5d816e9d42b66289e1352f39ca0fc9574bc1c0", "changedPixels": 0 },
+        { "base": "p00-atlas-traces-768x1024-darwin.png", "sha256": "228837b1a29a2267be49628711ebb2d177fd1ba3b06f69b878284c01b5cb5a43", "changedPixels": 0 }
+      ]
+    },
+    {
+      "id": "P04-SS02",
+      "state": "375x812 narrow navigation Drawer open with focused active navigation item; Escape closes and restores the trigger focus",
+      "viewports": ["375x812"],
+      "files": [
+        { "base": "p04-navigation-open-375x812-darwin.png", "sha256": "f8989054523e8e54811ed508da4e161f82a06167edd050bc67d93925bbd6f944", "changedPixels": 0 }
+      ]
+    },
+    {
+      "id": "P04-SS03",
+      "state": "1024x768 skip/main and scoped Tabs keyboard behavior with bounded route scroll",
+      "viewports": ["1024x768"],
+      "files": [
+        { "base": "p04-shell-keyboard-scroll-1024x768-darwin.png", "sha256": "cca7b6400fce9eaaf7940d76beeef81d0189e237c00cdbe97ba7137e6b2cbb68", "changedPixels": 0 }
+      ]
+    }
+  ],
+  "review": {
+    "reviewedAtUtc": "2026-07-11T10:06:09Z",
+    "design": "Approved by Codex for P04 Shell/navigation scope after visual inspection; external human reviewer remains unassigned.",
+    "engineering": "Approved by Codex after the recorded Mantine migration, redirect, route containment, test, build, browser, and zero-diff evidence.",
+    "accessibility": "Approved by Codex for P04 scope: semantic main, skip focus, scoped keyboard behavior, visible active Drawer focus, Escape dismissal/restoration, and no-overflow checks passed.",
+    "decision": "P04 Shell and navigation evidence is approved. It is not final production-screen visual approval and does not advance Preview isolation."
+  }
+}
