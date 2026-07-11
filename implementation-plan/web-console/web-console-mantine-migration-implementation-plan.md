@@ -172,8 +172,8 @@ this table in the same change that advances a phase.
 | Phase | Dependency | Status | Gates | Acceptance | Owner / reviewer | Automated evidence | Screenshot evidence | Blocker or decision | Updated |
 |---|---|---|---:|---:|---|---|---|---|---|
 | P00 — Compatibility and trust gate | Authorized amendment record | Complete | 5/5 | 6/6 | Codex / Security reviewer for P08B | [Approved P00 fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Approved — P00 fixture-only SS01–SS03](evidence/web-console-mantine/phase-00/0f7d024867fc/) | D02 Preview policy remains P08B-only | 2026-07-11 |
-| P01 — Theme and tokens | P00 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P01 implementation evidence](evidence/web-console-mantine/phase-01/0ce628786a83/) | [Approved — P01 fixture SS01–SS03](evidence/web-console-mantine/phase-01/0ce628786a83/) | D05 implemented; no production screen depends on the theme until P02 | 2026-07-11 |
-| P02 — Provider and globals | P01 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P01 — Theme and tokens | P00 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P01 implementation evidence](evidence/web-console-mantine/phase-01/0ce628786a83/) | [Approved — P01 fixture SS01–SS03](evidence/web-console-mantine/phase-01/0ce628786a83/) | D05 implemented; P02 now consumes the theme | 2026-07-11 |
+| P02 — Provider and globals | P01 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P02 implementation evidence](evidence/web-console-mantine/phase-02/b042d34ab/) | [Approved — P02 foundation fixture SS01–SS03](evidence/web-console-mantine/phase-02/b042d34ab/) | Radix/Tailwind remain temporary under the removal-only P02 allowlist | 2026-07-11 |
 | P03 — Primitives | P02 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P04 — Shell and navigation | P03 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P05 — Fleet and Overview | P04 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -436,28 +436,45 @@ routes.
 
 **Acceptance criteria:**
 
-- [ ] **P02-AC01:** Exactly one provider/notification host exists and Query/
+- [x] **P02-AC01:** Exactly one provider/notification host exists and Query/
   Router behavior remains compatible.
-- [ ] **P02-AC02:** There is no duplicate reset, competing theme, body overflow,
+- [x] **P02-AC02:** There is no duplicate reset, competing theme, body overflow,
   or typography drift.
-- [ ] **P02-AC03:** Portal, Modal, Drawer, Tooltip, notification, focus-trap,
+- [x] **P02-AC03:** Portal, Modal, Drawer, Tooltip, notification, focus-trap,
   Escape, and restoration fixtures pass.
-- [ ] **P02-AC04:** Legacy and migrated surfaces coexist buildably; the
+- [x] **P02-AC04:** Legacy and migrated surfaces coexist buildably; the
   Tailwind allowlist is counted and CI-enforced.
-- [ ] **P02-AC05:** Production build, automated foundation checks, and
+- [x] **P02-AC05:** Production build, automated foundation checks, and
   screenshot pack are Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P02-SS01:** Shell under the shared provider at all four viewports with a
+- [x] **P02-SS01:** Shell under the shared provider at all four viewports with a
   migrated primitive beside an unchanged legacy surface.
-- [ ] **P02-SS02:** Notification, Modal, Drawer, and Tooltip at 375 and 1440 with
+- [x] **P02-SS02:** Notification, Modal, Drawer, and Tooltip at 375 and 1440 with
   trigger, backdrop where applicable, portal stacking, and visible focus.
-- [ ] **P02-SS03:** Root sizing, typography, scroll ownership, and no-reset-drift
+- [x] **P02-SS03:** Root sizing, typography, scroll ownership, and no-reset-drift
   sentinels.
 
 **Rollback boundary:** root-provider and stylesheet-order commit can be reverted
 without removing P01 theme assets or fixtures.
+
+**Implementation and review record:** committed console revision
+[`b042d34ab`](evidence/web-console-mantine/phase-02/b042d34ab/) adds the sole
+production `MantineProvider` and `Notifications` host in `AppProviders`, while
+preserving Query, Router, and temporary legacy feedback providers. Core styles,
+Notifications styles, and legacy global styles have asserted import order;
+minimal root height containment and four viewport sentinels reject reset,
+typography, overflow, and scroll-owner drift. The phase freezes the temporary
+Tailwind allowlist at 410 `className` expressions, 431 static parts, five
+dynamic expressions, and 259 tokens; the P02 unit contract is removal-only.
+The [P02 evidence pack](evidence/web-console-mantine/phase-02/b042d34ab/)
+records passing Node 24.14.0 unit tests, production build, 62 browser checks,
+zero-Axe P02 fixture scan, portal/focus behavior, screenshot triads, and
+checksum manifest. Codex self-reviewed the foundation scope after visual
+inspection. External human design, engineering, and accessibility reviewers are
+still unassigned; P03 must migrate ordinary primitives before any final
+production-screen approval.
 
 ### P03 — Ordinary primitive migration
 
