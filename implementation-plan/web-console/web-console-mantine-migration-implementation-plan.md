@@ -177,7 +177,7 @@ this table in the same change that advances a phase.
 | P03 — Primitives | P02 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P03 implementation evidence](evidence/web-console-mantine/phase-03/aac65f046/) | [Approved — P03 primitive SS01–SS03](evidence/web-console-mantine/phase-03/aac65f046/) | Package cleanup remains P09; Tailwind removal remains P10 | 2026-07-11 |
 | P04 — Shell and navigation | P03 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P04 implementation evidence](evidence/web-console-mantine/phase-04/8139d292a/) | [Approved — P04 Shell/navigation SS01–SS03](evidence/web-console-mantine/phase-04/8139d292a/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P05 — Fleet and Overview | P04 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P05 implementation evidence](evidence/web-console-mantine/phase-05/0173407bc/) | [Approved — P05 Fleet/Overview SS01–SS04](evidence/web-console-mantine/phase-05/0173407bc/) | P08B Preview policy remains P08B-only | 2026-07-11 |
-| P06 — Terminal | P05 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P06 — Terminal | P05 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P06 implementation evidence](evidence/web-console-mantine/phase-06/9bc8d4107/) | [Approved — P06 Terminal SS01–SS03](evidence/web-console-mantine/phase-06/9bc8d4107/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P07 — Observability | P06 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P08 — Files and Preview | P07 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | Preview isolation approval for 8B | 2026-07-11 |
 | P09 — Remove Radix | P08 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -656,32 +656,47 @@ polling correctness.
 
 **Acceptance criteria:**
 
-- [ ] **P06-AC01:** All Terminal chrome uses Mantine while virtualizer identity,
+- [x] **P06-AC01:** All Terminal chrome uses Mantine while virtualizer identity,
   paging, offsets, tail intent, and the native transcript viewport stay stable.
-- [ ] **P06-AC02:** Ctrl-C/Ctrl-D sends one RPC; `publish_rejected` and
+- [x] **P06-AC02:** Ctrl-C/Ctrl-D sends one RPC; `publish_rejected` and
   `publish_reject_class` drive the authoritative final outcome; unknown or
   expired commands cannot appear as successful empty output; transcript caches
   are sandbox-scoped.
-- [ ] **P06-AC03:** Timeout errors associate and block submit; history filtering
+- [x] **P06-AC03:** Timeout errors associate and block submit; history filtering
   is distinct from execution target; desktop/narrow flows are accessible.
-- [ ] **P06-AC04:** 10,000-line and 10,000-character fixtures have bounded DOM,
+- [x] **P06-AC04:** 10,000-line and 10,000-character fixtures have bounded DOM,
   no overlap/jump, and meet Terminal performance targets.
-- [ ] **P06-AC05:** Poller count is bounded; polling preserves focus, selection,
+- [x] **P06-AC05:** Poller count is bounded; polling preserves focus, selection,
   scroll intent, tail state, and overlays.
-- [ ] **P06-AC06:** Correctness, polling, performance, accessibility, and
+- [x] **P06-AC06:** Correctness, polling, performance, accessibility, and
   screenshot evidence are Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P06-SS01:** Desktop split and narrow Drawer/stack layouts at all four
+- [x] **P06-SS01:** Desktop split and narrow Drawer/stack layouts at all four
   viewports with one visible transcript scroll owner.
-- [ ] **P06-SS02:** Session selection, composer focus, invalid timeout, running,
+- [x] **P06-SS02:** Session selection, composer focus, invalid timeout, running,
   stale, failed/completed, and publication-rejection states at 375 and 1440.
-- [ ] **P06-SS03:** 10,000-line mid-scroll/tail and 10,000-character-line
+- [x] **P06-SS03:** 10,000-line mid-scroll/tail and 10,000-character-line
   containment captures.
 
 **Rollback boundary:** Terminal route group can revert independently; no
 transcript/cache schema migration is irreversible.
+
+**Completion record:** Console revision `9bc8d4107` migrates the Terminal
+workspace chrome to Mantine while retaining the TanStack Virtual transcript
+viewport and page/offset protocol. A route-level provider owns the bounded
+transcript poller (maximum four callbacks per round), cache keys remain
+sandbox-scoped, and a history selection does not change the command execution
+target. The [P06 evidence pack](evidence/web-console-mantine/phase-06/9bc8d4107/)
+records the Node 24.14.0 unit/build/browser passes (17 files/34 tests and 134
+browser checks), nine dedicated Terminal checks, eight zero-difference
+screenshot triads, 10,000-line/character containment, keyboard and Axe
+coverage, and the tail/error-rendering fixes found through systematic
+debugging. Codex self-reviewed the committed P06 boundary after visual
+inspection. External human design, engineering, and accessibility reviewers
+remain unassigned; P07 may consume P06. P08B Preview isolation remains a
+separate security gate.
 
 ### P07 — Observability
 
