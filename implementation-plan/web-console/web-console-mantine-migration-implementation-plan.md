@@ -931,23 +931,31 @@ the search/dependency report and fourteen zero-difference screenshot triads.
 
 **Acceptance criteria:**
 
-- [ ] **P10-AC01:** Zero-result searches prove Tailwind integration, utilities,
+- [x] **P10-AC01:** Zero-result searches prove Tailwind integration, utilities,
   `@theme` tokens, and migration allowlist are gone.
-- [ ] **P10-AC02:** Remaining CSS Modules are limited to documented layout,
+- [x] **P10-AC02:** Remaining CSS Modules are limited to documented layout,
   containment, third-party integration, or Mantine Styles API overrides.
-- [ ] **P10-AC03:** Build/tests and exact-or-explained comparisons against P09
+- [x] **P10-AC03:** Build/tests and exact-or-explained comparisons against P09
   pass.
-- [ ] **P10-AC04:** Cleanup inventory and screenshot pack are Approved.
+- [x] **P10-AC04:** Cleanup inventory and screenshot pack are Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P10-SS01:** Shell, Fleet, Terminal, Events, Files, and overlay atlas at
+- [x] **P10-SS01:** Shell, Fleet, Terminal, Events, Files, and overlay atlas at
   all four viewports.
-- [ ] **P10-SS02:** Reference/actual/diff triads against P09, including Fleet
+- [x] **P10-SS02:** Reference/actual/diff triads against P09, including Fleet
   card bounds/wrapping and route scroll ownership.
 
 **Rollback boundary:** delete Tailwind integration only after the allowlist is
 zero; otherwise the phase remains In progress.
+
+**P10 completion record — Complete:** Console revision `934429874` removes
+Tailwind's runtime, tokens, and migration scaffolding; leaves Mantine as the
+only visual/token system; and extends overlay proof to all four standard
+viewports. The full 183-check browser suite passes. The [P10 immutable
+evidence pack](evidence/web-console-mantine/phase-10/934429874/index.md)
+records cleanup audit, 21 exact same-revision triads, four explained P09
+comparison triads, and visual self-review.
 
 ### P11 — Dependency and dead-code cleanup
 

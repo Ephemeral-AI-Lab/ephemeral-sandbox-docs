@@ -1,0 +1,80 @@
+{
+  "phase": "P10",
+  "status": "Approved — Mantine is the sole permanent styling and token system",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "934429874",
+    "worktree": "clean at Console commit",
+    "immutable": true,
+    "scope": "Tailwind integration, theme tokens, utility migration scaffolding, and class-merging helper removal; Mantine replacements; four-viewport overlay evidence."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"]
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm ci",
+      "result": "completed: 179 packages installed; audit reports 0 vulnerabilities. The local package manager did not materialize its lockfile-recorded optional darwin-arm64 Rolldown binding, so the test-only local runtime was repaired with npm install --no-save @rolldown/binding-darwin-arm64@1.1.4; source manifests and lockfile were unchanged."
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 18 files / 35 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; pre-existing bundle-size advisory only"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npx playwright test tests/browser/P08PreviewFixture.spec.ts --repeat-each=3",
+      "result": "pass: 21 checks with seven workers; logo-readiness synchronization prevented the former narrow screenshot race"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:e2e",
+      "result": "pass: 183 complete Playwright checks, including all four P00 route-atlas widths, expanded four-viewport P09 overlay fixture, keyboard-scroll, visual, and Axe suites"
+    },
+    {
+      "command": "P10 static gate plus retired-styling, directive, token, manifest, lockfile, utility-helper, and CSS-file searches",
+      "result": "pass: zero Tailwind integration/residue; no CSS Modules; the only src stylesheet is index.css base normalization"
+    },
+    {
+      "command": "compare -metric AE p10-baseline/reference/<file> p10-baseline/actual/<file> p10-baseline/diff/<file>",
+      "result": "pass: 0 changed pixels for all 21 same-revision pairs"
+    },
+    {
+      "command": "compare -metric AE p09-comparison/reference/<file> p09-comparison/actual/<file> p09-comparison/diff/<file>",
+      "result": "recorded: four nonzero P09-to-P10 pairs, reviewed and explained as the intended styling-system transition"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "coverage": {
+    "P10_AC01": "The committed static gate and zero-result repository scan reject Tailwind packages, Vite plugin, imports, directives, legacy tokens, utility allowlist, and cn helper residue.",
+    "P10_AC02": "The source tree has no CSS Modules. index.css contains only Mantine-variable base-document normalization; component styling is Mantine props, components, and Styles API.",
+    "P10_AC03": "Unit, production build, P08 stress, and the full 183-check browser suite pass. Twenty-one same-revision image triads are exact; four P09 comparisons have explicit expected-diff rationale.",
+    "P10_AC04": "The cleanup inventory, command results, 75 committed PNG artifacts, comparison counts, and implementation-agent visual review are recorded in this immutable pack.",
+    "P10_SS01": "Shell/Fleet, Terminal, Events, Files, and the Popover/Tooltip overlay atlas are captured at all four standard viewports.",
+    "P10_SS02": "Fleet and Files P09-to-P10 reference/actual/diff triads record the intended visual-system delta at 375 and 1440. The keyboard navigation route-scroll capture at 1024 proves scroll ownership remains covered."
+  },
+  "triad": {
+    "baseline": "21 P10 baseline reference/actual/diff pairs with zero changed pixels",
+    "p09Comparison": "4 P09 reference to P10 actual/diff pairs with expected changed-pixel counts documented in index.md",
+    "artifactCount": 75,
+    "artifactSize": "3.6 MB"
+  },
+  "review": {
+    "reviewedAt": "2026-07-11T20:56:00+08:00",
+    "design": "Codex visually inspected the narrow Fleet card and wide Files split-pane captures; external design reviewer remains unassigned.",
+    "engineering": "Codex approved static audit, unit, build, P08 stress, complete browser, exact-triad, and P09-diff evidence.",
+    "accessibility": "Codex approved the complete suite's Axe and keyboard-scroll coverage; external accessibility reviewer remains unassigned.",
+    "decision": "P10 is approved and complete. P11 dependency and dead-code cleanup is ready."
+  }
+}
