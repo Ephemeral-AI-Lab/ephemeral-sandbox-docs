@@ -820,7 +820,9 @@ Codex self-reviewed the Files boundary. P08-AC05, phase-wide P08-AC06,
 P08-SS01's Preview portion, and P08-SS04 are intentionally unchecked: P08B
 cannot begin until the unassigned D02 security reviewer approves a dedicated
 untrusted Preview origin and sandbox/CSP boundary plus its required browser
-tests. Mantine does not satisfy that isolation requirement.
+tests. The [D02 decision request](web-console-preview-isolation-decision-request.md)
+records the current same-origin assumptions and the approval/test fields needed
+to unblock the work. Mantine does not satisfy that isolation requirement.
 
 ### P09 — Remove local Radix architecture
 
