@@ -1,0 +1,96 @@
+{
+  "phase": "P03",
+  "status": "Approved — shared primitive migration only",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "aac65f046",
+    "worktree": "clean",
+    "immutable": true,
+    "scope": "Shared Mantine primitives, semantic error/status adapters, and the dedicated browser fixture. Package removal, Tailwind removal, production-surface migration, and Preview isolation remain later work."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"]
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 17 files, 32 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; existing bundle-size advisory only"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:e2e",
+      "result": "pass: 71 browser tests, including nine dedicated P03 checks and zero Axe violations in the primitive gallery"
+    },
+    {
+      "command": "compare -metric AE reference/<file> actual/<file> diff/<file>",
+      "result": "pass: 0 (0) for every one of 14 screenshot pairs"
+    }
+  ],
+  "primitiveInventory": {
+    "3A_inputs_forms": "Button/ActionIcon, inputs, Textarea, Select, and custom Combobox migrated to Mantine.",
+    "3B_overlays_navigation": "Modal, Drawer, Popover, Tooltip, Tabs, Menu, Breadcrumbs, and ordinary ScrollArea migrated to Mantine.",
+    "3C_feedback_display": "Notifications, Badge/status, Paper/Card, Skeleton, loading, empty, and error states migrated to Mantine.",
+    "legacyWrappers": "Six local button/input/dialog/select/popover/tooltip wrappers deleted; source imports of local Radix are zero.",
+    "semanticRetention": "ErrorToast retains RPC normalization only; StateBadge retains EphemeralOS status vocabulary only. Mantine owns rendering, notification limit, and dismissal."
+  },
+  "triad": {
+    "reference": "Approved committed Playwright snapshot",
+    "actual": "Same-commit capture",
+    "diff": "ImageMagick compare output; all changed-pixel counts are zero",
+    "artifactCount": 42
+  },
+  "screenshots": [
+    {
+      "id": "P03-SS01",
+      "state": "complete primitive gallery",
+      "viewports": ["375x812", "768x1024", "1024x768", "1440x900"],
+      "files": [
+        { "base": "p03-primitives-375x812-darwin.png", "sha256": "c05a4efe9c8dba77c8015bddea7fc15a8b67355ebe4f48df62799b258dd7a14c", "changedPixels": 0 },
+        { "base": "p03-primitives-768x1024-darwin.png", "sha256": "41c3dc1b28f16e2245dbf7d4ba4806cb782ca5accc5a159d6d92cc6121d0f5d4", "changedPixels": 0 },
+        { "base": "p03-primitives-1024x768-darwin.png", "sha256": "7380a77008660a5320c772338c0f655186ac02deac81aee5125c731bdc3c0e2e", "changedPixels": 0 },
+        { "base": "p03-primitives-1440x900-darwin.png", "sha256": "52ebff90f77fe9658eb37d0e8f9c1b71f0cbd2d6c6fcd299c3b4bddf1f29b790", "changedPixels": 0 }
+      ]
+    },
+    {
+      "id": "P03-SS02",
+      "state": "form validation, Select/Combobox, loading, empty, error, status, surface, and Skeleton states",
+      "viewports": ["375x812", "1440x900"],
+      "files": [
+        { "base": "p03-form-states-375x812-darwin.png", "sha256": "c18d87482b70eb09a55d7346cb6166cbd0157ac0c329820de9f0ff2132d35c68", "changedPixels": 0 },
+        { "base": "p03-form-states-1440x900-darwin.png", "sha256": "b91733fc6860b23c18f6dffd3a4f2a3e3d33309f099e09c4fc8d8c80b085e98a", "changedPixels": 0 }
+      ]
+    },
+    {
+      "id": "P03-SS03",
+      "state": "Menu, Tabs, Popover, Tooltip, Modal, Drawer, notification stack, and keyboard focus",
+      "viewports": ["375x812", "1440x900"],
+      "files": [
+        { "base": "p03-overlays-375x812-darwin.png", "sha256": "5bcddee214847f8bd813f08edc6c72537bc8f2a618e145447766f25f80b15332", "changedPixels": 0 },
+        { "base": "p03-overlays-1440x900-darwin.png", "sha256": "02fd8f47837bed589d425721de8ef63a31a9b17e4665ba6aedf7220d28e4f89d", "changedPixels": 0 },
+        { "base": "p03-menu-375x812-darwin.png", "sha256": "f816fffe60eae8d8eedaa615f0949b4262804639a3bdbdfc6b0034eec9128f41", "changedPixels": 0 },
+        { "base": "p03-menu-1440x900-darwin.png", "sha256": "db22cfda0c0d9690f45e67b804a972222fa9c4ad51920e5efdc3016a44be294e", "changedPixels": 0 },
+        { "base": "p03-modal-375x812-darwin.png", "sha256": "552aa4b24950988e64fcdb94e8348ca221be512f7c3451c6ad35bcac0eab1bef", "changedPixels": 0 },
+        { "base": "p03-modal-1440x900-darwin.png", "sha256": "be50eb41e3111c04c4a6c279758df0868b6f11404eb12fe629468b95e322d8a4", "changedPixels": 0 },
+        { "base": "p03-drawer-375x812-darwin.png", "sha256": "f80ad9545a68e8080c62cdf80f789c9f8f40090dc35badf2ce11ed40cfc9a82d", "changedPixels": 0 },
+        { "base": "p03-drawer-1440x900-darwin.png", "sha256": "ca2e71c77732f42ed41ec5eabbefc27b0cfc57772b2439abf71202740caaf696", "changedPixels": 0 }
+      ]
+    }
+  ],
+  "review": {
+    "reviewedAtUtc": "2026-07-11T09:50:20Z",
+    "design": "Approved by Codex for P03 shared-primitive fixture scope after visual inspection; external human reviewer remains unassigned.",
+    "engineering": "Approved by Codex after the recorded migration inventory, test, build, browser, focus, portal, and zero-diff evidence.",
+    "accessibility": "Approved by Codex for P03 fixture scope: labels, focus trap/restoration, Escape dismissal, visible focus, no overflow, and zero-Axe evidence passed.",
+    "decision": "P03 shared primitive evidence is approved. It is not final production-screen visual approval and does not advance Preview isolation."
+  }
+}

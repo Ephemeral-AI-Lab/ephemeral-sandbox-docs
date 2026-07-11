@@ -174,7 +174,7 @@ this table in the same change that advances a phase.
 | P00 — Compatibility and trust gate | Authorized amendment record | Complete | 5/5 | 6/6 | Codex / Security reviewer for P08B | [Approved P00 fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Approved — P00 fixture-only SS01–SS03](evidence/web-console-mantine/phase-00/0f7d024867fc/) | D02 Preview policy remains P08B-only | 2026-07-11 |
 | P01 — Theme and tokens | P00 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P01 implementation evidence](evidence/web-console-mantine/phase-01/0ce628786a83/) | [Approved — P01 fixture SS01–SS03](evidence/web-console-mantine/phase-01/0ce628786a83/) | D05 implemented; P02 now consumes the theme | 2026-07-11 |
 | P02 — Provider and globals | P01 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P02 implementation evidence](evidence/web-console-mantine/phase-02/b042d34ab/) | [Approved — P02 foundation fixture SS01–SS03](evidence/web-console-mantine/phase-02/b042d34ab/) | Radix/Tailwind remain temporary under the removal-only P02 allowlist | 2026-07-11 |
-| P03 — Primitives | P02 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P03 — Primitives | P02 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P03 implementation evidence](evidence/web-console-mantine/phase-03/aac65f046/) | [Approved — P03 primitive SS01–SS03](evidence/web-console-mantine/phase-03/aac65f046/) | Package cleanup remains P09; Tailwind removal remains P10 | 2026-07-11 |
 | P04 — Shell and navigation | P03 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P05 — Fleet and Overview | P04 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P06 — Terminal | P05 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -495,27 +495,41 @@ and navigation**, and **3C feedback/display**.
 
 **Acceptance criteria:**
 
-- [ ] **P03-AC01:** Every migration-map primitive is accounted for and subgroup
+- [x] **P03-AC01:** Every migration-map primitive is accounted for and subgroup
   counts show migrated versus remaining usage.
-- [ ] **P03-AC02:** Lifecycle, error, notification, and destructive semantics
+- [x] **P03-AC02:** Lifecycle, error, notification, and destructive semantics
   remain correct.
-- [ ] **P03-AC03:** Keyboard, axe, labels/errors, focus, portal/restoration,
+- [x] **P03-AC03:** Keyboard, axe, labels/errors, focus, portal/restoration,
   contrast, and reduced-motion tests pass.
-- [ ] **P03-AC04:** No new feature imports local Radix; each adapter has a
+- [x] **P03-AC04:** No new feature imports local Radix; each adapter has a
   documented product-semantic purpose and deletion/retention decision.
-- [ ] **P03-AC05:** Inventory, automated reports, and screenshot pack are
+- [x] **P03-AC05:** Inventory, automated reports, and screenshot pack are
   Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P03-SS01:** Complete primitive gallery at all four viewports.
-- [ ] **P03-SS02:** Form validation, Select/Combobox, loading, empty, error,
+- [x] **P03-SS01:** Complete primitive gallery at all four viewports.
+- [x] **P03-SS02:** Form validation, Select/Combobox, loading, empty, error,
   status, surface, and Skeleton cases at 375 and 1440.
-- [ ] **P03-SS03:** Menu, Tabs, Popover, Tooltip, Modal, Drawer, and notification
+- [x] **P03-SS03:** Menu, Tabs, Popover, Tooltip, Modal, Drawer, and notification
   stack at 375 and 1440 with real keyboard focus.
 
 **Rollback boundary:** subgroup commits remain separately revertible until the
 first consuming page phase merges.
+
+**Implementation and review record:** committed console revision
+[`aac65f046`](evidence/web-console-mantine/phase-03/aac65f046/) deletes the
+six local shared UI wrappers and migrates all mapped ordinary primitives to
+Mantine. The only retained product-semantic components are `ErrorToast`, which
+normalizes RPC errors before dispatching to Mantine's shared four-item,
+dismissible notification host, and `StateBadge`, which maps the EphemeralOS
+status vocabulary onto Mantine `Badge`. The [P03 evidence pack](evidence/web-console-mantine/phase-03/aac65f046/)
+records the full Node 24.14.0 unit/build/browser pass, nine dedicated P03
+browser checks, zero-Axe gallery scan, keyboard portal/focus restoration,
+responsive captures, zero-difference screenshot triads, and checksum manifest.
+Codex self-reviewed the primitive scope after visual inspection. External
+human design, engineering, and accessibility reviewers remain unassigned; P04
+may consume the completed primitive foundation.
 
 ### P04 — Shell, routing, and navigation
 
