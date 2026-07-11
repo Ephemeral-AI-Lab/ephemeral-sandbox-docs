@@ -1,0 +1,126 @@
+{
+  "phase": "P00",
+  "artifactMode": "fixture-only",
+  "status": "Review required",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "0f7d024867fc",
+    "worktree": "dirty",
+    "immutable": false,
+    "promotion": "Provisional capture only. Re-run from a committed console revision before promotion."
+  },
+  "documentation": {
+    "head": "35bd318f3f96",
+    "worktree": "dirty"
+  },
+  "fixture": {
+    "entry": "web/console/tests/p00/fixture.tsx and web/console/tests/p00/trust-fixture.tsx",
+    "url": "http://127.0.0.1:4173/",
+    "dataPolicy": "Disposable local fixture; no live sandbox metadata or operator data."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium snapshot on darwin",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "desktopViewport": "1440x900",
+    "mobileViewport": "375x812",
+    "limitation": "The Chromium revision, operating-system image, and font inventory were not captured. This pack cannot receive visual approval until that environment is pinned and the fixture is rerun from a committed source revision."
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 13 files, 22 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:e2e",
+      "result": "pass: 6 browser tests (keyboard/portal behavior, Axe, visual regression, request-level polling cadence and focus catch-up, plus desktop/mobile trust-state captures)"
+    }
+  ],
+  "screenshots": [
+    {
+      "id": "P00-SS02",
+      "file": "screenshots/p00-ss02-desktop-idle-1440x900.png",
+      "viewport": "1440x900",
+      "state": "idle",
+      "sha256": "d66417e0a3062a51b0ab5ea4c643529cc9a3aa6d46fe222ec8e4f70779c82fb8",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS02",
+      "file": "screenshots/p00-ss02-desktop-interaction-1440x900.png",
+      "viewport": "1440x900",
+      "state": "form validation, keyboard tooltip, notification",
+      "sha256": "f48894c300bd691ba390c1457fd0bec54cb516bd7f54c9913c9d785d61a22a1a",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS02",
+      "file": "screenshots/p00-ss02-desktop-modal-1440x900.png",
+      "viewport": "1440x900",
+      "state": "modal focus trap",
+      "sha256": "5125b75550dc4c2343783e17bf9ec23021d9e64cce4e5a74491bc7cd8e349b9d",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS02",
+      "file": "screenshots/p00-ss02-mobile-idle.png",
+      "viewport": "375x812",
+      "state": "idle",
+      "sha256": "068a12ce20c9cf5f63759e6ecdf4543d51162d09cb3b491948f636ea25706be1",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS02",
+      "file": "screenshots/p00-ss02-mobile-interaction.png",
+      "viewport": "375x812",
+      "state": "form validation, keyboard tooltip, notification",
+      "sha256": "df23548b89c1b962ec9f14303b90bbf096696f1520afc34adf0fa1e0b3fb89b1",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS02",
+      "file": "screenshots/p00-ss02-mobile-modal.png",
+      "viewport": "375x812",
+      "state": "modal focus trap",
+      "sha256": "574d8d6f232a9a750b23becde2629f84ea7a42ab1ab05dfcabf7feeb7cd7b8eb",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS03",
+      "file": "screenshots/p00-ss03-trust-1440x900.png",
+      "viewport": "1440x900",
+      "state": "paused Events tail, publication rejection, preserved local file draft",
+      "sha256": "84414ad348f3296acc92200299d6c31b7bcc65c76a9b50937eb192895c743562",
+      "status": "Review required"
+    },
+    {
+      "id": "P00-SS03",
+      "file": "screenshots/p00-ss03-trust-375x812.png",
+      "viewport": "375x812",
+      "state": "paused Events tail, publication rejection, preserved local file draft",
+      "sha256": "ec9940caad297a9819f73588390749dd5d66bb6336aeb9d9f37fd9d24a82c614",
+      "status": "Review required"
+    }
+  ],
+  "notCaptured": [
+    {
+      "id": "P00-SS01",
+      "status": "Not started",
+      "reason": "The locally running console exposes a real sandbox identifier. A sanitized deterministic route-atlas fixture has not been prepared."
+    }
+  ],
+  "review": {
+    "design": "Unassigned",
+    "engineering": "Unassigned",
+    "accessibility": "Unassigned",
+    "security": "Unassigned",
+    "decision": "No approval or baseline promotion has been granted."
+  }
+}

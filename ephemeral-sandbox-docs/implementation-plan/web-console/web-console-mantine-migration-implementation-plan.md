@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Status | Proposed; implementation has not started |
-| Plan owner | Unassigned |
+| Status | Authorized for implementation; P00 compatibility and trust gate in progress |
+| Plan owner | Codex (active implementation agent) |
 | Design reviewer | Unassigned |
 | Engineering reviewer | Unassigned |
 | Accessibility reviewer | Unassigned |
@@ -13,6 +13,7 @@
 | Console root | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox/web/console` |
 | Design proposal | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-ux-design-proposal.md` |
 | Earlier technology record | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-ui-tech-stack-and-library-options.md` |
+| Superseding decision record | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/web-console-mantine-tdr-amendment.md` |
 | Evidence root | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/ephemeral-sandbox-docs/implementation-plan/web-console/evidence/web-console-mantine/` |
 
 ## 1. Purpose and required outcome
@@ -170,7 +171,7 @@ this table in the same change that advances a phase.
 
 | Phase | Dependency | Status | Gates | Acceptance | Owner / reviewer | Automated evidence | Screenshot evidence | Blocker or decision | Updated |
 |---|---|---|---:|---:|---|---|---|---|---|
-| P00 — Compatibility and trust gate | Plan and superseding-TDR approval | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | Approvals; Preview decision owner | 2026-07-11 |
+| P00 — Compatibility and trust gate | Authorized amendment record | In progress | 0/5 | 4/6 | Codex / reviewers unassigned | [Provisional fixture evidence](evidence/web-console-mantine/phase-00/0f7d024867fc/) | [Review required: SS02/SS03; SS01 not started](evidence/web-console-mantine/phase-00/0f7d024867fc/) | SS01 sanitized route atlas; Preview owner/sign-off; immutable committed capture | 2026-07-11 |
 | P01 — Theme and tokens | P00 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P02 — Provider and globals | P01 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P03 — Primitives | P02 | Not ready | 0/5 | 0/5 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -307,15 +308,15 @@ hide them.
 
 **Acceptance criteria:**
 
-- [ ] **P00-AC01:** Exact versions pass React, Vite, TypeScript, production
+- [x] **P00-AC01:** Exact versions pass React, Vite, TypeScript, production
   build, and stylesheet-order verification; commands and version matrix are
   recorded.
-- [ ] **P00-AC02:** The disposable integration fixture passes portal, focus,
+- [x] **P00-AC02:** The disposable integration fixture passes portal, focus,
   restoration, reduced-motion, keyboard, virtualization, CodeMirror, and uPlot
   checks.
-- [ ] **P00-AC03:** Starting inventories, replacement targets, deletion phases,
+- [x] **P00-AC03:** Starting inventories, replacement targets, deletion phases,
   and rollback/removal procedure are recorded.
-- [ ] **P00-AC04:** All named correctness/trust fixtures pass with network-level
+- [x] **P00-AC04:** All named correctness/trust fixtures pass with network-level
   evidence where screenshots cannot prove semantics. Polling retains the
   current 400ms fast/2s slow cadence, hidden-tab pause, focus catch-up, 15s
   idle decay, and 8s ceiling unless a separately measured change is approved.
@@ -330,11 +331,29 @@ hide them.
   Events, Traces, Layers, Files, and Preview at all four standard viewports.
 - [ ] **P00-SS02:** Mantine spike at 375 and 1440 showing theme, form validation,
   real keyboard focus, Modal or Drawer, Tooltip, and notification.
-- [ ] **P00-SS03:** Paused Events, publication rejection, and a file conflict
+- [x] **P00-SS03:** Paused Events, publication rejection, and a file conflict
   with its local draft visibly preserved at 375 and 1440.
 
 **Rollback boundary:** remove all spike-only code and dependencies; retain only
 independently reviewed correctness fixes and evidence.
+
+**P00 implementation record (2026-07-11):** `@mantine/core`,
+`@mantine/form`, `@mantine/hooks`, and `@mantine/notifications` are pinned to
+9.4.1. The npm metadata for `@mantine/core@9.4.1` declares React and React DOM
+`^19.2.0` plus `@mantine/hooks` 9.4.1; the tested installation is React and
+React DOM 19.2.7, TypeScript 6.0.3, Vite 8.1.3, Node 24.14.0, and Playwright
+1.61.1. The inventory records 410 `className` expressions across 39 source
+files, two Tailwind directives/tokens, seven direct Radix dependencies, and
+five Radix source imports. Replacement/removal ownership remains P02 for the
+provider/global styles, P03 for primitives/feedback, P04–P08 for surfaces,
+P09 for Radix, P10 for Tailwind, and P11 for dependency removal. The
+[provisional fixture pack](evidence/web-console-mantine/phase-00/0f7d024867fc/)
+contains the commands and hashes. A deterministic browser route-interception
+fixture now verifies actual requests at the 400ms fast cadence and the
+window-focus catch-up request; P00-AC04 is complete. P00-AC05 and P00-AC06
+remain open: SS01 is not captured; the P00-SS02 and P00-SS03 screenshots are
+captured but require review; the Preview decision lacks an owner/sign-off
+authority; and no required reviewer has approved the dirty-worktree evidence.
 
 ### P01 — Logo-led theme and token mapping
 
@@ -898,13 +917,13 @@ fast-poll run for live surfaces.
 
 | ID | Decision | Status | Owner | Due phase |
 |---|---|---|---|---|
-| D01 | Exact current compatible Mantine version set | Open | Unassigned | P00 |
-| D02 | Preview origin/sandbox isolation policy | Open | Unassigned | Before P08B |
+| D01 | Exact current compatible Mantine version set: Mantine 9.4.1, React/React DOM 19.2.7, TypeScript 6.0.3, Vite 8.1.3 | Recorded; reviewer approval pending | Codex / engineering reviewer unassigned | P00 |
+| D02 | Preview origin/sandbox isolation policy: same-origin unsandboxed Preview is prohibited; choose a dedicated untrusted origin and sandbox/CSP boundary, then define origin- and escape-attempt tests | Open — scoped to P08B only | Security reviewer unassigned | Before P08B |
 | D03 | React Aria exception only after written failing Mantine parity test | Fixed policy | Architecture | P03/P05/P08 |
 | D04 | TanStack Table headless engine + Mantine Table rendering | Approved direction | Architecture | P07 |
 | D05 | Canonical logo pixels move from generated dist to durable source/static asset | Approved direction | Design/engineering | P01 |
 | D06 | Fleet Flexbox, 28rem max width, 22rem max height, no partial-row growth | Fixed product decision | Design/engineering | P05 |
-| D07 | Older Tailwind/Radix technology record must be superseded/amended separately | P00 entry blocker | Architecture | Before P00 Ready |
+| D07 | Older Tailwind/Radix technology record must be superseded/amended separately | Resolved by `web-console-mantine-tdr-amendment.md` | Architecture | Before P00 Ready |
 
 ### 10.2 Risks and mitigations
 
