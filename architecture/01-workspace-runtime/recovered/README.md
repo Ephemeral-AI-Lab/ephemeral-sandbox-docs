@@ -62,7 +62,7 @@ The full `git log --diff-filter=D --name-only -- docs/` sweep (2026-07-11) also
 surfaced, for other clusters' recovery if wanted:
 
 - **Observability spec** → `docs/observability-rework/` (README, `crate-core-impl.md`,
-  `layerstack-observability.md`, CLI examples) — cluster 06's concern.
+  `layerstack-observability.md`, CLI examples) — cluster 07's concern.
 - **OCC siblings** → `docs/occ_merge_publish/{README,c3_phase1_status,experiment,experiment_report}.md`.
 - **File-operations family** → `docs/obsidian/ephemeral-os/implementation_plan/file_operations/`
   (spec, fix_spec, test-case, acceptance criteria, live smoke evidence) — the

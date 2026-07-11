@@ -6,9 +6,13 @@ runtime isolation primitives, observability/config/infra). Date: 2026-07-11.
 Revised the same day after a dedicated 8-topic deep-dive into cluster 01 (workspace
 runtime & storage): that cluster is now 9 dependency-ordered pages with its own writing
 spec at `01-workspace-runtime/SPEC.md`.
+Reordered again 2026-07-11 after a 4-agent re-exam of the operations layer: daemon
+internals promoted to cluster 03, a new cluster 04 (Operations — the per-operation
+reference plus the CLI and MCP adapters) added, management plane moved to 05, console
+to 06; the old `05-surfaces` cluster dissolves into clusters 04 and 06.
 
-This file is the proposed structure for `ephemeral-sandbox-docs/architecture/`: 29 pages
-organized into 8 clusters (each cluster = one subdirectory). Clusters are ordered by
+This file is the proposed structure for `ephemeral-sandbox-docs/architecture/`: 33 pages
+organized into 9 clusters (each cluster = one subdirectory). Clusters are ordered by
 importance; **Workspace runtime & storage is deliberately ranked second** — it is the
 isolation core and the place where the deleted spec (§2.x, C1–C5) is recovered from git
 history and reconstructed. Every page carries its own P0/P1/P2 priority, scope, source
@@ -21,11 +25,12 @@ architecture/
 ├── 00-foundations/                3 pages · P0 P0 P0
 ├── 01-workspace-runtime/          9 pages · P0 P0 P0 P0 P0 P0 P1 P0 P0 (dependency-ordered)
 ├── 02-security-model/             3 pages · P0 P0 P0
-├── 03-management-plane/           2 pages · P0 P0
-├── 04-daemon/                     3 pages · P0 P0 P0
-├── 05-surfaces/                   3 pages · P0 P1 P1
-├── 06-config-and-observability/   2 pages · P0 P1
-└── 07-engineering/                4 pages · P1 P1 P2 P2
+├── 03-daemon/                     3 pages · P0 P0 P0
+├── 04-operations/                 5 pages · P0 P0 P1 P1 P1
+├── 05-management-plane/           2 pages · P0 P0
+├── 06-console/                    2 pages · P0 P1
+├── 07-config-and-observability/   2 pages · P0 P1
+└── 08-engineering/                4 pages · P1 P1 P2 P2
 ```
 
 ---
@@ -83,9 +88,11 @@ pages.
   Resolved **P1** overall — you can break observability without breaking isolation — but
   its two P0-grade invariants (one Observer per process, cross-process trace handoff) are
   cross-referenced from the command-execution P0 page.
-- **CLI/MCP**: P1 as pages, with their P0-grade invariants (projection lockstep validation,
-  Phase 0 compatibility freeze, per-binary authority isolation) hoisted into the P0 catalog
-  page.
+- **CLI/MCP**: P1 as adapter pages (now `04-operations/04`–`05`), with their P0-grade
+  invariants (projection lockstep validation, Phase 0 compatibility freeze, per-binary
+  authority isolation) hoisted into the P0 catalog page (`00-foundations/03`). The
+  per-operation reference pages in cluster 04 are P0 (management), P0 (command+file),
+  P1 (observability).
 - **Overlay crate**: kept **P0** despite its size — the newest-first lowerdir ordering and
   deliberate guard-leaking are silent-corruption-grade invariants.
 - **e2e**: P2 for mechanics (well covered by its own READMEs); its Lane A/B config-delivery
@@ -186,7 +193,7 @@ keeps the security analysis. Together these pages carry the recovered-and-recons
 
 ### `02-namespace-processes.md` — Holder & runner: the namespace process substrate
 - **Priority:** P0 *(new page — mechanics were previously split across
-  `02-security-model/01` and `04-daemon/01`)*
+  `02-security-model/01` and `03-daemon/01`)*
 - **Scope:** one static binary, four personalities, and why single-threaded subprocess
   bodies exist at all (`unshare`/`setns` with `CLONE_NEWUSER` require a single-threaded
   caller); the holder — `unshare(NEWUSER|NEWNS|NEWPID[+NEWNET])`, single-entry self
@@ -199,9 +206,10 @@ keeps the security analysis. Together these pages carry the recovered-and-recons
   request/result, the four payload kinds (`--shell|--file-op|--mount-overlay|--remount-overlay`),
   setns join order (user first), the 8 MiB drain-while-waiting; the PDEATHSIG kill chain
   (daemon→holder SIGKILL; holder→pid-init SIGTERM; init death collapses the pid ns) as
-  the foundation of boot reap; the holder exit-code contract (1/2); env plumbing
-  (`SANDBOX_DAEMON_CONFIG_YAML` hard-required by runners; auth token env-only, never
-  argv).
+  the foundation of boot reap, while the outer runner has no PDEATHSIG; holder exits 1/2
+  preserve diagnosis but select the same parent cleanup; env plumbing
+  (`SANDBOX_DAEMON_CONFIG_YAML` hard-required by runners). The auth token is **not**
+  env-only in production Docker: it also crosses argv and a container label.
 - **Sources:** sandbox-runtime-namespace-process, workspace `namespace/*`,
   namespace-execution `launcher.rs`, daemon main/holder/serve/runner.
 - **Open questions:** holder spawn happens outside the spawn lock (benign asymmetry?);
@@ -256,7 +264,7 @@ keeps the security analysis. Together these pages carry the recovered-and-recons
   paging, the yield/poll model, exit codes 130/124/−signal, pgid-scoped wait, cgroup
   placement (later the quiesce discovery seed — forward ref to `08`), shell_security
   hardening hook anchors. Cross-reference the one-Observer-per-process and trace-handoff
-  invariants from `06-config-and-observability/02`.
+  invariants from `07-config-and-observability/02`.
 - **Sources:** operation command service, namespace-execution, namespace-process
   shell_exec/shell_security, daemon `runner/shell.rs`.
 - **Open questions:** unbounded transcript growth — accepted?; no boot reaper found for
@@ -384,12 +392,182 @@ to disappear. All three are cross-cutting pages deduplicated from multiple scope
 - **Sources:** manager store, provider recovery, workspace persistence, layerstack cleanup,
   daemon boot.
 - **Open questions:** none new — this page consolidates; cross-reference
-  `03-management-plane/01` and `04-daemon/02`.
+  `05-management-plane/01` and `03-daemon/02`.
 
-# Cluster 03 — Host management plane (`03-management-plane/`)
+# Cluster 03 — Daemon internals (`03-daemon/`)
+
+*The in-container server as a process: its personalities, lifecycle, and network surfaces.*
+
+### `01-process-model.md` — One binary, four personalities: the daemon process model
+- **Priority:** P0
+- **Scope:** serve / ns-holder / ns-runner / gate-probe personalities; the `current_exe`
+  re-exec contract (any embedding binary must implement the subcommands —
+  `ForkRunnerLauncher` doesn't fork); fd-inheritance + the global spawn lock; the holder's
+  3-token pipe handshake (`ns-up`/`net-ready`/`ready`); the PDEATHSIG kill chain and its
+  outer-runner limit; holder exit 1/2 as diagnostic-only; env-var/argv plumbing
+  (`SANDBOX_DAEMON_*`), including the Docker argv/label token exposure. Holder/runner
+  internals (handshake tokens, runner wire protocol, payload
+  kinds, setns order) are deep-dived in `01-workspace-runtime/02-namespace-processes.md`;
+  this page keeps the daemon-side process framing and cross-references.
+- **Sources:** sandbox-daemon main/serve/holder/runner/gate_probe, namespace-process,
+  namespace-execution launcher.
+- **Verified correction:** `serve --spawn` is used by the exported local installer;
+  current Docker production runs foreground. **Open questions:** whether that local path
+  is a supported deployment contract; intended AF_UNIX RPC clients; whether to remove
+  unread `SANDBOX_DAEMON_SANDBOX_ID`; whether to move the token out of argv/labels.
+
+### `02-daemon-lifecycle.md` — Daemon lifecycle: startup, boot recovery, shutdown
+- **Priority:** P0
+- **Scope:** config load → cgroup self-vacation → storage boot sequence (base ensure,
+  provisioning-bind detach, service construction, spool purge, kernel-floor assert,
+  live-remount gate probe + latch, session reap, storage sweep) → listener bind order →
+  readiness; the mixed refusal/degrade/skip/delete-nothing recovery policy; the normal
+  Ctrl-C cancellation path (stop listeners → unbounded tracked-RPC drain → pid/socket
+  cleanup), including untracked HTTP and absent explicit SIGTERM handling; RPC connection
+  semaphore/backpressure.
+- **Sources:** sandbox-daemon rpc/lifecycle, sandbox-runtime `services.rs`.
+- **Open questions:** kernel floor authority (ties to `02-security-model/01`); SIGTERM and
+  listener-error cleanup; HTTP/tunnel drain bounds; whether recovery degradation belongs
+  in readiness.
+
+### `03-http-surface.md` — Daemon HTTP surface: the allowlist and app forwarding
+- **Priority:** P0
+- **Scope:** the exact three router branches / four semantic entries and deliberate 404s
+  (`/files/read` etc.; no daemon `/s/` route);
+  `file_list` as the sole HTTP operation (and its two-channel error mapping — transport
+  400 vs dispatch errors in HTTP **200**); shared vs isolated forward resolution through
+  the session registry; reverse-proxy mechanics (fixed hop-by-hop stripping,
+  X-Forwarded-Host/Proto/Prefix, with X-Forwarded-For supplied by the console),
+  WebSocket upgrade tunnels — unbounded after 101); why this surface is safe without auth
+  (host loopback publish topology).
+- **Sources:** sandbox-daemon http/, provider port publishing.
+- **Open questions:** HTTP-200 dispatch errors — contract or accident; upgrade-tunnel idle
+  timeout.
+
+# Cluster 04 — Operations (`04-operations/`)
+
+*The user-facing API, re-examined 2026-07-11 by a dedicated 4-agent pass (catalog
+inventory, CLI surface, MCP surface, operation→implementation map). Division of labor
+with `00-foundations/03`: the catalog page owns the declaration machinery
+(`RoutedOperation` expansion, tiers and choke points, lockstep proofs, Phase 0 freeze
+mechanics, how to add an operation); this cluster owns what each operation actually
+*does* — arguments, defaults, caps, session semantics, error taxonomies — plus the two
+agent-facing adapters in depth. The catalog's three domains align 1:1:1 with the three
+CLI binaries and the three MCP `--set` values, so the cluster mirrors that: one
+reference page per domain, then one page per adapter. The old
+`05-surfaces/02-cli-and-mcp.md` page dissolves into pages 04 and 05 here.*
+
+### `01-management-operations.md` — Management operations: the fleet API
+- **Priority:** P0
+- **Scope:** caller contracts for the 8 system-scoped ops (create_sandbox,
+  destroy_sandbox, list_sandboxes, inspect_sandbox, list_docker_images,
+  list_workspace_directories, squash_layerstacks, export_changes): args and defaults
+  (count=1; export format dir|tar|tar-zst; list_workspace_directories truncates at 500
+  entries); batch create's all-or-nothing rollback (one failure cascades destroy);
+  create_sandbox as the **only streaming operation** (ProgressSink → `cli_log` frames,
+  `--progress`); `sandbox_id` as ordinary *argument* here — the mirror-image of
+  sandbox-scoped ops, fleet operations treat it as data; the manager→daemon fan-out
+  pattern — public `squash_layerstacks` (plural) minting internal `squash_layerstack`
+  (singular), `export_changes` driving `export_layerstack` + `read_export_chunk` paging
+  (2 MiB base64 frames) — including the stale-daemon `unknown_op`→"recreate sandbox"
+  translation; per-op error taxonomy (InvalidWorkspaceRoot/InvalidImage/
+  InvalidSandboxCount, destination deny-list rejections, DaemonNotAvailable). Internals
+  stay elsewhere: lifecycle state machine in `05-management-plane/01`, export apply
+  hardening in `05-management-plane/02`, squash protocol in `01-workspace-runtime/08`.
+- **Sources:** catalog `manager.rs`, sandbox-manager
+  `operations/management/service/impls/*`, manager registry + router forward path.
+- **Open questions:** are progress-frame message texts a contract or free to change;
+  destroy_sandbox vs Failed-record GC interplay (ties to consolidated question 13).
+
+### `02-command-and-file-operations.md` — Command & file operations: the agent API
+- **Priority:** P0
+- **Scope:** caller contracts for the 7 sandbox-scoped runtime ops. Commands:
+  exec_command's implicit-session rule (omitting `workspace_session_id` auto-creates a
+  PublishThenDestroy session — **the catalog's only auto-creator**; explicit sessions
+  get NoOp finalize and caller-owned lifetime), the yield/poll model (`yield_time_ms`,
+  the `command_session_id` handoff), read_command_lines stable line-offset windows
+  (default 200, max 1 000) + total_lines/token_count, write_command_stdin bounded
+  yields and ETX/EOT cancellation, `publish_rejected` surfacing on the completing
+  command's terminal output. Files: file_read 1-indexed windows (default/max 2 000
+  lines), file_write/file_edit dual routing (session-routed vs sessionless atomic
+  publish attributed `operation:<request_id>`), edit exact-string uniqueness +
+  replace_all rules, file_blame's owner grammar, file_list's HTTP-only life
+  (`03-daemon/03`). Per-op error taxonomy: the LayerStackPublishRejected class list
+  (InvalidBaseRevision, ProtectedPath, SourceConflict, the three OpaqueDir* classes,
+  RoutePreparationFailed), EditNotFound/EditNotUnique/NoChanges, FileTooLarge/
+  OutputTooLarge caps, ActiveCommands on session destroy. Cover the internal-tier
+  session ops (create/destroy_workspace_session) as the explicit-session API surface.
+  Execution/file/capture internals stay in `01-workspace-runtime/05`–`/07`.
+- **Sources:** catalog `runtime/{command,file}.rs` + `internal/runtime.rs`,
+  sandbox-runtime operation registry (command/file/workspace-session ops) and services.
+- **Open questions:** are the windows/caps (200/1 000, 2 000, list 2 000) frozen
+  contract or config-tunable (they are wired through `services.rs`); is the
+  explicit-session workflow (internal `create_workspace_session`) intended to go public?
+
+### `03-observability-operations.md` — Observability operations: five read-only views
+- **Priority:** P1
+- **Scope:** snapshot as the catalog's only SystemOrSandbox dual-route op (system scope
+  → manager aggregating every Ready sandbox; sandbox scope → daemon
+  observability-query), trace (`trace_id` default "last"), events (name/since_ms/last_n
+  filters, newest first), cgroup and layerstack (window_ms default 60 s, max 600 s);
+  selector semantics (absent → system aggregate, present → per-sandbox); what each view
+  can and cannot show — request-triggered sampling means idle sandboxes emit nothing
+  (pipeline internals in `07-config-and-observability/02`).
+- **Sources:** catalog `observability/*`, sandbox-observability-query, manager
+  aggregate-snapshot impl.
+- **Open questions:** none blocking (sampling-cadence intent lives with
+  `07-config-and-observability/02`).
+
+### `04-cli.md` — The three CLI binaries
+- **Priority:** P1
+- **Scope:** per-binary compile-time authority isolation (`required-features` gates
+  both the projection module and the catalog domain; xtask builds each binary in
+  feature isolation — the linker-level proof); the projection layer (hand-written
+  flags/usage/examples, machine-checked mirror at every startup — drift = exit 2 before
+  any I/O); the scope-selector matrix (manager: never; runtime: `--sandbox-id`
+  required, deliberately no env/config fallback; observability: optional flag); the
+  output contract (result JSON on stdout, error envelope on stderr, exit 0/1/2
+  partition and what each means for scripting); `--progress` (manager-only,
+  create_sandbox-only; `[progress Xs]` frames on stderr, `[Output]` delimiter); the
+  auth chain (flag > `SANDBOX_GATEWAY_AUTH_TOKEN` > wrapper-read
+  `/tmp/eos-gateway.token` > none) and its bypass footgun — invoking binaries directly
+  never reads the token file; wrapper mechanics + the stale-`target/debug` footgun;
+  Phase 0 freeze as operational reality (fixture pins 18 ops — management 6, runtime 7,
+  observability 5; list_docker_images/list_workspace_directories postdate it; help text
+  and unknown-op stderr frozen byte-for-byte; fixture edits are API reviews).
+- **Sources:** sandbox-cli (Cargo.toml bins, `projection/`, input.rs, output.rs,
+  per-binary mains, tests/{compatibility,projection_integrity,help}.rs + fixtures),
+  bin/ wrappers.
+- **Open questions:** `--progress` for the other binaries — planned?; sandbox-id format
+  contract; the always-empty error `details` field — reserved?
+
+### `05-mcp.md` — sandbox-mcp: the tool server
+- **Priority:** P1
+- **Scope:** the rmcp stdio server (tools capability only — resources/prompts/
+  completions answer method-not-found; protocol 2025-06-18); schema generation from the
+  selected catalog at startup (ArgKind → JSON-schema mapping, defaults embedded,
+  `additionalProperties: false` — nothing hand-written, nothing frozen: the MCP surface
+  moves the moment the catalog does); the runtime set's fabricated required
+  `sandbox_id` property and its lift into wire scope before request build; runtime
+  `--set` authority isolation (all three catalogs deliberately compiled into one binary
+  — wrong `--set` = wrong toolset with no error) contrasted with the CLI's linker-level
+  proof; result mapping (`structured_content` + `is_error` mirroring the envelope;
+  `content` always empty); streaming suppressed unconditionally (`_stream_logs: false`
+  — create_sandbox progress frames are dropped over MCP); no startup gateway validation
+  (tools/list works with the gateway down; the first call surfaces connection_error);
+  the hidden-field discipline (tests pin that scope/request_id/auth/stream fields never
+  leak into tool schemas); Phase-0 tool-list regression fixtures.
+- **Sources:** sandbox-mcp (main/lib/server/schema/tools/config, tests/server.rs +
+  fixtures/{management,runtime,observability}-tools-list.json), operation-client
+  request builder.
+- **Open questions:** single-binary-all-catalogs — confirm deliberate (vs CLI-style
+  feature gating); the `--sandbox-id` vs `sandbox_id` error-message dialect drift
+  between sets; who owns the hidden-field list when the envelope grows a field.
+
+# Cluster 05 — Host management plane (`05-management-plane/`)
 
 *Everything the gateway/manager/provider do on the host side of the trust boundary.
-Deliberately thin — tokens, recovery, and packaging live in clusters 02 and 07.*
+Deliberately thin — tokens, recovery, and packaging live in clusters 02 and 08.*
 
 ### `01-sandbox-lifecycle.md` — Sandbox lifecycle: create, readiness, destroy, recovery
 - **Priority:** P0
@@ -418,51 +596,11 @@ Deliberately thin — tokens, recovery, and packaging live in clusters 02 and 07
 - **Open questions:** spool non-persistence (restart drops it — re-run) as a stated
   contract.
 
-# Cluster 04 — Daemon internals (`04-daemon/`)
+# Cluster 06 — Web console (`06-console/`)
 
-*The in-container server as a process: its personalities, lifecycle, and network surfaces.*
-
-### `01-process-model.md` — One binary, four processes: the daemon process model
-- **Priority:** P0
-- **Scope:** serve / ns-holder / ns-runner / gate-probe personalities; the `current_exe`
-  re-exec contract (any embedding binary must implement the subcommands —
-  `ForkRunnerLauncher` doesn't fork); fd-inheritance + the global spawn lock; the holder's
-  3-token pipe handshake (`ns-up`/`net-ready`/`ready`); the PDEATHSIG kill chain; the
-  exit-code contract (holder 1/2); env-var plumbing (`SANDBOX_DAEMON_*`), auth token never
-  in argv. Holder/runner internals (handshake tokens, runner wire protocol, payload
-  kinds, setns order) are deep-dived in `01-workspace-runtime/02-namespace-processes.md`;
-  this page keeps the daemon-side process framing and cross-references.
-- **Sources:** sandbox-daemon main/serve/holder/runner/gate_probe, namespace-process,
-  namespace-execution launcher.
-- **Open questions:** is `serve --spawn` production or e2e-only; intended AF_UNIX RPC
-  clients.
-
-### `02-daemon-lifecycle.md` — Daemon lifecycle: startup, boot recovery, shutdown
-- **Priority:** P0
-- **Scope:** config load → cgroup self-vacation → the eight-step storage boot sequence
-  (base ensure, provisioning-bind detach, kernel-floor assert, live-remount gate probe +
-  latch, spool purge, session reap, fail-closed storage sweep) → listener bind order →
-  readiness; the ordered shutdown drain (cancel → stop listeners → drain in-flight →
-  pid/socket cleanup); connection semaphore/backpressure.
-- **Sources:** sandbox-daemon rpc/lifecycle, sandbox-runtime `services.rs`.
-- **Open questions:** kernel floor authority (ties to `02-security-model/01`).
-
-### `03-http-surface.md` — Daemon HTTP surface: the allowlist and app forwarding
-- **Priority:** P0
-- **Scope:** the exact four-route allowlist and deliberate 404s (`/files/read` etc.);
-  `file_list` as the sole HTTP operation (and its two-channel error mapping — transport
-  400 vs dispatch errors in HTTP **200**); shared vs isolated forward resolution through
-  the session registry; reverse-proxy mechanics (hop-by-hop stripping, X-Forwarded-*,
-  WebSocket upgrade tunnels — unbounded after 101); why this surface is safe without auth
-  (host loopback publish topology).
-- **Sources:** sandbox-daemon http/, provider port publishing.
-- **Open questions:** HTTP-200 dispatch errors — contract or accident; upgrade-tunnel idle
-  timeout.
-
-# Cluster 05 — User surfaces (`05-surfaces/`)
-
-*The adapters. Thin projections over the catalog — readable with only Foundations as
-prerequisite.*
+*The browser surface. The CLI/MCP adapter pages moved into cluster 04
+(`04-operations/04`–`05`); what remains is the console's credential-confinement job and
+its SPA — readable with only Foundations as prerequisite.*
 
 ### `01-web-console.md` — Web console: one origin, two planes
 - **Priority:** P0
@@ -476,17 +614,7 @@ prerequisite.*
 - **Open questions:** post-v0 browser auth; `file_edit`/`export_changes` validated but
   unused by the SPA — CLI-only UX or unbuilt UI?
 
-### `02-cli-and-mcp.md` — Adapters: the three CLIs and sandbox-mcp
-- **Priority:** P1
-- **Scope:** authority isolation and its two different proofs (CLI compile-time
-  `required-features` vs MCP runtime `--set`); scope-selector resolution matrix per
-  binary; the agent output contract (stdout/stderr JSON, exit 0/1/2, `--progress`);
-  wrapper scripts and the token-file pickup (plus the stale-`target/debug` footgun); MCP
-  schema generation and `is_error` mapping.
-- **Sources:** sandbox-cli, sandbox-mcp, bin wrappers.
-- **Open questions:** why MCP compiles all three catalogs.
-
-### `03-spa-data-flow.md` — SPA data flow: polling, ledger, transcripts
+### `02-spa-data-flow.md` — SPA data flow: polling, ledger, transcripts
 - **Priority:** P1
 - **Scope:** `usePoll` cadence/idle-decay engine; the localStorage command ledger
   reconciled against observability snapshots; transcript offset paging; the file-edit
@@ -495,7 +623,7 @@ prerequisite.*
 - **Sources:** web/console.
 - **Open questions:** codegen plans.
 
-# Cluster 06 — Configuration & observability (`06-config-and-observability/`)
+# Cluster 07 — Configuration & observability (`07-config-and-observability/`)
 
 *The two cross-cutting verticals that every component participates in but none owns.*
 
@@ -530,7 +658,7 @@ prerequisite.*
   observability composition, manager aggregate snapshot.
 - **Open questions:** rusqlite/prost intent; sampling cadence deliberate or placeholder.
 
-# Cluster 07 — Engineering & operations (`07-engineering/`)
+# Cluster 08 — Engineering & operations (`08-engineering/`)
 
 *About developing and operating the repo rather than the product's runtime architecture.*
 
@@ -585,11 +713,14 @@ prerequisite.*
    spec, the C3 file-auditability spec, the observability spec, `ab_driver.py` —
    enumerate the same deleted tree with `git log --diff-filter=D --name-only -- docs/`.
    Affects `00-foundations/03`, `01-workspace-runtime/04`, `01-workspace-runtime/08`,
-   `06-config-and-observability/02`, `07-engineering/02`.
+   `07-config-and-observability/02`, `08-engineering/02`.
 2. Streaming/auth-field framing: migrate into sandbox-protocol per the boundary law, or
    document co-ownership as intentional?
-3. `LocalSandboxDaemonInstaller` + `manager.local_daemon` config: planned `--backend
-   local` or dead scaffolding?
+3. `LocalSandboxDaemonInstaller` + `manager.local_daemon` config: cluster 03 verified
+   that the exported installer actively invokes `serve --spawn`, while current Docker
+   production runs foreground and the gateway composition selects Docker or no provider.
+   Remaining: planned `--backend local`, supported embedding surface, or dead composition
+   scaffolding?
 4. Auth-optional gateway (library) and non-loopback binds: supported deployments or
    dev-only? TLS roadmap?
 5. Token rotation: is "restart console after gateway restart" permanent?
@@ -618,8 +749,10 @@ Cluster 00 first (prerequisites for everything), then cluster 01 in full **in it
 internal page order (00 → 08)** — the pages are dependency-ordered so the cluster reads
 sequentially; the highest-decay reconstructions are `04-workspace-sessions`,
 `05-command-execution`, `07-capture-and-publish`, and `08-squash-and-live-remount`
-(write 08 against the recovered spec). Then the remaining P0 pages by cluster order
-(02 → 03 → 04 → 05/01 → 06/01), then P1, then P2.
+(write 08 against the recovered spec). Status 2026-07-11: clusters 00, 02, and 03 are fully
+written; cluster 01 is written through page 06 — next are `01/07`, `01/08`, then the
+`01/00` tour. Then the remaining P0 pages by cluster order (04/01 → 04/02 → 05 →
+06/01 → 07/01), then P1 (04/03, 04/04, 04/05 with the rest), then P2.
 
 ## Source agent reports
 
@@ -635,3 +768,11 @@ holder/runner `ab090bba22f959521`, command/PTY `a5af6066852642fd4`, squash/remou
 `ae13e9ab6baa1ae49`, overlay `a822ce778471889bc`, capture/publish `a0e4d0230429e2b72`,
 plus a boot/composition pass `a2de128d96c5f5d4a`. Their synthesis and the per-page
 writing spec live in `01-workspace-runtime/SPEC.md`.
+
+The cluster-04 (operations) design is grounded in a third pass (2026-07-11): a 4-agent
+re-exam of the operations layer — full catalog inventory (20 public operations → 21
+route rows + 6 internal names, verified against the pinned integrity manifest), the CLI
+surface (projection, exit codes, wrappers; the Phase 0 fixture re-verified at 18
+operations — management 6, runtime 7, observability 5), the MCP surface (rmcp stdio
+server, schema generation, streaming suppression), and an operation→implementation map
+(per-op error taxonomies, paging caps, session semantics, choke-point locations).

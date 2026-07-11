@@ -17,7 +17,7 @@
   every `§2.x` code cite). The "C3 spec" is `docs/occ_merge_publish/c3_spec.md`
   (§7/§7.1 stores, §9 attribution, §10 event schema, §11/§11.1 blame, §13
   commit path — matches the file-domain cites verbatim). The observability
-  spec generation lives under `docs/observability-rework/` (cluster 06's
+  spec generation lives under `docs/observability-rework/` (cluster 07's
   concern; enumerated, not imported). → **Anchor:** `recovered/README.md`;
   cites at `OP/file/service/store.rs:1`, `OP/file/audit.rs:1`,
   `OP/file/service/impls/blame.rs:1`,
@@ -323,3 +323,196 @@ Net-new insights folded into page 04:
   (`core.rs:159-172`, `destroy_session.rs:65-67`).
 - Test gaps: `CreateRollbackFailed` untested; parked-lease release on destroy
   unit-untested; rfc1918-deny rejection untested.
+
+## Page 05 — Command execution & PTY
+
+Drift (spec claim → reality → anchor):
+
+1. **"`is_kill_input` … (write_command_stdin.rs:6-74)"** — the mechanism is
+   confirmed but there is **no doc comment** on it; the page quotes the
+   3-line function itself (`:72-74`). Nearest prose is the catalog
+   description ("stays terminable through write_command_stdin (Ctrl-C or
+   Ctrl-D)", `sandbox-operations/catalog/src/runtime/command.rs:35`).
+2. **"512-entry terminal eviction (`NE/registry.rs:86-112`)"** — eviction
+   logic confirmed, but 512 is a **caps/config default**
+   (`max_terminal_entries`, `NE/caps.rs:28`,
+   `sandbox-config/src/configs/runtime.rs:309-311`), not a registry
+   constant; there is no `MAX_TERMINAL_ENTRIES` identifier.
+3. **Exit-code table refinement** — the 128 fallback is **runner-side only**
+   (`NP/runner/shell_exec/wait.rs:148`); the launcher's synthesis fallback is
+   **1**, and exit-0-without-envelope is a `Completion` error
+   (`NE/launcher.rs:438-452`).
+4. **Status vocabulary** — terminal statuses are `ok/error/timed_out/
+   cancelled` (+`running`), not completed/failed
+   (`OP/command/service/dto.rs:27-46`, `NE/shell.rs:9-15`).
+5. **"read_command_lines.rs:58-67 returns ok+empty"** — confirmed, and the
+   fabrication is reached via `:17-22` (`unwrap_or_else(empty_terminal_output)`).
+6. **`NamespaceExecutionError::Timeout` never constructed** — confirmed; the
+   only `::Timeout` hits elsewhere are a different type
+   (`SD/http/forward/proxy.rs`).
+7. **"C6 PTY physics"** — the literals "C6" and "PTY physics" appear nowhere
+   in command-path code; C-rule numbering in code is only C1/C3/C4/C5
+   (quiesce/remount/file-audit). C6 lives in the recovered squash spec only.
+
+Net-new insights folded into page 05:
+
+- **Terminal yields never advance the streaming cursor** — idempotent
+  re-reads; only running yields advance it (`yield.rs:54-56` vs `:78-95`).
+- **Ctrl-D (EOT) is a cancel, not an EOF** — same containment test as ETX;
+  kill-input against a finished command errors (`CommandAlreadyCompleted`).
+- **`write_command_stdin` takes no session gate** (engine-value path only);
+  its kill branch waits a hardcoded 1000 ms yield window.
+- **No timeout ⇒ runs forever**: `timeout_ms` is request-only, no config
+  default; the shell-mode `wait_completion` is an untimed `child.wait()`;
+  `setup_timeout_s` applies only to mount/file-op/remount runners
+  (`exec_command.rs:80`, `wait.rs:136-140`, `NE/launcher.rs:159,299-312`).
+- **Watcher terminal order is load-bearing**: on_terminal (span) → finalize
+  (token drop) → registry.complete → promise.resolve
+  (`NE/engine.rs:248-273`); evicted values are dropped **outside** the
+  registry lock because Drop does fs I/O (`registry.rs:92-112`).
+- **Trace handoff is three spans**: sync `command.exec`; parked async
+  `namespace.exec.run_shell` finished by the watcher's terminal hook; and
+  `namespace.runner.spawn_child` written by the **runner child** itself via
+  `observability_log_path` (`exec_command.rs:27,105-111`,
+  `NE/engine.rs:325-353`, `NP/runner/shell_exec.rs:114-136`).
+- **Transcript sink is fire-and-forget**: no fsync; a write error silently
+  drops the sink (`NE/pty.rs:127-133`).
+- **id == request_id** (`namespace_execution_{n}`; `NE/engine.rs:58-61,342`).
+- **Backpressure error text**: "stdin_backpressure: consumer is not draining
+  its stdin", 2 s deadline (`NE/pty.rs:78-106,207-212`; `NE/caps.rs:27`).
+- **Caps became config on 2026-07-10** (`c02181c39`): `ExecutionCaps`
+  injected from `runtime.{command,namespace_execution}`;
+  `COMMAND_ENGINE_SETUP_TIMEOUT_S` deleted (now
+  `runtime.workspace.setup_timeout_s`, `OP/services.rs:107`);
+  `DEFAULT_FREEZE_BUDGET` deleted (now `ResourceCaps.freeze_budget_s`).
+- **Cgroup e2e gap**: placement is unit-pinned only
+  (`operation/tests/exec_command.rs:540`); no e2e exercises cgroup
+  placement.
+
+## Page 06 — File operations & blame
+
+Drift (spec claim → reality → anchor):
+
+1. **Handoff edge #7 anchor** — spec: "sessionless writes via `amend_path`
+   (`LS/stack/projection/mod.rs:129-229`)" → reality: that range is
+   `MergedView::{read_classified, list_dir}`; **`amend_path` lives at
+   `LS/stack/file_read.rs:75-131`** (with the "nothing to retry" doc at
+   `:1-7`). The OP-side owner-taking wrapper is
+   `OP/layerstack/service/impls/amend.rs:21-51`.
+2. **"session edit = two separately-gated runner ops"** — confirmed, and
+   sharpened: `ReadFile` (≤ max_edit_bytes) → in-process `apply_edits` →
+   `Write`, each via `with_gated_session` separately
+   (`OP/file/service/impls/edit.rs:43-78`).
+3. **run_file_op quote range** — spec `:13-14` → reality the doc is `:9-14`.
+4. **"no-op commits record no blame (`LS/stack/file_read.rs:113-124`)"** —
+   the behavior is real but that range has no literal comment; the quotable
+   doc is `LS/stack/publish/model.rs:55-56` ("Empty when the publish was a
+   no-op…").
+5. **Limits refinement** — read limit is dispatch-hardcoded
+   `READ_LIMIT_MAX = 2000` independent of config
+   (`OP/operations/registry/file_operations.rs:18,153-154`); session write
+   content has **no per-op cap** (transport-bounded only); sessionless
+   overwrite uses classify-only read (`max_bytes 0`) so an over-4-MiB file
+   can still be overwritten (`write.rs:74`).
+6. **§15 exists** — the C3-spec § citations in code/tests also include §15
+   (`operation/tests/file_blame.rs:1`), beyond the §7/§9/§10/§11/§13 set
+   SPEC listed.
+
+Net-new insights folded into page 06:
+
+- **Deletes append no audit event** — blame survives `rm`
+  (`LS/stack/publish/resolve.rs:52-77`; e2e
+  `test_blame_survives_deletion`).
+- **The audit store never rotates** — only `file_auditability_0.ndjson` is
+  written; lexical segment sort is a latent multi-digit trap; eager boot
+  replay panics the daemon on open failure (`store.rs:18,98-141,164`,
+  `OP/services.rs:49-52`).
+- **Events carry no timestamp/request-id/line content** — owners +
+  `content_digest` only; ordering is append order under `audit_gate`.
+- **`default_owner` is a compression artifact** (most-covering owner), not
+  "the publisher" (`OP/file/audit.rs:118-149`).
+- **`Origin::Active` is 0-based; audit lines are 1-based** — conversion at
+  `audit.rs:67`.
+- **A missing `content` arg silently writes an empty file** — catalog says
+  required, dispatch uses `optional_string(...).unwrap_or_default()`
+  (`file_operations.rs:167`).
+- **Error-kind asymmetry**: blame path errors are `not_found`; read/write/
+  edit path errors are `invalid_request` (`file_operations.rs:50-67`).
+- **HTTP `files/list` is unauthenticated loopback** (`SD/http/server.rs:1-3`,
+  `rpc/runtime.rs:30`); the manager RPC route refuses file_list
+  (`sandbox-manager/src/router/dispatch.rs:27-32`).
+- **Parity by copy**: window/normalize/split helpers duplicated verbatim in
+  `OP/layerstack/service/impls/read.rs:119-162` and
+  `NP/runner/setns/file_op.rs:405-448`.
+- **Session write preserves mode** (`st_mode & 0o7777`, else 0644) via tmp +
+  `fchmod` + rename + parent fsync (`NP/runner/setns/file_op.rs:165-209`).
+- Test gaps: no dedicated audit-store unit suite (replay covered via blame
+  fixtures); no LS-level `amend_path` unit test (covered via OP tests/e2e);
+  no NP unit tests for the file-op runner body (NOFOLLOW pinned at e2e).
+
+## Page 07 — Capture & publish
+
+Drift (spec claim → reality → anchor):
+
+1. **Entry-kind table range** — spec: `WS/overlay/capture.rs:190-222,332-349`
+   → reality: file-entry classification `:190-222`; **OpaqueDir emission
+   lives in the directory walk** (`:171-177,234-242`); whiteout/opaque
+   detection `:332-349`.
+2. **Resolve module doc range** — spec `resolve.rs:1-6` → reality `:1-5`
+   (line 6 blank); all-resolved-or-one-reject at `:39` confirmed
+   (doc `:37-39`).
+3. **Capture-drop ranges** — spec `capture.rs:215-304` → reality drops split
+   `:215-220` (special files) + `:267-304` (invalid layer paths); a
+   non-UTF-8 **symlink target** is a hard `CaptureError`, not a drop
+   (`:244-254,314-321`).
+4. **`MERGE_MAX_BYTES` is duplicated** — `merge.rs:13` *and* `resolve.rs:24`
+   (spec cited only merge.rs).
+5. **"route" is two-valued** — `RouteKind { Source, Ignored }`
+   (`route.rs:5-9`); "protected" is a reject, not a route — the spec's
+   "capture→plan→resolve→route→write" figure phrasing folds route into plan.
+6. **Base-revision checks are self-consistency, not freshness** — both the
+   OP precheck (`publish_changes.rs:16-21`) and plan's
+   `validate_base_revision` (`plan.rs:104-127`) compare the request against
+   itself; head movement is adjudicated only by per-path fingerprints. The
+   page states this plainly per the spec's "this, not the manifest recheck,
+   is the OCC" instruction.
+7. **Two `InvalidBaseRevision`s** — the OP-level error maps to wire class
+   `publish_error`, not `invalid_base_revision` (`finalize_session.rs:150`).
+8. **Export "spec decision 19" post-dates the code** — the token-gated HTTP
+   export stream landed 2026-07-08 (`39f80668c`) and was **removed
+   2026-07-10** (`2ee1b4240`: deleted `SD/http/export.rs`, stripped
+   `stream_token`, deleted `EXPORT_STREAM_TOKEN_FIELD`); the tree is back to
+   `read_export_chunk` paging with EOF-unlink. The recovered export spec
+   records decision 19 as current — code wins.
+
+Net-new insights folded into page 07:
+
+- **Publish keeps net-nothing whiteouts** — a whiteout over an
+  upperdir-only path fingerprints Absent-vs-Absent, passes resolve, and is
+  persisted; net-effect folding is squash's job
+  (`plan.rs:135-141`, `resolve.rs:108-111`, `write.rs:41-44`).
+- **Clean writes still run the merge** (`three_way_merge(base, base,
+  command)`) purely for diff-based origin (`resolve.rs:161-180`).
+- **Myers budget** `MYERS_MAX_D = 200_000` degrades to whole-file
+  delete+insert — attribution coarsens, no error (`merge.rs:252,307-322`).
+- **Merge eligibility = ≤8 MiB ∧ no NUL ∧ valid UTF-8** (`merge.rs:162-164`).
+- **created:false has exactly two causes** (empty resolved changeset;
+  head-digest dedup), and both discard origin before audit — idempotent
+  republish mints no blame (`ops/publish.rs:33-46,60-66`).
+- **Modes are never captured** (`WriteFile` has no mode field); clean copies
+  keep bits incidentally via `fs::copy`, merged files lose them via
+  `fs::write` (`LS/model/mod.rs:176-180`, `write.rs:15-40`).
+- **Capture walk has no entry cap** — the 50k limit belongs to
+  `TreeResourceStats`, a different path (`WS/overlay/tree.rs:3`).
+- **Gitignore sealed-by-parent rule** — negation cannot rescue descendants
+  of an ignored dir (`gitignore.rs:75-87`); `.git` routes as ordinary
+  source since `98b9a73a2`.
+- **Export singleflight** per storage root via a process-global AtomicBool
+  map; spool naming `exp-<pid>-<counter>.tar.zst`; registry is in-memory so
+  spools orphan on restart until the boot wipe (`export.rs:256-298`,
+  `OP/services.rs:147-161`).
+- **WriteFile TOCTOU guard is untested** — the "spool payload changed before
+  publish" string appears only in src (`write.rs:26-39`).
+- The WS→LS boundary DTO carries **references, not bytes** — `WriteFile
+  { source_path into the live upperdir }`; publish streams content at
+  commit (`WS/model.rs:434-445`, `capture.rs:84-92,102-105`).

@@ -157,7 +157,7 @@ router, system-scoped handlers, and the *ports* (traits) that the provider and
 daemon client implement. It never touches `sandbox-protocol` — the gateway
 hands it decoded `OperationRequest` values and a `SandboxDaemonClient`
 implementation. Details of lifecycle/recovery belong to
-`03-management-plane/`; the router itself is dissected in
+`05-management-plane/`; the router itself is dissected in
 [page 03 §choke points](03-operation-catalog.md#choke-point-2--the-manager-router).
 
 ### The sandbox plane
@@ -198,7 +198,7 @@ below it never see operations at all.*
 The same static binary runs four personalities selected by subcommand —
 `serve`, `ns-runner`, `ns-holder`, `gate-probe`
 (`crates/sandbox-daemon/src/main.rs:41-67`) — because runners and holders
-re-exec `current_exe`. Process-model details live in `04-daemon/01`; workspace
+re-exec `current_exe`. Process-model details live in `03-daemon/01`; workspace
 and layer mechanics in `01-workspace-runtime/`.
 
 ## Crate ownership matrix
@@ -370,7 +370,7 @@ binary `required-features`, and stale references.
 
 Sibling `check-*` subcommands (`xtask/src/main.rs:41-51`) enforce code-shape
 policies (no inline tests in `src/`, no `#[cfg]` in daemon sources, size
-caps); `07-engineering/02` covers them.
+caps); `08-engineering/02` covers them.
 
 > **Caveat:** the docs deletion likely left the stale-reference checker red
 > (it verifies git-tracked files under the removed `docs/obsidian/` tree), so

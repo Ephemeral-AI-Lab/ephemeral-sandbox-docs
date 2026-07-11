@@ -108,7 +108,7 @@ The unified data-root map (tour page reproduces with anchors; ownership per page
   manager.json · <session>/{upper,work,work-remount-*,.remount-{staging,rollback}-*} · .export/
 /eos/namespace_execution/<cmd>/       05  transcript.log
 /eos/storage/file_auditability/       06  file_auditability_*.ndjson
-/eos/runtime/daemon/                  (cluster 04-daemon: socket, pid, observability)
+/eos/runtime/daemon/                  (cluster 03-daemon: socket, pid, observability)
 /workspace                            03  overlay mountpoint inside each holder mnt-ns
 /sys/fs/cgroup/<R>/{_daemon,workspace-<id>}   05 (placement) / 08 (quiesce discovery)
 ```
@@ -122,7 +122,7 @@ and the tour's demo order.
 |---|---|---|---|
 | 00 | Runtime tour | — | new |
 | 01 | LayerStack store | — | `03-layerstack.md` |
-| 02 | Namespace processes | — | new (was split into `02-security-model/01`, `04-daemon/01`) |
+| 02 | Namespace processes | — | new (was split into `02-security-model/01`, `03-daemon/01`) |
 | 03 | Overlay mount | 01, 02 | `04-overlay-mounts.md` |
 | 04 | Workspace sessions & network | 01–03 | `01-workspace-sessions.md` |
 | 05 | Command execution & PTY | 02, 04 | `02-command-execution.md` |
@@ -719,11 +719,11 @@ step exercises exactly one new page, in page order, and only uses concepts alrea
   hook points).
 - **Tokens/auth** → `02-security-model/02`. **The what-survives-what matrix** →
   `02-security-model/03` (it consumes facts from pages 01/04/08).
-- **Host-side export apply hardening** → `03-management-plane/02` (page 07 stops at the
+- **Host-side export apply hardening** → `05-management-plane/02` (page 07 stops at the
   spool).
-- **Daemon listeners, HTTP surface, shutdown drain** → `04-daemon/02`/`03` (page 04 only
+- **Daemon listeners, HTTP surface, shutdown drain** → `03-daemon/02`/`03` (page 04 only
   summarizes boot order for orientation).
-- **Observer/telemetry model** → `06-config-and-observability/02` (page 05 cross-refs the
+- **Observer/telemetry model** → `07-config-and-observability/02` (page 05 cross-refs the
   one-Observer and trace-handoff invariants).
 - **Wire protocol & catalog** → `00-foundations/02`/`03`.
 

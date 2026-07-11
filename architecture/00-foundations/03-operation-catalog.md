@@ -387,7 +387,7 @@ domain; a mis-built CLI cannot.*
 The console intentionally has **no** authority isolation — it is the shared
 browser bridge and compiles all three domains; its job is credential
 confinement, not domain confinement
-([05-surfaces/01](../05-surfaces/01-web-console.md)).
+([06-console/01](../06-console/01-web-console.md)).
 
 ## The Phase 0 compatibility freeze
 

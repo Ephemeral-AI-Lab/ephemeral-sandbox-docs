@@ -469,4 +469,4 @@ add, never safe to require.
 - **A TCP connect is not a readiness signal.** The only valid probe is the
   authenticated `sandbox_daemon_ready` exchange — lifecycle code gates
   forwarding on `Ready`, which is set by that handshake
-  (see `03-management-plane/01`).
+  (see `05-management-plane/01`).
