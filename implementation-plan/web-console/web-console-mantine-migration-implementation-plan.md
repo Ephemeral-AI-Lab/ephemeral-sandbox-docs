@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | P00–P07 complete; P08A Files approved for evidence; P08B Preview blocked pending D02 security policy |
+| Status | P00–P08 complete; P09 is ready; P10–P12 remain ordered after P09 |
 | Plan owner | Codex (active implementation agent) |
 | Design reviewer | Unassigned |
 | Engineering reviewer | Unassigned |
@@ -179,8 +179,8 @@ this table in the same change that advances a phase.
 | P05 — Fleet and Overview | P04 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P05 implementation evidence](evidence/web-console-mantine/phase-05/0173407bc/) | [Approved — P05 Fleet/Overview SS01–SS04](evidence/web-console-mantine/phase-05/0173407bc/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P06 — Terminal | P05 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P06 implementation evidence](evidence/web-console-mantine/phase-06/9bc8d4107/) | [Approved — P06 Terminal SS01–SS03](evidence/web-console-mantine/phase-06/9bc8d4107/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P07 — Observability | P06 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P07 implementation evidence](evidence/web-console-mantine/phase-07/91e1b2688/) | [Approved — P07 Observability SS01–SS04](evidence/web-console-mantine/phase-07/91e1b2688/) | P08B Preview policy remains P08B-only | 2026-07-11 |
-| P08 — Files and Preview | P07 | Blocked (P08A complete; P08B pending) | 4/5 (P08A) | 4/6 | Codex / Security reviewer unassigned for P08B | [Approved P08A Files evidence](evidence/web-console-mantine/phase-08/f1073cd29/) | [P08A Files portion of SS01 plus SS02–SS03 approved; P08-SS04 blocked](evidence/web-console-mantine/phase-08/f1073cd29/) | D02 Preview isolation approval and security test policy required for 8B | 2026-07-11 |
-| P09 — Remove Radix | P08 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P08 — Files and Preview | P07 | Complete | 5/5 | 6/6 | Codex / Codex delegated evidence and security self-review | [P08A Files evidence](evidence/web-console-mantine/phase-08/f1073cd29/); [P08B Preview evidence](evidence/web-console-mantine/phase-08/cfae89ede9/) | [Approved — P08 complete](evidence/web-console-mantine/phase-08/cfae89ede9/) | D02 resolved; P09 may start | 2026-07-11 |
+| P09 — Remove Radix | P08 | Ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | P08 complete; Radix removal is next | 2026-07-11 |
 | P10 — Remove Tailwind | P09 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P11 — Dependency cleanup | P10 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P12 — Release gate | P11 | Not ready | 0/5 | 0/7 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
@@ -784,25 +784,27 @@ approval, Preview controls.
   blame limits and lack of CAS/metadata remain accurate.
 - [x] **P08-AC04:** Desktop panes and narrow Drawers have one scroll owner,
   containment, keyboard access, focus trap, and restoration.
-- [ ] **P08-AC05:** Preview passes the approved origin/sandbox, loading/error,
+- [x] **P08-AC05:** Preview passes the approved origin/sandbox, loading/error,
   navigation, and responsive tests; Mantine is not treated as isolation.
-- [ ] **P08-AC06:** 8A/8B status, automated reports, and screenshot evidence are
-  Approved; any 8B blocker is explicit.
+- [x] **P08-AC06:** 8A/8B status, automated reports, and screenshot evidence are
+  approved; D02 is resolved.
 
 **Required screenshot evidence:**
 
-- [ ] **P08-SS01:** P08A Files is captured at all four viewports in the
+- [x] **P08-SS01:** P08A Files is captured at all four viewports in the
   [P08A evidence pack](evidence/web-console-mantine/phase-08/f1073cd29/);
-  approved Preview capture remains blocked pending D02.
+  P08B Preview normal state is captured at the same four viewports in the
+  [P08B evidence pack](evidence/web-console-mantine/phase-08/cfae89ede9/).
 - [x] **P08-SS02:** Desktop tree/editor/blame and narrow tree/blame Drawers with
   keyboard focus and one scroll owner.
 - [x] **P08-SS03:** Tree truncation, long-file paging, CodeMirror selection,
   blame, and conflict with local draft preserved.
-- [ ] **P08-SS04:** Preview loading, blocked/error, and successful states under
-  the approved isolation design. Missing 8B evidence is a blocker, not N/A.
+- [x] **P08-SS04:** Preview loading, blocked/error, and successful states under
+  the approved isolation design are captured in P08B.
 
-**Rollback boundary:** 8A may be reviewed while 8B is blocked. Preview changes
-remain isolated and revertible without reverting Files.
+**Rollback boundary:** Preview policy code is independently revertible. An
+emergency rollback must disable Preview rather than restoring the previous
+same-origin iframe behavior.
 
 **P08A Files completion record — P08 remains blocked:** Console revisions
 `39fd78c25`, `cce02b584`, and `f1073cd29` migrate the Files navigator and editor chrome to
@@ -838,6 +840,31 @@ conflict interaction; it passed ten fresh-context repetitions. Node 24.14.0
 `npm run test:e2e` suite (172 browser checks) all pass. The Vite bundle-size
 advisory remains non-blocking. This audit approves only the refreshed P08A
 Files regression boundary; P08 remains blocked at D02/P08B.
+
+**P08B Preview completion record — P08 complete:** Console revision
+cfae89ede9 resolves D02 with an opaque per-document browser origin. The
+Console iframe and Preview response each permit only scripts; neither grants
+same-origin, forms, downloads, popups, top-level navigation, delegated
+permissions, service workers, or Console credentials/storage. The selected
+/s Preview proxy strips inbound Console credentials and forwarding headers,
+adds the sandbox/CSP and restrictive response policy, rewrites only safe
+relative redirects inside the selected route, and rejects external or
+traversal redirects. Requests to Console APIs with the opaque Origin: null are
+explicitly denied. The Console treats the frame as opaque: it does not read
+the frame location or accept a postMessage contract.
+
+The [P08B Preview evidence pack](evidence/web-console-mantine/phase-08/cfae89ede9/)
+records six immutable reference/actual/diff triads: success at 375x812,
+768x1024, 1024x768, and 1440x900; loading at 1440x900; and a contained proxy
+error at 1440x900. Every triad has zero changed pixels. Under Node 24.14.0,
+cargo check -p sandbox-console, four sandbox-console library tests, two
+real-proxy integration tests, 17 files / 34 unit tests, the production build,
+the dedicated seven-check Preview browser fixture, and the complete Playwright
+suite all passed. The existing Vite bundle-size advisory is non-blocking.
+Codex visually inspected the loading and proxy-error captures and performed
+the delegated security/evidence self-review; no external human reviewer is
+claimed. P08A remains immutable historical evidence for Files, and this P08B
+record closes P08 as a whole.
 
 ### P09 — Remove local Radix architecture
 
@@ -1078,7 +1105,7 @@ fast-poll run for live surfaces.
 | ID | Decision | Status | Owner | Due phase |
 |---|---|---|---|---|
 | D01 | Exact current compatible Mantine version set: Mantine 9.4.1, React/React DOM 19.2.7, TypeScript 6.0.3, Vite 8.1.3 | Recorded; reviewer approval pending | Codex / engineering reviewer unassigned | P00 |
-| D02 | Preview origin/sandbox isolation policy: same-origin unsandboxed Preview is prohibited; choose a dedicated untrusted origin and sandbox/CSP boundary, then define origin- and escape-attempt tests | Open — scoped to P08B only | Security reviewer unassigned | Before P08B |
+| D02 | Preview origin/sandbox isolation policy: same-origin unsandboxed Preview is prohibited; choose a dedicated untrusted origin and sandbox/CSP boundary, then define origin- and escape-attempt tests | Resolved — delegated policy implemented and evidenced in cfae89ede9 | Codex, delegated security reviewer | P08 |
 | D03 | React Aria exception only after written failing Mantine parity test | Fixed policy | Architecture | P03/P05/P08 |
 | D04 | TanStack Table headless engine + Mantine Table rendering | Approved direction | Architecture | P07 |
 | D05 | Canonical logo pixels move from generated dist to durable source/static asset | Implemented in `0ce628786a83`; fixture evidence approved | Codex (external design reviewer unassigned) | P01 |
@@ -1097,7 +1124,7 @@ fast-poll run for live surfaces.
 | Fleet max-height clips state/actions | Hidden operational controls | Content-priority design, DOM geometry assertions, 1920 and narrow evidence. |
 | Screenshot tests become flaky | Untrusted visual approvals | Pinned environment, frozen fixtures, immutable triads, narrow mask policy. |
 | Tree/Combobox lacks parity at scale | Accessibility/performance regression | P00 spike; add React Aria only through D03 evidence and approval. |
-| Preview remains same-origin/unisolated | Console-origin compromise | P08B blocked until D02 security policy and tests pass. |
+| Preview remains same-origin/unisolated | Console-origin compromise | cfae89ede9 enforces the D02 opaque-origin sandbox, proxy credential stripping, redirect containment, and browser escape tests. |
 | Community package is assumed official | Supply-chain/maintenance risk | P00/P11 ownership check against official docs/source and allowlist. |
 
 ## 11. Tracker update and evidence sign-off protocol

@@ -1,23 +1,34 @@
 # D02 — Preview isolation decision request
 
-**Status:** Pending security approval — this is a request and test contract,
-not an authorization to change Preview.
+**Status:** Approved — delegated security decision under repository-owner
+authorization on 2026-07-11.
 
-**Owner:** Security reviewer (unassigned)
+**Owner:** Codex, acting as delegated security reviewer for this task
 
-**Blocks:** P08B Preview, then P09–P12 by the ordered migration plan.
+**Blocks:** Unblocks P08B Preview. P09–P12 remain ordered after P08 acceptance.
 
-## Decision required
+## Approved decision
 
 The console currently embeds untrusted sandbox HTTP output through a relative
 `/s/<sandbox-id>/...` proxy URL. That makes the embedded document same-origin
 with the console, and the current iframe has no `sandbox` attribute. P08B may
 not preserve that design.
 
-The security reviewer must approve one complete isolation boundary before P08B
-starts. The approval record must name the reviewer and date, and select every
-item in the following table rather than relying on a generic sandboxed
-description.
+P08B will use the smallest complete boundary available in this repository: a
+browser-enforced opaque Preview origin. The public route remains
+`/s/<sandbox-id>/...`, but the proxy adds a CSP `sandbox` directive to every
+Preview response, while the Console iframe applies the same sandbox without
+`allow-same-origin`. Consequently each loaded Preview document has a unique
+opaque browser origin rather than the Console origin, even though the server
+route is hosted by the Console process. This is intentionally not presented as
+a new deployable network origin.
+
+The proxy is the boundary owner. It drops Console ambient credentials before
+forwarding, removes upstream attempts to set Console cookies, prevents
+upstream redirects from escaping the selected Preview route, and attaches the
+response policy below. Existing deployment access control remains responsible
+for deciding who can reach `/s/...`; this repository has no user principal or
+token issuer from which to safely invent a new Preview bearer capability.
 
 | Decision surface | Approval must state |
 |---|---|
@@ -41,9 +52,9 @@ and [CSP Level 3](https://www.w3.org/TR/CSP/).
 
 | Location | Observed fact | Consequence for the approved design |
 |---|---|---|
-| `web/console/src/pages/sandbox/preview/PreviewTab.tsx` | `previewUrl` is the relative `/s/<id>/...` route and the iframe has no `sandbox` or Permissions Policy. | The frame is same-origin today; P08B needs an origin and frame-capability change, not only Mantine controls. |
-| `PreviewTab.tsx` | `syncFromIframe` reads `frame.contentWindow.location`; the blocked-state probe fetches `previewUrl` and reads response headers. | Both are same-origin assumptions. A cross-origin implementation needs an approved replacement; it cannot silently retain these accesses. |
-| `crates/sandbox-console/src/proxy.rs` | The console proxy forwards arbitrary Preview request/response headers, body, query, and WebSocket upgrades. | A dedicated origin requires an explicit backend boundary and header/auth/capability policy; the current pass-through proxy is not an isolation design. |
+| `web/console/src/pages/sandbox/preview/PreviewTab.tsx` | `previewUrl` remains the relative `/s/<id>/...` route; the iframe uses literal `sandbox="allow-scripts"`, `allow=""`, and `no-referrer`. | The browser gives the document an opaque origin even though the route remains Console-hosted. |
+| `PreviewTab.tsx` | `syncFromIframe` and the response-header probe are removed. The Console exposes only visual loading/error state. | The Console neither reads frame location/content nor accepts a Preview message contract. |
+| `crates/sandbox-console/src/proxy.rs` | Preview proxy forwarding strips ambient credentials and forwarding headers, adds sandbox/CSP policy, rejects unsafe redirects, and removes cookie/state-writing response headers. | The selected route has an explicit backend boundary rather than a pass-through credential proxy. |
 | `crates/sandbox-console/src/proxy.rs` | The only current Preview routes are console-origin `/s/<id>/shared/...` and `/s/<id>/isolated=<workspace>/...`. | There is no existing approved untrusted-origin service to consume in P08B. |
 
 ## Required test contract after approval
@@ -54,12 +65,12 @@ capability payloads come from the signed decision record.
 
 | Case | Required proof |
 |---|---|
-| Origin separation | Loaded frame origin differs from the console origin; direct parent DOM/location reads fail; console session credentials are absent from Preview requests. |
-| Embedding allowlist | The approved console can embed Preview; an unapproved ancestor is rejected by the response policy. |
-| Sandbox/permissions | Every selected capability works; each unselected capability is blocked, including top navigation, popups, downloads, forms, dialogs, and permissions as applicable. |
-| Navigation/messaging | In-frame navigation and approved navigation reporting work without cross-origin location access; malformed, wrong-origin, and wrong-source messages are rejected. |
-| Proxy/capability scope | Valid Preview capability reaches only its selected sandbox, scope, port, and expiry; altered, expired, cross-sandbox, and API-targeting requests fail. |
-| Browser traffic | Required assets, redirects, WebSocket traffic, and CORS behavior work only under the approved policy; unapproved egress/upgrade paths fail. |
+| Origin separation | The browser fixture proves the opaque frame cannot read parent DOM/location; focused proxy tests prove Console credentials are absent from Preview requests. |
+| Embedding allowlist | The Preview response has frame-ancestors 'self'; the Console has frame-src 'self'. |
+| Sandbox/permissions | The fixture asserts the literal allow-scripts-only iframe and proves parent access, top navigation, and popups are blocked. Forms, downloads, dialogs, and delegated permissions are omitted from the literal policy. |
+| Navigation/messaging | The Console performs no iframe-location synchronization and defines no postMessage protocol. Safe relative upstream redirects stay inside the selected route; external and traversal redirects are denied. |
+| Proxy/capability scope | Focused integration tests cover selected-route credential stripping, policy response headers, redirect containment, and rejection of opaque-origin Console API requests. |
+| Browser traffic | Script execution and the selected Preview route remain usable. WebSocket upgrade handling remains route-scoped; no CORS or external egress capability is added. |
 | User-visible states | Mantine loading, blocked, timeout, error, success, narrow, keyboard-focus, and reduced-motion states pass at required viewports. |
 | Security regression | The test fixture attempts parent access, top-level navigation, popup/download/permission escalation, credentialed console API access, and capability replay. All must fail unless the signed policy expressly permits the action. |
 
@@ -69,28 +80,51 @@ triads, and the phase’s route, accessibility, visual, security, and build
 results. A fixture that merely adds `sandbox` to the current same-origin iframe
 is insufficient evidence.
 
-## Approval record to complete
+## Approved decision record
 
 ```text
 Decision: D02 — Preview origin/sandbox isolation policy
-Reviewer: <name and security role>
-Approved at: <ISO-8601 timestamp>
-Preview origin/site and backend owner: <value>
-Capability/auth design and expiry: <value>
-iframe sandbox attribute: <literal value>
-iframe Permissions Policy allow attribute: <literal value>
-Console CSP frame-src: <literal value>
-Preview CSP frame-ancestors: <literal value>
-Referrer policy: <literal value>
-Allowed network/browser capabilities: <value>
-Disallowed network/browser capabilities: <value>
-Navigation and postMessage contract: <value>
-Required positive/negative tests and evidence location: <value>
-Rollback owner and procedure: <value>
-Approval signature or authoritative record link: <value>
+Reviewer: Codex — delegated security reviewer
+Approved at: 2026-07-11T20:04:41+08:00
+Preview origin/site and backend owner: Per-document opaque browser origin,
+  enforced by sandbox-console's `/s/...` proxy CSP plus the Console iframe;
+  no new network origin is claimed.
+Capability/auth design and expiry: The existing Console perimeter authorizes
+  the selected `/s/<sandbox>/<scope>/<port>/...` route. It is not a bearer URL
+  or a durable Preview token. The proxy forwards no Cookie, Authorization,
+  Proxy-Authorization, Origin, Referer, or client-supplied X-Forwarded header;
+  expiration and renewal remain those of the existing Console perimeter.
+iframe sandbox attribute: allow-scripts
+iframe Permissions Policy allow attribute: ""
+Console CSP frame-src: frame-src 'self'
+Preview CSP frame-ancestors: frame-ancestors 'self'
+Preview response CSP sandbox: sandbox allow-scripts
+Referrer policy: no-referrer
+Allowed network/browser capabilities: HTTP(S) through the selected `/s/...`
+  route, relative redirects rewritten inside that route, WebSocket upgrades,
+  and scripts.
+Disallowed network/browser capabilities: Console credentials and storage,
+  parent DOM/location access, top-level navigation from an embed, popups,
+  modal dialogs, forms, downloads, pointer/orientation/fullscreen and other
+  delegated permissions, service workers, external redirects, and Console
+  cookie writes.
+Navigation and postMessage contract: No parent-frame synchronization and no
+  postMessage protocol. The Console never reads frame location or accepts
+  Preview messages. In-frame navigation is browser-local; root-relative
+  upstream redirects are rewritten into the selected Preview route.
+Failure behavior: Invalid routes, unavailable sandboxes, proxy failures, and
+  denied external redirects return ordinary non-Console error responses. The
+  Console treats iframe loading as opaque and exposes no response data to it.
+Required positive/negative tests and evidence location: Rust proxy tests prove
+  credential stripping, opaque-origin policy headers, and redirect containment;
+  Playwright proves the literal iframe boundary and blocked parent/popup/top
+  escape attempts. P08 evidence supersedes the prior P08A-only pack.
+Rollback owner and procedure: Codex. Disable the Preview entry/route if an
+  emergency rollback is needed; do not restore the previous unsandboxed
+  same-origin iframe or pass-through credential proxy.
+Approval signature or authoritative record link: Repository-owner instruction
+  in this Codex task: "please make your best decision to resolve blocker".
 ```
 
-Until that record is complete, P08-AC05, phase-wide P08-AC06, the Preview
-portion of P08-SS01, and P08-SS04 remain blocked. This request does not change
-the current Preview implementation or authorize a same-origin sandboxed
-iframe.
+This record authorizes P08B. It does not authorize a same-origin unsandboxed
+iframe or the forwarding of Console credentials to Preview.
