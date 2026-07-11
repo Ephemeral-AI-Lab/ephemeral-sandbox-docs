@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | P00–P08 complete; P09 is ready; P10–P12 remain ordered after P09 |
+| Status | P00–P09 complete; P10 is ready; P11–P12 remain ordered after P10 |
 | Plan owner | Codex (active implementation agent) |
 | Design reviewer | Unassigned |
 | Engineering reviewer | Unassigned |
@@ -180,8 +180,8 @@ this table in the same change that advances a phase.
 | P06 — Terminal | P05 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P06 implementation evidence](evidence/web-console-mantine/phase-06/9bc8d4107/) | [Approved — P06 Terminal SS01–SS03](evidence/web-console-mantine/phase-06/9bc8d4107/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P07 — Observability | P06 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P07 implementation evidence](evidence/web-console-mantine/phase-07/91e1b2688/) | [Approved — P07 Observability SS01–SS04](evidence/web-console-mantine/phase-07/91e1b2688/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P08 — Files and Preview | P07 | Complete | 5/5 | 6/6 | Codex / Codex delegated evidence and security self-review | [P08A Files evidence](evidence/web-console-mantine/phase-08/f1073cd29/); [P08B Preview evidence](evidence/web-console-mantine/phase-08/cfae89ede9/) | [Approved — P08 complete](evidence/web-console-mantine/phase-08/cfae89ede9/) | D02 resolved; P09 may start | 2026-07-11 |
-| P09 — Remove Radix | P08 | Ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | P08 complete; Radix removal is next | 2026-07-11 |
-| P10 — Remove Tailwind | P09 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P09 — Remove Radix | P08 | Complete | 5/5 | 4/4 | Codex / Codex evidence self-review | [Verified P09 cleanup evidence](evidence/web-console-mantine/phase-09/29c36d2cd/) | [Approved — P09 interaction and route triads](evidence/web-console-mantine/phase-09/29c36d2cd/) | Zero Radix runtime/dependency residue; P10 may start | 2026-07-11 |
+| P10 — Remove Tailwind | P09 | Ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | P09 complete; Tailwind removal is next | 2026-07-11 |
 | P11 — Dependency cleanup | P10 | Not ready | 0/5 | 0/4 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P12 — Release gate | P11 | Not ready | 0/5 | 0/7 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 
@@ -879,24 +879,43 @@ complete.
 
 **Acceptance criteria:**
 
-- [ ] **P09-AC01:** Recorded searches show zero wrapper use, direct import,
+- [x] **P09-AC01:** Recorded searches show zero wrapper use, direct import,
   provider, or Radix package.
-- [ ] **P09-AC02:** Approved files/dependencies are removed; lockfile, build,
+- [x] **P09-AC02:** Approved files/dependencies are removed; lockfile, build,
   and tests pass.
-- [ ] **P09-AC03:** Overlay/navigation/selection/notification behavior has no
+- [x] **P09-AC03:** Overlay/navigation/selection/notification behavior has no
   unexplained difference from P08.
-- [ ] **P09-AC04:** Search/dependency artifacts and screenshot pack are
+- [x] **P09-AC04:** Search/dependency artifacts and screenshot pack are
   Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P09-SS01:** Interaction fixture at 375 and 1440 with Modal, Drawer,
+- [x] **P09-SS01:** Interaction fixture at 375 and 1440 with Modal, Drawer,
   Popover, Tooltip, Menu, Tabs, selection, and notification.
-- [ ] **P09-SS02:** Representative route reference/actual/diff triads against
+- [x] **P09-SS02:** Representative route reference/actual/diff triads against
   P08 at 375 and 1440; no visual change is expected unless approved.
 
 **Rollback boundary:** removal is one reviewable cleanup change after zero
 runtime consumers; restore only if parity tests expose a missed consumer.
+
+**P09 completion record — P09 complete:** Console revision `29c36d2cd`
+removes the seven direct `@radix-ui/*` dependencies and their 36 transitive
+packages after the zero-runtime-consumer audit confirmed Mantine had already
+replaced every application surface. The obsolete empty `src/components/ui`
+wrapper location is absent. The dedicated P09 static gate rejects Radix
+manifest/lockfile/source residue and wrapper reintroduction; the two-viewport
+interaction fixture proves Tabs, native and searchable selection, Menu,
+Popover, Tooltip, notification, Modal, and Drawer behavior with focus
+restoration. The full 181-check Playwright suite passes the entire P00 route
+atlas at all four standard viewports; Fleet and Files reference/actual/diff
+triads at 375 and 1440 therefore show zero changed pixels from the P08-tested
+baseline. Under Node 24.14.0, `npm ci`, 18 unit files / 35 tests, the
+production build, 11 Axe checks, focused P03/P09 browser checks, and the full
+browser suite pass. The existing Vite bundle-size advisory remains
+non-blocking. Codex visually reviewed wide overlays/notifications and the
+narrow Drawer focus state; no external reviewer is claimed. The
+[P09 evidence pack](evidence/web-console-mantine/phase-09/29c36d2cd/) records
+the search/dependency report and fourteen zero-difference screenshot triads.
 
 ### P10 — Remove Tailwind component styling and tokens
 

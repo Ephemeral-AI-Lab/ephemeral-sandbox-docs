@@ -1,0 +1,100 @@
+{
+  "phase": "P09",
+  "status": "Approved — zero application Radix architecture",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "29c36d2cd",
+    "worktree": "clean at Console commit",
+    "immutable": true,
+    "scope": "Removal of unused direct Radix packages and their lockfile graph; zero-residue static gate; Mantine interaction parity; P08-tested route regression evidence."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"]
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm ci",
+      "result": "pass: 196 packages installed; audit reports 0 vulnerabilities"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test -- tests/p09/RadixRemoval.test.ts tests/p03/PrimitiveMigration.test.ts",
+      "result": "pass: 2 files / 4 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npx playwright test tests/browser/P09RadixRemovalFixture.spec.ts tests/browser/P03PrimitivesFixture.spec.ts",
+      "result": "pass: 11 checks; P09 covers the two required viewports without a snapshot update"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 18 files / 35 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; pre-existing bundle-size advisory only"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:a11y",
+      "result": "pass: 11 Axe checks"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:e2e",
+      "result": "pass: 181 complete Playwright checks, including all P00 route-atlas viewports"
+    },
+    {
+      "command": "source/manifest/lockfile/node_modules/wrapper zero-residue searches",
+      "result": "pass: no @radix-ui package, source import, provider token, installed package directory, or src/components/ui wrapper directory remains"
+    },
+    {
+      "command": "compare -metric AE reference/<file> actual/<file> diff/<file>",
+      "result": "pass: 0 changed pixels for all 14 screenshot pairs"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "coverage": {
+    "P09_AC01": "The committed P09 static gate rejects direct Radix manifest entries, package-lock paths, source imports, and the obsolete wrapper directory. The review command additionally finds no provider-token or installed-package residue.",
+    "P09_AC02": "Seven direct packages and 36 transitives are removed. Clean install, unit tests, production build, accessibility suite, and browser suite pass.",
+    "P09_AC03": "The P09 fixture covers overlay, navigation Tabs, both selection controls, notifications, tooltip, menu, modal, drawer, focus traps, Escape close, and trigger restoration. The complete browser suite retains the P00 atlas across all routes and standard widths.",
+    "P09_AC04": "The zero-residue command log, package cleanup, 14 image triads, hashes, test report, and self-review are recorded in this immutable pack.",
+    "P09_SS01": "Ten interaction captures at 375x812 and 1440x900 cover selection/Tabs, menu/notification, popover/tooltip, modal, and drawer.",
+    "P09_SS02": "Fleet and Files are representative high-density routes, each captured as a P08-tested baseline and same-commit P09 actual at 375x812 and 1440x900. All four diffs have zero changed pixels."
+  },
+  "triad": {
+    "reference": "Committed P09 fixture snapshots and P00 atlas snapshots last verified by P08's complete suite",
+    "actual": "Same-commit verified P09 renderings",
+    "diff": "ImageMagick compare output; all changed-pixel counts are zero",
+    "artifactCount": 42
+  },
+  "screenshots": [
+    { "base": "p00-atlas-files-1440x900-darwin.png", "sha256": "e9052920971bc0fb93bd3ba145571a455bb51b4fe325359d313150922d1107f5", "changedPixels": 0 },
+    { "base": "p00-atlas-files-375x812-darwin.png", "sha256": "9d13dbc5d99ce499a7ab75374c63804e18793142d035c403b368b414b8b3e750", "changedPixels": 0 },
+    { "base": "p00-atlas-fleet-1440x900-darwin.png", "sha256": "c525b706c206fea8fa1021c9040d7e8622c880958013f19323ca373e499e3840", "changedPixels": 0 },
+    { "base": "p00-atlas-fleet-375x812-darwin.png", "sha256": "ab549d3cf0b7ded76b6230705b0ee2d0c5fbf961545f63e49e339396ca106717", "changedPixels": 0 },
+    { "base": "p09-drawer-1440x900-darwin.png", "sha256": "197a794fd3b85200b176a7deb3596066e26952fe1c3e52f716f4b282dd4f82b0", "changedPixels": 0 },
+    { "base": "p09-drawer-375x812-darwin.png", "sha256": "365cb3c4fbb3ee8c181a8e1a48b95a751a4cf0d106915194037a215d777cfe7e", "changedPixels": 0 },
+    { "base": "p09-menu-1440x900-darwin.png", "sha256": "72668a4e2ef355bd091ed3d270db2cb3c5ca25e69b54d5305f3065fafa16ba50", "changedPixels": 0 },
+    { "base": "p09-menu-375x812-darwin.png", "sha256": "857b172497f116b75fad30d2d4d42f4f47eabab3aa1c0da67e783cef3dfb42e9", "changedPixels": 0 },
+    { "base": "p09-modal-1440x900-darwin.png", "sha256": "0a3d610975b886e718ee64aedf81bb5df16f398a5b26deca7e7689b95b39c7ff", "changedPixels": 0 },
+    { "base": "p09-modal-375x812-darwin.png", "sha256": "a41c71258b0cdc419666a23c32b80ab3522b6f9581f112899b456f3024ad2c73", "changedPixels": 0 },
+    { "base": "p09-overlays-1440x900-darwin.png", "sha256": "12b839291affaabd4c0b001efb01c04c15a63481735961b535e3cef0e9cebb30", "changedPixels": 0 },
+    { "base": "p09-overlays-375x812-darwin.png", "sha256": "c0b688f1d659c9a3098eeeabe5f590a8c870ca93e6ccbd3745072b3933d25688", "changedPixels": 0 },
+    { "base": "p09-selection-1440x900-darwin.png", "sha256": "27eea9c6510f4a244f85faff5efb58e6c5a57ec8bea0229bbb75ccefec10ae56", "changedPixels": 0 },
+    { "base": "p09-selection-375x812-darwin.png", "sha256": "626e4fefd0ea3f65a68266ed83b57f5b9c6a360821e3a3a312fdd7900f059758", "changedPixels": 0 }
+  ],
+  "review": {
+    "reviewedAt": "2026-07-11T20:27:52+08:00",
+    "design": "Codex visually inspected the wide overlay/notification state and narrow drawer focus state; external design reviewer remains unassigned.",
+    "engineering": "Codex approved the clean install, static audit, unit, build, accessibility, focused browser, full-suite, and exact-diff evidence.",
+    "accessibility": "Codex approved the focused interaction assertions and existing P03 Axe coverage; external accessibility reviewer remains unassigned.",
+    "decision": "P09 is approved and complete. P10 Tailwind removal is ready."
+  }
+}
