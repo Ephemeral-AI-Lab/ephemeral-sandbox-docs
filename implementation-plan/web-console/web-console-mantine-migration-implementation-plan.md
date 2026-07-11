@@ -176,7 +176,7 @@ this table in the same change that advances a phase.
 | P02 — Provider and globals | P01 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P02 implementation evidence](evidence/web-console-mantine/phase-02/b042d34ab/) | [Approved — P02 foundation fixture SS01–SS03](evidence/web-console-mantine/phase-02/b042d34ab/) | Radix/Tailwind remain temporary under the removal-only P02 allowlist | 2026-07-11 |
 | P03 — Primitives | P02 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P03 implementation evidence](evidence/web-console-mantine/phase-03/aac65f046/) | [Approved — P03 primitive SS01–SS03](evidence/web-console-mantine/phase-03/aac65f046/) | Package cleanup remains P09; Tailwind removal remains P10 | 2026-07-11 |
 | P04 — Shell and navigation | P03 | Complete | 5/5 | 5/5 | Codex / Codex evidence self-review | [Verified P04 implementation evidence](evidence/web-console-mantine/phase-04/8139d292a/) | [Approved — P04 Shell/navigation SS01–SS03](evidence/web-console-mantine/phase-04/8139d292a/) | P08B Preview policy remains P08B-only | 2026-07-11 |
-| P05 — Fleet and Overview | P04 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
+| P05 — Fleet and Overview | P04 | Complete | 5/5 | 6/6 | Codex / Codex evidence self-review | [Verified P05 implementation evidence](evidence/web-console-mantine/phase-05/0173407bc/) | [Approved — P05 Fleet/Overview SS01–SS04](evidence/web-console-mantine/phase-05/0173407bc/) | P08B Preview policy remains P08B-only | 2026-07-11 |
 | P06 — Terminal | P05 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P07 — Observability | P06 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | — | 2026-07-11 |
 | P08 — Files and Preview | P07 | Not ready | 0/5 | 0/6 | Unassigned / Unassigned | Not started | Not started | Preview isolation approval for 8B | 2026-07-11 |
@@ -594,34 +594,51 @@ non-stretching Flexbox card model.
 
 **Acceptance criteria:**
 
-- [ ] **P05-AC01:** All named surfaces use Mantine and show only supported API
+- [x] **P05-AC01:** All named surfaces use Mantine and show only supported API
   fields; Layers/Squash are absent from Fleet.
-- [ ] **P05-AC02:** Fleet uses wrapping Flexbox; below 768px cards are full
+- [x] **P05-AC02:** Fleet uses wrapping Flexbox; below 768px cards are full
   width, at 768px and above width is at most 28rem, height is always at most
   22rem, partial rows are start-aligned, and cards do not grow.
-- [ ] **P05-AC03:** Summary/cards share one authoritative generation; polling
+- [x] **P05-AC03:** Summary/cards share one authoritative generation; polling
   does not reorder a focused card or remove/blur an active control.
-- [ ] **P05-AC04:** Every defined query/data state passes without layout shift,
+- [x] **P05-AC04:** Every defined query/data state passes without layout shift,
   unsupported metadata, or clipped essential actions.
-- [ ] **P05-AC05:** WorkspacePicker search, keyboard model, virtualization,
+- [x] **P05-AC05:** WorkspacePicker search, keyboard model, virtualization,
   explicit first-500-directory truncation label, draft preservation, and focus
   restoration pass.
-- [ ] **P05-AC06:** Geometry, polling, accessibility, performance, and
+- [x] **P05-AC06:** Geometry, polling, accessibility, performance, and
   screenshot evidence are Approved.
 
 **Required screenshot evidence:**
 
-- [ ] **P05-SS01:** Fleet and Overview at all four viewports with one-card,
+- [x] **P05-SS01:** Fleet and Overview at all four viewports with one-card,
   full-row, and partial-row fixtures.
-- [ ] **P05-SS02:** Fleet at 1440 and 1920 visibly start-aligned/non-stretched;
+- [x] **P05-SS02:** Fleet at 1440 and 1920 visibly start-aligned/non-stretched;
   manifest measurements prove every visible card is within 28rem by 22rem.
-- [ ] **P05-SS03:** Full-width cards below 768, creation, and WorkspacePicker
+- [x] **P05-SS03:** Full-width cards below 768, creation, and WorkspacePicker
   open with keyboard focus.
-- [ ] **P05-SS04:** Loading, fresh, stale, error, empty, mixed, truncated, and
+- [x] **P05-SS04:** Loading, fresh, stale, error, empty, mixed, truncated, and
   polling-update states at required narrow/wide widths.
 
 **Rollback boundary:** Fleet/Overview route group can revert while retaining the
 shared provider, theme, primitives, and Shell.
+
+**Implementation and review record (2026-07-11):** committed console revision
+[`0173407bc`](evidence/web-console-mantine/phase-05/0173407bc/) migrates the
+Fleet, creation, virtual WorkspacePicker, sandbox header, and Overview surfaces
+to Mantine. Fleet now uses bounded start-aligned Flex rows and one authoritative
+slow/fast list generation; it retains the last confirmed list on refresh error.
+The Fleet-specific Layers/Squash controls are removed while the sandbox-header
+Squash control remains in its separate detail scope. The
+[P05 evidence pack](evidence/web-console-mantine/phase-05/0173407bc/) records
+the Node 24.14.0 unit/build/browser passes (17 files/34 tests and 125 browser
+checks), 16 zero-difference screenshot triads across Fleet, creation,
+WorkspacePicker, and Overview, the 10,000-folder virtual-search bound, and
+geometry/accessibility checks. Systematic debugging identified and corrected
+the nested Escape focus handoff and transient Axe audit timing before approval.
+Codex self-reviewed the committed P05 scope after visual inspection. External
+human design, engineering, and accessibility reviewers remain unassigned; P06
+may consume P05. P08B Preview isolation remains a separate security gate.
 
 ### P06 — Terminal workspace
 

@@ -1,0 +1,118 @@
+{
+  "phase": "P05",
+  "status": "Approved — Fleet and Overview migration only",
+  "capturedOn": "2026-07-11",
+  "source": {
+    "consoleHead": "0173407bc",
+    "worktree": "clean",
+    "immutable": true,
+    "scope": "Mantine Fleet, creation, virtual WorkspacePicker, sandbox header, Overview, and P05 browser evidence. Terminal/Observability migration, package removal, Tailwind removal, and P08B Preview isolation remain later work."
+  },
+  "environment": {
+    "node": "v24.14.0",
+    "playwright": "1.61.1",
+    "browser": "Playwright Chromium 149.0.7827.55 on darwin",
+    "operatingSystem": "macOS 26.4.1 (25E253)",
+    "locale": "en-US",
+    "timezone": "UTC",
+    "deviceScaleFactor": 1,
+    "standardViewports": ["375x812", "768x1024", "1024x768", "1440x900"],
+    "wideViewport": "1920x1080"
+  },
+  "automatedEvidence": [
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test",
+      "result": "pass: 17 files, 34 tests"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run build",
+      "result": "pass: TypeScript project build and Vite production bundle; existing bundle-size advisory only"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npx playwright test tests/browser/P05FleetFixture.spec.ts",
+      "result": "pass: 15 dedicated P05 browser checks; visual baselines verified without update"
+    },
+    {
+      "command": "PATH=.../node/bin:$PATH npm run test:e2e",
+      "result": "pass: 125 browser tests"
+    },
+    {
+      "command": "compare -metric AE reference/<file> actual/<file> diff/<file>",
+      "result": "pass: 0 (0) for every one of 16 screenshot pairs"
+    }
+  ],
+  "coverage": {
+    "P05_AC01": "FleetBoard, FleetSummaryBar, SandboxCard, CreateSandboxModal, WorkspacePicker, SandboxHeader, and OverviewTab use Mantine components. The P05 fixture asserts no Fleet Layers or Squash content.",
+    "P05_AC02": "The four geometry checks inspect all seven cards across 375x812, 768x1024, 1440x900, and 1920x1080: height <= 308px, width <= collection width below 768px, width <= 392px at and above 768px, flexGrow == 0, no body overflow, and partial rows start at the collection x-position.",
+    "P05_AC03": "FleetBoard source tests cover active-workspace fast polling and stable ordering; the stale fixture retains the last confirmed list during refresh failure.",
+    "P05_AC04": "Direct visual captures cover mixed/fresh, loading, stale, empty, initial-error, and truncated states; fixture behavior covers one-card and large-list states without unsupported metadata.",
+    "P05_AC05": "The WorkspacePicker fixture uses 10,000 folders, renders fewer than 64 virtual options, finds folder-9999 in under one second, labels first-500 truncation, preserves the create draft, and restores trigger focus after Escape.",
+    "P05_AC06": "P05 Axe audits pass for Fleet and creation surfaces; focused visual captures, geometry assertions, virtual-search bound, 15 dedicated browser checks, full e2e pass, and zero-diff triads are recorded."
+  },
+  "geometry": {
+    "fixture": "tests/browser/P05FleetFixture.spec.ts — P05 Fleet cards use bounded start-aligned flex rows",
+    "cardCount": 7,
+    "viewports": ["375x812", "768x1024", "1440x900", "1920x1080"],
+    "collection": "data-fleet-card-collection",
+    "heightMaximumPx": 308,
+    "desktopWidthMaximumPx": 392,
+    "mobileWidthRule": "Each card is within 2px of the collection width below 768px.",
+    "desktopWidthRule": "Each card is at most 392px at and above 768px.",
+    "flexGrow": "0 for every card",
+    "partialRow": "The first card in the final row is within 2px of the first collection card x-position.",
+    "bodyHorizontalOverflow": false
+  },
+  "triad": {
+    "reference": "Approved committed Playwright snapshot",
+    "actual": "Same-commit capture",
+    "diff": "ImageMagick compare output; all changed-pixel counts are zero",
+    "artifactCount": 48
+  },
+  "requirements": {
+    "P05_SS01": [
+      "p05-fleet-mixed-375x812-darwin.png",
+      "p05-fleet-mixed-768x1024-darwin.png",
+      "p05-fleet-mixed-1024x768-darwin.png",
+      "p05-fleet-mixed-1440x900-darwin.png",
+      "p00-atlas-overview-375x812-darwin.png",
+      "p00-atlas-overview-768x1024-darwin.png",
+      "p00-atlas-overview-1024x768-darwin.png",
+      "p00-atlas-overview-1440x900-darwin.png"
+    ],
+    "P05_SS02": ["p05-fleet-mixed-1440x900-darwin.png", "p05-fleet-mixed-1920x1080-darwin.png"],
+    "P05_SS03": ["p05-fleet-mixed-375x812-darwin.png", "p05-create-375x812-darwin.png", "p05-workspace-picker-375x812-darwin.png"],
+    "P05_SS04": [
+      "p05-fleet-loading-375x812-darwin.png",
+      "p05-fleet-mixed-375x812-darwin.png",
+      "p05-fleet-stale-1440x900-darwin.png",
+      "p05-fleet-empty-375x812-darwin.png",
+      "p05-fleet-error-375x812-darwin.png",
+      "p05-workspace-picker-truncated-375x812-darwin.png"
+    ]
+  },
+  "screenshots": [
+    { "base": "p00-atlas-overview-1024x768-darwin.png", "sha256": "5912ba6fbe6611e44d59c77e53cbbdac4c9c31ab0b92d957a453ff89b3df7fc2", "changedPixels": 0 },
+    { "base": "p00-atlas-overview-1440x900-darwin.png", "sha256": "a3d34d4be9e1d3e3182df28ed46bc45195f3694b110a911eb22dd38384870368", "changedPixels": 0 },
+    { "base": "p00-atlas-overview-375x812-darwin.png", "sha256": "d2bdc50af7866c286de8333585b9cb0fc97eae7f29116728488b06679114b9f8", "changedPixels": 0 },
+    { "base": "p00-atlas-overview-768x1024-darwin.png", "sha256": "6ccdd598444cdc813ad1e844075b8e90bbece9b1001629bf58724a6cd9cc24c6", "changedPixels": 0 },
+    { "base": "p05-create-375x812-darwin.png", "sha256": "696d808c47c653a065cdb541565f8667dc99b9a3f1d685aecf860b6f585b73d6", "changedPixels": 0 },
+    { "base": "p05-fleet-empty-375x812-darwin.png", "sha256": "0d2c77dea9502033fd58e3bc9273c441ce67efbeece27701bba6744a833e74b1", "changedPixels": 0 },
+    { "base": "p05-fleet-error-375x812-darwin.png", "sha256": "0cfe8a9836500f9ad6e6c0b8cf7cff40e68363b35a65734af895685f7b2d06f7", "changedPixels": 0 },
+    { "base": "p05-fleet-loading-375x812-darwin.png", "sha256": "7e03106d45397fe25d4344f8597da603b8fd48e2fb6f9a8d0e14159e92e38aa5", "changedPixels": 0 },
+    { "base": "p05-fleet-mixed-1024x768-darwin.png", "sha256": "105a0ae0dc49cb1ac88ea30b545cce3d16a2dea1955bae9c9b56ffcd4f5a2e5d", "changedPixels": 0 },
+    { "base": "p05-fleet-mixed-1440x900-darwin.png", "sha256": "154532d863b55afc700dc714866c549deebd133a4e13fc9a60f8640745d0939f", "changedPixels": 0 },
+    { "base": "p05-fleet-mixed-1920x1080-darwin.png", "sha256": "5dd3f1b51bdccc4e37deb9de3719de7335a9a8ca23d169b42f7e7f8d77a37f5d", "changedPixels": 0 },
+    { "base": "p05-fleet-mixed-375x812-darwin.png", "sha256": "400a326e2daea3992eb003e58ae1bca3bfd2a6afbc247255c87ec5f00574269c", "changedPixels": 0 },
+    { "base": "p05-fleet-mixed-768x1024-darwin.png", "sha256": "41e35575e08cb1750ec840d0c8e76691de0d87a8c664e3b607808d724f3dbd61", "changedPixels": 0 },
+    { "base": "p05-fleet-stale-1440x900-darwin.png", "sha256": "a56a0fc5355dcdab5aca2e5c79ff53ad245d0cfdbcae502c781c5f331dbd7094", "changedPixels": 0 },
+    { "base": "p05-workspace-picker-375x812-darwin.png", "sha256": "c7fdb153649cd1359a8c53fceb9adae5ed630436f4b249ea3dc3d69aeb20d666", "changedPixels": 0 },
+    { "base": "p05-workspace-picker-truncated-375x812-darwin.png", "sha256": "bce9f5b618ff971088d4040fb7449163a3320d632a9b31644c6d1606ebbed4fd", "changedPixels": 0 }
+  ],
+  "review": {
+    "reviewedAtUtc": "2026-07-11T10:28:17Z",
+    "design": "Approved by Codex for P05 Fleet/Overview scope after visual inspection; external human reviewer remains unassigned.",
+    "engineering": "Approved by Codex after the recorded Mantine migration, stable generation, test, build, browser, geometry, virtual-search, and zero-diff evidence.",
+    "accessibility": "Approved by Codex for P05 scope: labelled controls, nested Escape focus restoration, visible keyboard focus captures, and no Axe violations passed.",
+    "decision": "P05 Fleet and Overview evidence is approved. It is not final production-screen visual approval and does not advance Preview isolation."
+  }
+}
