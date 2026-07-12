@@ -28,7 +28,9 @@ daemon credentials or an unrestricted RPC tunnel.
 
 ## 2. Implementation shape
 
-Add one Rust crate and one web application below the existing benchmark root:
+Add one Rust backend crate and one web application below the existing benchmark
+root. The backend's Cargo package and binary remain `sandbox-benchmark`, but
+its workspace member path is `benchmark/backend`:
 
 ```text
 ephemeral-sandbox/
@@ -50,14 +52,23 @@ ephemeral-sandbox/
       release-comparison.yml
     web/
       package.json
+      vite.config.ts
+      playwright.config.ts
       src/
         api/
         components/
         pages/
         plots/
+        lib/
         routes.tsx
-  crates/
-    sandbox-benchmark/
+        theme.ts
+      tests/
+        fixtures/
+        unit/
+        browser/
+          fixture/
+          real-backend/
+    backend/
       Cargo.toml
       src/
         main.rs
@@ -85,7 +96,35 @@ ephemeral-sandbox/
           files.rs
           workspace.rs
           layerstack.rs
+      tests/
+        fixtures/
+          plans/
+          artifacts/
+          definitions/
+        contract/
+        integration/
+        live_docker/
+        security/
 ```
+
+`benchmark/defaults` and `benchmark/presets` are versioned plan data only;
+they never name executors, product routes, credentials, or safety policy.
+`benchmark/web/src/api` owns generated or contract-checked DTO bindings and
+query/event hooks; `components`, `pages`, and `plots` only render that data;
+`lib` contains formatting and UI-only helpers, not statistics or compatibility
+logic. `backend/src/executors` contains the four closed family modules, while
+the runner's common lifecycle, scheduling, artifacts, resources, checks,
+statistics, and reports stay in their named sibling modules rather than being
+duplicated under an executor.
+
+`backend/tests/fixtures` stores immutable test input only. `contract`,
+`integration`, and `security` may use fake adapters to prove isolated behavior;
+`live_docker` must use the real isolated gateway and Docker backend. Browser
+`tests/browser/fixture` is limited to deterministic fixture and visual/a11y
+coverage. Browser `tests/browser/real-backend` starts the release-built assets
+and real runner and performs no API interception, fake-adapter selection, or
+DOM-state injection. It is the implementation location for the final real UI /
+real backend gate.
 
 The binary name is `sandbox-benchmark`. It uses workspace versions of Tokio,
 Hyper, Serde, tracing, and existing sandbox operation client crates. The web app

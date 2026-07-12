@@ -1113,6 +1113,48 @@ to the versioned backend report model; it never substitutes current
 Tailwind, shadcn/ui, Material UI, Ant Design, a second chart/form library, or a
 new state-management framework.
 
+### 12.1 Web source and test ownership
+
+The browser application and its trusted backend are co-located below the
+benchmark root. The backend is the Cargo package/binary `sandbox-benchmark` at
+`benchmark/backend/`, not a crate under the shared `crates/` directory.
+
+```text
+benchmark/
+  web/
+    src/
+      api/                    # DTO bindings, HTTP client, query and SSE hooks
+      components/             # Reusable presentation and interaction regions
+      pages/                  # Explicit overview/family/run/report/compare routes
+      plots/                  # Accessible renderers of backend-authored series
+      lib/                    # Formatting, units, and UI-only helpers
+      routes.tsx
+      theme.ts
+    tests/
+      fixtures/               # Fixed typed API/definition/report inputs
+      unit/                   # Route, component, and UI contract tests
+      browser/
+        fixture/              # Deterministic screenshots and accessibility tests
+        real-backend/         # No-mock production browser-to-runner tests
+  backend/
+    src/
+    tests/{fixtures,contract,integration,live_docker,security}/
+```
+
+Only `src/api` communicates with `/api/v1`; pages and components consume typed
+hooks/models rather than constructing URLs or decoding raw JSON. `src/lib` may
+format server-authored values but may not implement statistics, correlation,
+plan expansion, or compatibility. The explicit route/family layout lives in
+`pages` and local controls/components; catalog definitions cannot choose a page
+or component dynamically.
+
+Fixture tests are allowed to use the fixed test states defined in section 15.
+The `real-backend` browser suite must build the production web bundle, navigate
+to the actual loopback URL served by `sandbox-benchmark`, and use normal browser
+interactions against the real HTTP/SSE API, isolated gateway, and Docker-backed
+product. It must reject request interception, mock service workers, fake
+operation adapters, DOM-state injection, and required-request failures.
+
 ## 13. State, errors, and recovery
 
 Every remote surface has explicit loading, empty, stale, disconnected, and
@@ -1263,7 +1305,7 @@ per-cell protocol resolution, three work counts, canonical trial kind/phases,
 LayerStack input/result boundary, cleanup categories, allowlisted shell-command
 cases, and treatment-versus-invariant comparison. Likely files:
 
-- `crates/sandbox-benchmark/src/model.rs`, `plan.rs`, `api.rs`, `compare.rs`,
+- `benchmark/backend/src/model.rs`, `plan.rs`, `api.rs`, `compare.rs`,
   `cleanup.rs`, and contract fixtures;
 - `benchmark/defaults/standard-local.yml`,
   `benchmark/presets/quick-smoke.yml`, and

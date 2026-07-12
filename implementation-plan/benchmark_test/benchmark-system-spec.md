@@ -948,6 +948,36 @@ and destroy methods, rejects every other operation before credential or network
 access, and operates only on runner-owned sandbox/session identities. Registering
 an operation never broadens any of these access paths.
 
+### 16.1 Source and test layout contract
+
+The benchmark has one canonical repository layout. Both the browser and trusted
+runner live under `ephemeral-sandbox/benchmark/`: the browser application at
+`benchmark/web/` and the Rust backend crate at `benchmark/backend/`. The latter
+remains the Cargo package and binary named `sandbox-benchmark`; its workspace
+member path is `benchmark/backend`, not `crates/sandbox-benchmark`.
+
+```text
+ephemeral-sandbox/
+  benchmark/
+    defaults/                 # Versioned Default configuration data
+    presets/                  # Strict, data-only versioned preset plans
+    web/
+      src/{api,components,pages,plots,lib}/
+      tests/{fixtures,unit,browser}/
+    backend/
+      src/executors/          # Closed command/files/workspace/layerstack modules
+      tests/{fixtures,contract,integration,live_docker,security}/
+```
+
+`tests/fixtures` contains deterministic plans, definition snapshots, report
+DTOs, old artifact versions, and bounded fixture manifests. Unit and browser
+fixture tests may use fake adapters or typed API fixtures. `backend/tests/live_docker`
+and the browser `real-backend` suite use the compiled runner, its actual
+loopback HTTP/SSE API, isolated gateway, and Docker backend; they may not
+satisfy acceptance with request interception, fake operation adapters, or DOM
+state injection. Runtime data remains outside the checkout under the test
+workspace root specified in section 10.
+
 The v1 release is complete only when:
 
 1. All eight routes work at 375, 768, 1,024, and 1,440 px.
