@@ -166,6 +166,10 @@
       line-height: 1.65;
     }
 
+    .hero-mode-select { max-width: 520px; margin-bottom: 22px; }
+    .hero-mode-label { display: block; margin-bottom: 8px; color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .hero-mode-select .mode-tabs { margin-bottom: 0; }
+
     .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; }
 
     .button {
@@ -695,8 +699,15 @@
         <p class="eyebrow">RL agent training infrastructure</p>
         <h1>One base layout.<br><span>Two rollout modes.</span></h1>
         <p class="hero-copy">Choose stronger sandbox boundaries or denser workspace sessions for each RL batch. Both topologies fork from the same immutable base payload, sample trajectories in parallel, and preserve private copy-on-write state.</p>
+        <div class="hero-mode-select">
+          <span class="hero-mode-label">Choose rollout topology</span>
+          <div class="mode-tabs" role="tablist" aria-label="Hero rollout isolation mode">
+            <button class="mode-tab" type="button" role="tab" aria-selected="true" data-mode="sandbox">Mode A · N sandboxes</button>
+            <button class="mode-tab" type="button" role="tab" aria-selected="false" data-mode="session">Mode B · N sessions</button>
+          </div>
+        </div>
         <div class="actions">
-          <button class="button primary" id="runBatch" type="button">Run two-mode demo</button>
+          <button class="button primary" id="runBatch" type="button">Run selected mode</button>
           <a class="button" href="#model" style="display:inline-flex;align-items:center;text-decoration:none">Inspect space model</a>
         </div>
         <div class="claims" aria-label="System properties">
@@ -714,11 +725,11 @@
         <div class="visual-body">
           <div class="stage">
             <div><div class="stage-label">Policy snapshot</div><div class="stage-value">πθ / checkpoint-184</div></div>
-            <span class="stage-code">READY</span>
+            <span class="stage-code" id="visualModeCode">MODE A</span>
           </div>
           <div class="flow-line" aria-hidden="true"></div>
           <div class="rollout-box">
-            <div class="rollout-head"><strong>Parallel environments</strong><span class="rollout-count" id="visualCount">64 ROLLOUTS</span></div>
+            <div class="rollout-head"><strong id="visualModeName">N parallel sandboxes</strong><span class="rollout-count" id="visualCount">64 ROLLOUTS</span></div>
             <div class="rollout-grid" id="rolloutGrid" aria-label="Representative rollout statuses">
               <i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i>
               <i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i><i class="rollout-node"></i>
@@ -979,6 +990,8 @@
       $("#savedPercent").textContent = `${Math.max(0, (1 - data.total / data.naive) * 100).toFixed(1)}%`;
       $("#visualCount").textContent = `${data.n} ROLLOUTS`;
       $("#visualDone").textContent = `0 / ${data.n}`;
+      $("#visualModeName").textContent = state.mode === "sandbox" ? "N parallel sandboxes" : "N workspace sessions";
+      $("#visualModeCode").textContent = state.mode === "sandbox" ? "MODE A" : "MODE B";
       $("#privateStrip").style.width = `${Math.min(50, Math.max(2, ((data.total - data.base) / data.total) * 56))}%`;
       $("#formula").innerHTML = state.mode === "sandbox"
         ? `<strong>S(N)</strong> = Bshared × 1 + Σ(deltaᵢ) + N × sandbox_metadata`
@@ -991,7 +1004,7 @@
     document.querySelectorAll(".mode-tab").forEach(tab => {
       tab.addEventListener("click", () => {
         state.mode = tab.dataset.mode;
-        document.querySelectorAll(".mode-tab").forEach(candidate => candidate.setAttribute("aria-selected", candidate === tab ? "true" : "false"));
+        document.querySelectorAll(".mode-tab").forEach(candidate => candidate.setAttribute("aria-selected", candidate.dataset.mode === state.mode ? "true" : "false"));
         render();
       });
     });
@@ -1021,7 +1034,7 @@
         const mean = buildRewardBars(rewards);
         $("#visualDone").textContent = `${data.n} / ${data.n}`;
         $("#visualReward").textContent = mean.toFixed(2);
-        $("#runBatch").textContent = "Run again";
+        $("#runBatch").textContent = "Run selected mode again";
         $("#runBatch").disabled = false;
       };
       if (reduced) {
