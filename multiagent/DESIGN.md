@@ -5,15 +5,25 @@
 | Status | Proposed |
 | Working title | **FlashCart: ten agents, one workspace** |
 | Visual prototype | [Open the interactive light-theme control room](./index.html) |
+| Implementation spec | [Build plan, contracts, tests, and acceptance gates](./IMPLEMENTATION_SPEC.md) |
 | Primary goal | Prove concurrent workspace isolation, merge-back, conflict handling, auditability, network isolation, and observability with real sandbox operations |
 | Presentation rule | Agent personas and dialogue may be staged; CLI results, file changes, conflicts, blame, previews, and telemetry must be real |
 
 ## 1. Executive recommendation
 
-Build a small dependency-free e-commerce storefront from an almost-empty
-workspace using ten deterministic agent scripts. Run every persistent edit in a
-fresh implicit `exec_command` workspace so the runtime performs the real
-capture, three-way merge, publish, blame attribution, and destroy lifecycle.
+Build a polished, test-backed, dependency-free e-commerce storefront from an
+almost-empty workspace using ten deterministic agent lanes. Author each lane as
+a granular transcript of real `sandbox-*cli` calls rather than one monolithic
+shell payload. The run must contain at least 300 agent-attributed CLI calls; the
+authored target is **389**, excluding observability polling and trusted explicit
+session lifecycle control.
+
+Hold one automatic `publish_then_destroy` workspace open for each active agent
+with a gated anchor command. While that command is running, the lane performs
+its reads, small writes/edits, builds, targeted tests, diagnostics, and fixes as
+separate CLI calls against the returned workspace session ID. Releasing the
+anchor after the lane is green triggers the real capture, three-way merge,
+publish, blame attribution, and destroy lifecycle.
 
 The demo should have one polished Control Room page, but it should keep three
 data classes visibly separate:
@@ -123,11 +133,47 @@ distinct blame owners.
 | A09 | Accessibility | `src/features/accessibility.js`, accessibility CSS | `a09` |
 | A10 | QA and diagnostics | `tests/storefront.test.mjs`, `src/features/status.js` | `a10` |
 
-The final storefront should visibly include search/filtering, product cards,
-wishlist, cart totals, a promotion/free-shipping rule, checkout validation,
-keyboard operation, reduced-motion handling, and a small build-status footer.
-That is enough visual change for the preview without turning the demo into a
-front-end project.
+The final storefront should feel like a real product, not a feature collage. It
+includes an application shell and router, responsive design system, typed
+product fixtures and inventory rules, catalog/PDP/variant views, search and URL
+facets, wishlist and recommendations, integer-money cart pricing, promotions,
+tax and shipping, validated multi-step checkout, order receipt, keyboard and
+screen-reader behavior, reduced motion, performance budgets, and full
+integration regression coverage. The toolchain remains preloaded and offline;
+“from scratch” refers to the application source, not downloading dependencies
+during the presentation.
+
+### 3.1 Agent CLI-call budget
+
+Every number below is a real CLI invocation with a parsed response. Timeline
+animations, staged dialogue, barriers, sleeps, and telemetry queries do not
+count.
+
+| Agent | Workspace control | Inspect | Patch | Build/lint | Test/debug | Conflict/network/audit | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| A01 Foundation | 2 | 7 | 11 | 5 | 8 | 1 | **34** |
+| A02 Design system | 2 | 7 | 12 | 5 | 7 | 1 | **34** |
+| A03 Product data | 2 | 8 | 11 | 5 | 8 | 1 | **35** |
+| A04 Catalog and PDP | 2 | 8 | 12 | 5 | 7 | 8 | **42** |
+| A05 Search and facets | 2 | 8 | 11 | 5 | 8 | 3 | **37** |
+| A06 Cart and pricing | 2 | 8 | 12 | 5 | 8 | 6 | **41** |
+| A07 Wishlist and recommendations | 2 | 7 | 10 | 4 | 8 | 1 | **32** |
+| A08 Checkout | 2 | 9 | 13 | 5 | 9 | 7 | **45** |
+| A09 Accessibility and performance | 2 | 8 | 11 | 4 | 10 | 11 | **46** |
+| A10 Integration QA | 2 | 9 | 8 | 6 | 14 | 4 | **43** |
+| **Total** | **20** | **79** | **111** | **49** | **87** | **43** | **389** |
+
+The two workspace-control calls per agent are the anchor `exec_command` and its
+final `write_command_stdin`. The last column includes only actual public CLI
+work such as port-server commands and probes, conflict attempts and retries,
+command-log reads, blame queries, and final audit checks. Trusted explicit
+session create/destroy calls used by the network scene are recorded separately.
+
+The 389-call plan is the authored target, not a ceiling. Enforce a hard minimum
+of 300 and a review band of 350–430 agent calls. A roughly 120-second run adds
+about 350–500 read-only cgroup, snapshot, events, trace, and layerstack samples,
+so the complete evidence stream should contain roughly 740–900 real runtime
+interactions.
 
 ## 4. Presentation story
 
@@ -147,17 +193,20 @@ Audience message: **one empty project, one shared sandbox**.
 
 ### Scene 1 — Ten agents fan out
 
-Start ten CLI commands with the existing stdin-gate pattern:
+Start ten anchor commands with the existing stdin-gate pattern:
 
 ```text
 sandbox-runtime-cli --sandbox-id <id> exec_command \
   --yield-time-ms 0 --timeout-ms 600000 \
-  "read go; <agent-script-payload>"
+  "printf 'READY\\n'; read publish"
 ```
 
 Each response supplies a real `command_session_id` and
 `workspace_session_id`. Do not release any command until all ten report
-`status: running`.
+`status: running`. The engine then runs each agent's ordered JSONL lane against
+that workspace ID. Every file read, file write/edit, search, build, unit test,
+failure diagnosis, patch, and rerun is a separate real CLI process. One lane is
+sequential; up to ten lanes execute concurrently.
 
 The Control Room should now show:
 
@@ -171,8 +220,8 @@ Audience message: **ten independent filesystem views exist at once**.
 
 ### Scene 2 — Merge and blame
 
-Release the ten commands with `write_command_stdin`, either together or with a
-small visual stagger. Every process runs local validation and exits zero. Every
+After every lane has passed its targeted checks, release the ten anchors with
+`write_command_stdin`, either together or with a small visual stagger. Every
 implicit session then captures, resolves, publishes, and destroys.
 
 Verify with real operations:
@@ -270,18 +319,21 @@ the existing session-control adapter:
 ephemeral-sandbox-test/demo/multi-agent/
 ├── README.md
 ├── run_demo.py
-├── scenario.json
+├── scenario.json                 # phases and cross-lane barriers
 ├── agents/
-│   ├── 01-foundation.sh
-│   ├── 02-theme.sh
-│   ├── 03-products.sh
-│   ├── 04-catalog.sh
-│   ├── 05-search.sh
-│   ├── 06-cart.sh
-│   ├── 07-wishlist.sh
-│   ├── 08-checkout.sh
-│   ├── 09-accessibility.sh
-│   └── 10-qa.sh
+│   ├── A01-foundation.plan.jsonl
+│   ├── A02-design-system.plan.jsonl
+│   ├── A03-products.plan.jsonl
+│   ├── A04-catalog.plan.jsonl
+│   ├── A05-search.plan.jsonl
+│   ├── A06-cart.plan.jsonl
+│   ├── A07-wishlist.plan.jsonl
+│   ├── A08-checkout.plan.jsonl
+│   ├── A09-accessibility.plan.jsonl
+│   └── A10-qa.plan.jsonl
+├── payloads/
+│   ├── A01/
+│   └── ... A10/                  # file bodies and edit specs
 └── runs/<run-id>/
     ├── run.json
     ├── events.ndjson
@@ -290,20 +342,26 @@ ephemeral-sandbox-test/demo/multi-agent/
     └── blame/
 ```
 
-Reuse scripts with a small stage argument instead of adding more personas. For
-example, `06-cart.sh build|pricing-winner` and
-`08-checkout.sh build|pricing-conflict|retry`; A04 and A09 also expose their
-preview-variant stage. There are still ten agent scripts and one scenario.
+Each JSONL record describes exactly one sandbox operation. Large HTML, CSS,
+JavaScript, expected output, and structured edit lists live in payload files so
+the plans stay reviewable and the runner never interpolates shell source.
 
-The scripts are deterministic sandbox payloads. The runner reads a payload and
-passes it as the final `exec_command` argument using a subprocess argument list,
-not shell interpolation. This keeps the scripts outside the sandbox workspace
-and preserves exact CLI capture.
+```json
+{"id":"A06.025","phase":"pricing","op":"file_write","args":{"path":"tests/cart-shipping.test.mjs","content_from":"payloads/A06/025.mjs"}}
+{"id":"A06.026","phase":"pricing","op":"exec_command","args":{"command":"node --test tests/cart-shipping.test.mjs"},"expect":{"exit_code":1,"classification":"expected_red"}}
+{"id":"A06.027","phase":"pricing","op":"file_edit","args":{"path":"src/features/cart.js","edits_from":"payloads/A06/027.json"}}
+{"id":"A06.028","phase":"pricing","op":"exec_command","args":{"command":"node --test tests/cart-shipping.test.mjs"},"expect":{"exit_code":0}}
+```
+
+The runner injects the lane's live workspace session ID and invokes the actual
+CLI for every row. The complexity belongs in these ten evidence-rich plans;
+the engine itself remains a small `asyncio` scheduler.
 
 ### 5.2 Schedule format
 
-Use JSON so the Python standard library is sufficient. A step has an earliest
-presentation time plus an optional evidence dependency:
+Use JSON/JSONL so the Python standard library is sufficient. Ordering inside a
+lane is implicit. A row may declare an earliest presentation time and explicit
+cross-lane evidence dependencies:
 
 ```json
 {
@@ -311,7 +369,7 @@ presentation time plus an optional evidence dependency:
   "at_ms": 24000,
   "after": ["a06-pricing-published"],
   "agent": "A08",
-  "action": "release_exec",
+  "op": "write_command_stdin",
   "expect": {
     "process_exit": 0,
     "publish_reject_class": "source_conflict"
@@ -323,6 +381,13 @@ Pure timestamp ordering is too fragile for merge and port demonstrations.
 `at_ms` should mean “not before,” while `after` and runtime assertions determine
 when a correctness-sensitive step may start. The engine uses a monotonic clock,
 `asyncio`, and subprocess argument arrays.
+
+Before execution, validate that there are exactly ten lanes and at least 300
+counted calls; every step ID is unique; dependency edges are acyclic; referenced
+payloads exist; expected-red tests have a later relevant mutation and green
+rerun; and no write or edit is a no-op. Repeated tests on an unchanged workspace
+revision are rejected unless explicitly classified as conflict retry or final
+regression coverage.
 
 ### 5.3 Runner responsibilities
 

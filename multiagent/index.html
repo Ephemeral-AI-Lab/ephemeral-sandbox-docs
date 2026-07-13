@@ -1035,7 +1035,7 @@
     </div>
     <div class="metric">
       <span class="metric-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-      <span class="metric-copy"><span class="metric-label">p95 execution</span><strong class="metric-value" id="metricP95">1.84 s</strong></span>
+      <span class="metric-copy"><span class="metric-label">Agent CLI calls</span><strong class="metric-value" id="metricCalls">327 / 389</strong></span>
     </div>
     <div class="metric">
       <span class="metric-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span>
@@ -1357,16 +1357,16 @@
 
   <script>
     const agents = [
-      { id: 'A01', role: 'Foundation', workspace: 'ws_a01_9f20', command: 'cmd_a01_build_01', color: '#3e6077', duration: '1.22s', files: '+3 files · 1 registry line' },
-      { id: 'A02', role: 'Theme', workspace: 'ws_a02_0c4a', command: 'cmd_a02_build_01', color: '#6857a8', duration: '1.09s', files: '+2 files · 1 registry line' },
-      { id: 'A03', role: 'Product data', workspace: 'ws_a03_5d41', command: 'cmd_a03_build_01', color: '#a35c00', duration: '0.88s', files: '+1 file · 1 registry line' },
-      { id: 'A04', role: 'Catalog grid', workspace: 'ws_a04_b760', command: 'cmd_a04_build_01', color: '#267a50', duration: '1.47s', files: '+2 files · 1 registry line' },
-      { id: 'A05', role: 'Search & filters', workspace: 'ws_a05_c826', command: 'cmd_a05_build_01', color: '#527890', duration: '1.35s', files: '+1 file · 1 registry line' },
-      { id: 'A06', role: 'Cart & pricing', workspace: 'ws_a06_13c8', command: 'cmd_a06_price_02', color: '#b45d87', duration: '1.62s', files: '+2 files · 1 registry line' },
-      { id: 'A07', role: 'Wishlist', workspace: 'ws_a07_e210', command: 'cmd_a07_build_01', color: '#80724d', duration: '0.94s', files: '+1 file · 1 registry line' },
-      { id: 'A08', role: 'Checkout', workspace: 'ws_a08_7b12', command: 'cmd_a08_build_02', color: '#b83535', duration: '1.84s', files: '+1 file · 1 registry line' },
-      { id: 'A09', role: 'Accessibility', workspace: 'ws_a09_62ad', command: 'cmd_a09_build_01', color: '#397c7a', duration: '1.52s', files: '+2 files · 1 registry line' },
-      { id: 'A10', role: 'QA & diagnostics', workspace: 'ws_a10_dd19', command: 'cmd_a10_build_01', color: '#75649c', duration: '1.71s', files: '+2 files · 1 registry line' }
+      { id: 'A01', role: 'Foundation', workspace: 'ws_a01_9f20', command: 'cmd_a01_build_01', color: '#3e6077', duration: '1.22s', calls: 34, files: '+3 files · 1 registry line' },
+      { id: 'A02', role: 'Design system', workspace: 'ws_a02_0c4a', command: 'cmd_a02_build_01', color: '#6857a8', duration: '1.09s', calls: 34, files: '+2 files · 1 registry line' },
+      { id: 'A03', role: 'Product data', workspace: 'ws_a03_5d41', command: 'cmd_a03_build_01', color: '#a35c00', duration: '0.88s', calls: 35, files: '+1 file · 1 registry line' },
+      { id: 'A04', role: 'Catalog & PDP', workspace: 'ws_a04_b760', command: 'cmd_a04_build_01', color: '#267a50', duration: '1.47s', calls: 42, files: '+2 files · 1 registry line' },
+      { id: 'A05', role: 'Search & facets', workspace: 'ws_a05_c826', command: 'cmd_a05_build_01', color: '#527890', duration: '1.35s', calls: 37, files: '+1 file · 1 registry line' },
+      { id: 'A06', role: 'Cart & pricing', workspace: 'ws_a06_13c8', command: 'cmd_a06_price_02', color: '#b45d87', duration: '1.62s', calls: 41, files: '+2 files · 1 registry line' },
+      { id: 'A07', role: 'Wishlist', workspace: 'ws_a07_e210', command: 'cmd_a07_build_01', color: '#80724d', duration: '0.94s', calls: 32, files: '+1 file · 1 registry line' },
+      { id: 'A08', role: 'Checkout', workspace: 'ws_a08_7b12', command: 'cmd_a08_build_02', color: '#b83535', duration: '1.84s', calls: 45, files: '+1 file · 1 registry line' },
+      { id: 'A09', role: 'A11y & performance', workspace: 'ws_a09_62ad', command: 'cmd_a09_build_01', color: '#397c7a', duration: '1.52s', calls: 46, files: '+2 files · 1 registry line' },
+      { id: 'A10', role: 'Integration QA', workspace: 'ws_a10_dd19', command: 'cmd_a10_build_01', color: '#75649c', duration: '1.71s', calls: 43, files: '+2 files · 1 registry line' }
     ];
 
     const scenes = [
@@ -1377,7 +1377,7 @@
         description: 'All ten commands are gated and visible as active workspace sessions before any publishes.',
         phase: 'fanout',
         focus: 'A01',
-        metrics: ['10 parallel', '10 active', '0 accepted', '0', '0.42 s', 'rev 2'],
+        metrics: ['10 parallel', '10 active', '0 accepted', '0', '44 / 389', 'rev 2'],
         messages: [
           ['RUNNER', 'All ten workspace sessions are active. Releasing the build wave.'],
           ['A01', 'Foundation is ready; my filesystem view is private until publish.']
@@ -1390,7 +1390,7 @@
         description: 'Every agent edits a separate registry line, creating ten distinct blame owners.',
         phase: 'merge',
         focus: 'A04',
-        metrics: ['10 parallel', '0 active', '10 accepted', '0', '1.71 s', 'rev 12'],
+        metrics: ['10 parallel', '0 active', '10 accepted', '0', '281 / 389', 'rev 12'],
         messages: [
           ['A04', 'Catalog published. The registry kept every sibling agent entry.'],
           ['RUNNER', 'Blame now maps ten lines to ten workspace-session owners.']
@@ -1403,7 +1403,7 @@
         description: 'A08 exits zero, but its overlapping multi-file changeset is rejected and discarded.',
         phase: 'conflict',
         focus: 'A08',
-        metrics: ['10 parallel', '0 active', '9 accepted', '1 atomic', '1.84 s', 'rev 12'],
+        metrics: ['10 parallel', '0 active', '9 accepted', '1 atomic', '327 / 389', 'rev 12'],
         messages: [
           ['A08', 'Pricing changed under me. Publication rejected; my unrelated file was discarded too.'],
           ['A06', 'Shared head keeps the accepted 6000 threshold. Retry from revision 12.']
@@ -1416,7 +1416,7 @@
         description: 'A04 and A09 both serve port 4173 in disposable isolated workspace sessions.',
         phase: 'network',
         focus: 'A09',
-        metrics: ['10 agents', '2 isolated', '10 accepted', '0', '1.52 s', 'rev 13'],
+        metrics: ['10 agents', '2 isolated', '10 accepted', '0', '361 / 389', 'rev 13'],
         messages: [
           ['A04', 'Dense catalog experiment is online at isolated=ws_a04 / 4173.'],
           ['A09', 'Accessibility variant uses the same port with no collision.']
@@ -1429,7 +1429,7 @@
         description: 'The final view joins CLI results, blame, traces, events, resources, and layer history.',
         phase: 'evidence',
         focus: 'A10',
-        metrics: ['10 agents', '0 active', '10 accepted', '1 retained', '1.84 s', 'rev 13'],
+        metrics: ['10 agents', '0 active', '10 accepted', '1 retained', '389 / 389', 'rev 13'],
         messages: [
           ['A10', 'Storefront smoke tests pass; every explicit session and lease is cleaned up.'],
           ['RUNNER', 'Evidence manifest complete. Raw product IDs remain available for audit.']
@@ -1480,7 +1480,7 @@
         row.setAttribute('aria-label', agent.id + ' ' + agent.role + ', ' + state[1]);
         row.innerHTML =
           '<span class="agent-avatar">' + agent.id.slice(1) + '</span>' +
-          '<span class="agent-copy"><span class="agent-name">' + agent.id + ' · ' + agent.role + '</span><span class="agent-meta">' + agent.workspace + ' · private view</span></span>' +
+          '<span class="agent-copy"><span class="agent-name">' + agent.id + ' · ' + agent.role + '</span><span class="agent-meta">' + agent.workspace + ' · ' + agent.calls + ' CLI calls</span></span>' +
           '<span class="agent-state ' + state[0] + '"><i class="state-dot"></i>' + state[1] + '</span>' +
           '<span class="agent-time">' + agent.duration + '</span>';
         row.addEventListener('click', function() {
@@ -1576,7 +1576,7 @@
       document.getElementById('metricWorkspaces').textContent = scene.metrics[1];
       document.getElementById('metricPublished').textContent = scene.metrics[2];
       document.getElementById('metricRejected').textContent = scene.metrics[3];
-      document.getElementById('metricP95').textContent = scene.metrics[4];
+      document.getElementById('metricCalls').textContent = scene.metrics[4];
       document.getElementById('metricRevision').textContent = scene.metrics[5];
       renderSceneTabs();
       renderAgents();
