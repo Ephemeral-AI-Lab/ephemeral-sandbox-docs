@@ -5,6 +5,8 @@
 | Status | Rewritten; interaction implementation not started |
 | System contract | [e2e-test-system-spec.md](e2e-test-system-spec.md) |
 | Technical contract | [e2e-test-design.md](e2e-test-design.md) |
+| Visual target | [e2e-test-ui-layout-theme.md](e2e-test-ui-layout-theme.md) |
+| Migration specification | [e2e-test-ui-migration-spec.md](e2e-test-ui-migration-spec.md) |
 | Prototype migration | Move `<PRODUCT_ROOT>/e2e/ui-prototype` to `<E2E_SOURCE_ROOT>/web/prototype`; visual reference only, never production UI |
 
 The Control Room is a catalog and run-comprehension tool. It is not a generic
@@ -18,7 +20,7 @@ help an engineer answer four questions quickly:
 
 ## 1. UX verdict and cuts
 
-The migrated static prototype establishes useful visual direction: restrained dark
+The migrated static prototype establishes useful visual direction: warm neutral
 surfaces, dense operational rows, status chips, a selection tray, and a
 catalog-first hierarchy. It does not prove routing, state, APIs, selection,
 keyboard behavior, accessibility, or responsive execution.
