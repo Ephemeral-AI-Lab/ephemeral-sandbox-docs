@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="EphemeralOS MCP server manual and catalog reference.">
+  <title>EphemeralOS MCP Manual</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="home">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="EphemeralOS MCP manual home">
+      <span class="brand-mark" aria-hidden="true">E</span>
+      <span><strong>EphemeralOS</strong><small>MCP manual</small></span>
+    </a>
+    <nav class="topnav" aria-label="Catalogs">
+      <a href="management.html">Management</a>
+      <a href="runtime.html">Runtime</a>
+      <a href="observability.html">Observability</a>
+    </nav>
+    <button class="icon-button theme-toggle" type="button" aria-label="Switch color theme" title="Switch color theme">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 13.35 3.1C12.91 3.04 12.46 3 12 3Z"/></svg>
+    </button>
+  </header>
+
+  <main id="main-content" class="home-main">
+    <section class="hero">
+      <div class="eyebrow"><span class="status-dot"></span> Verified reference · 20 tools</div>
+      <h1>One protocol.<br><span>Three clear boundaries.</span></h1>
+      <p class="hero-lede">A practical manual for calling the EphemeralOS Management, Runtime, and Observability MCP servers—complete with exact input schemas, representative structured outputs, lifecycle behavior, and safety notes.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="management.html">Browse catalogs</a>
+        <a class="button secondary" href="#quick-start">Read the manual</a>
+      </div>
+      <dl class="hero-facts" aria-label="Protocol facts">
+        <div><dt>Protocol</dt><dd>2025-06-18</dd></div>
+        <div><dt>Transport</dt><dd>stdio</dd></div>
+        <div><dt>Capability</dt><dd>tools</dd></div>
+        <div><dt>Server</dt><dd>sandbox-mcp 0.1.0</dd></div>
+      </dl>
+    </section>
+
+    <section class="section-block" aria-labelledby="catalog-heading">
+      <div class="section-heading">
+        <div><span class="kicker">Catalog map</span><h2 id="catalog-heading">Choose the boundary that owns the work.</h2></div>
+        <p>Each page is organized by operation family, with searchable tool cards and deep links.</p>
+      </div>
+      <div class="catalog-grid">
+        <a class="catalog-card management" href="management.html">
+          <span class="card-index">01</span>
+          <div><span class="catalog-label">Fleet control</span><h3>Management</h3><p>Discover hosts, create or inspect sandboxes, and deliver layer changes.</p></div>
+          <span class="tool-count">8 tools</span>
+        </a>
+        <a class="catalog-card runtime" href="runtime.html">
+          <span class="card-index">02</span>
+          <div><span class="catalog-label">Inside a sandbox</span><h3>Runtime</h3><p>Run commands, stream sessions, and read or mutate workspace files.</p></div>
+          <span class="tool-count">7 tools</span>
+        </a>
+        <a class="catalog-card observability" href="observability.html">
+          <span class="card-index">03</span>
+          <div><span class="catalog-label">Read-only evidence</span><h3>Observability</h3><p>Inspect health, traces, events, resources, and active layer inventory.</p></div>
+          <span class="tool-count">5 tools</span>
+        </a>
+      </div>
+    </section>
+
+    <section id="quick-start" class="section-block manual-grid" aria-labelledby="manual-heading">
+      <div class="section-heading full-span">
+        <div><span class="kicker">Start here</span><h2 id="manual-heading">MCP calling manual</h2></div>
+        <p>Arguments are JSON fields—not CLI flags. The server forwards a validated operation request through the authenticated gateway.</p>
+      </div>
+      <article class="manual-card">
+        <span class="step-number">01</span>
+        <h3>Pick the server</h3>
+        <p>Use Management for host/fleet ownership, Runtime for command and file operations, and Observability for read-only inspection.</p>
+        <div class="registration-list">
+          <code>ephemeral-os-management</code>
+          <code>ephemeral-os-runtime</code>
+          <code>ephemeral-os-observability</code>
+        </div>
+      </article>
+      <article class="manual-card">
+        <span class="step-number">02</span>
+        <h3>Call a tool</h3>
+        <p>Put only documented fields inside <code>params.arguments</code>. Unknown properties are rejected before gateway dispatch.</p>
+        <div class="code-shell">
+          <div class="code-label"><span>JSON-RPC request</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "list_sandboxes",
+    "arguments": {}
+  }
+}</code></pre>
+        </div>
+      </article>
+      <article class="manual-card">
+        <span class="step-number">03</span>
+        <h3>Read the result</h3>
+        <p>Machine-readable operation data is returned in <code>result.structuredContent</code>. Check <code>result.isError</code> before consuming it.</p>
+        <div class="code-shell">
+          <div class="code-label"><span>Success envelope</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>{
+  "result": {
+    "content": [{ "type": "text", "text": "…" }],
+    "structuredContent": { "sandboxes": [] },
+    "isError": false
+  }
+}</code></pre>
+        </div>
+      </article>
+    </section>
+
+    <section class="section-block split-panel" aria-labelledby="discovery-heading">
+      <div>
+        <span class="kicker">Discoverability</span>
+        <h2 id="discovery-heading">Tools-only by design—today.</h2>
+        <p>The initialize response advertises <code>tools</code> and no server-level <code>instructions</code>. <code>prompts/list</code>, <code>resources/list</code>, and <code>resources/templates/list</code> currently return JSON-RPC <code>-32601 Method not found</code>.</p>
+        <div class="callout info"><strong>Manual location</strong><span>This site fills the discoverability gap until MCP-native instructions, prompts, or resources are added.</span></div>
+      </div>
+      <div class="code-shell tall">
+        <div class="code-label"><span>initialize result</span><button class="copy-button" type="button">Copy</button></div>
+        <pre><code>{
+  "protocolVersion": "2025-06-18",
+  "capabilities": {
+    "tools": {}
+  },
+  "serverInfo": {
+    "name": "sandbox-mcp",
+    "title": "EphemeralOS Sandbox MCP",
+    "version": "0.1.0"
+  }
+}</code></pre>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="guardrail-heading">
+      <div class="section-heading">
+        <div><span class="kicker">Guardrails</span><h2 id="guardrail-heading">Know the state boundary before calling.</h2></div>
+      </div>
+      <div class="guardrail-grid">
+        <article><span class="risk-badge safe">Read-only</span><h3>Observe freely</h3><p>All Observability tools, plus Management discovery and inspection and Runtime <code>file_read</code>/<code>file_blame</code>, do not intentionally mutate sandbox state.</p></article>
+        <article><span class="risk-badge stateful">Session state</span><h3>Commands can publish</h3><p><code>exec_command</code> without a workspace session automatically captures and publishes changes when the command reaches terminal state.</p></article>
+        <article><span class="risk-badge danger">Mutating</span><h3>Require intent</h3><p>Creation, destruction, squash, export, file writes, file edits, and command input can change host or sandbox state. Review their manuals first.</p></article>
+      </div>
+    </section>
+
+    <section class="section-block source-note" aria-label="Reference provenance">
+      <span class="kicker">Reference snapshot</span>
+      <p>Catalog descriptions and input schemas reflect the verified MCP <code>tools/list</code> surface on 2026-07-14. Output examples are representative, sanitized shapes derived from the implementation; MCP currently publishes no formal output schema. No credentials are included.</p>
+    </section>
+  </main>
+
+  <footer><span>EphemeralOS MCP Manual</span><span>Static · portable · credential-free</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
