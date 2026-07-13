@@ -1027,7 +1027,7 @@
     </div>
     <div class="metric">
       <span class="metric-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 7 10 17l-5-5"/></svg></span>
-      <span class="metric-copy"><span class="metric-label">Published</span><strong class="metric-value success" id="metricPublished">9 accepted</strong></span>
+      <span class="metric-copy"><span class="metric-label">Published</span><strong class="metric-value success" id="metricPublished">11 accepted</strong></span>
     </div>
     <div class="metric">
       <span class="metric-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></span>
@@ -1035,11 +1035,11 @@
     </div>
     <div class="metric">
       <span class="metric-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-      <span class="metric-copy"><span class="metric-label">Agent CLI calls</span><strong class="metric-value" id="metricCalls">327 / 389</strong></span>
+      <span class="metric-copy"><span class="metric-label">Agent CLI calls</span><strong class="metric-value" id="metricCalls">404 / 477</strong></span>
     </div>
     <div class="metric">
       <span class="metric-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg></span>
-      <span class="metric-copy"><span class="metric-label">Shared revision</span><strong class="metric-value" id="metricRevision">rev 12</strong></span>
+      <span class="metric-copy"><span class="metric-label">Shared revision</span><strong class="metric-value" id="metricRevision">rev 13</strong></span>
     </div>
   </section>
 
@@ -1319,7 +1319,7 @@
       <div class="tab-panel" id="panel-events" role="tabpanel" aria-labelledby="tab-events" hidden>
         <div class="event-list" aria-label="Sample runtime events">
           <div class="event-row"><time>+07.183s</time><span class="event-name">workspace.capture.completed</span><span>Captured A06 pricing changeset</span><span class="event-owner">ws_a06_13c8</span></div>
-          <div class="event-row"><time>+07.428s</time><span class="event-name">layerstack.publish.completed</span><span>Published revision 12</span><span class="event-owner">A06</span></div>
+          <div class="event-row"><time>+07.428s</time><span class="event-name">layerstack.publish.completed</span><span>Published revision 13</span><span class="event-owner">A06</span></div>
           <div class="event-row"><time>+07.811s</time><span class="event-name">workspace.capture.completed</span><span>Captured A08 checkout changeset</span><span class="event-owner">ws_a08_7b12</span></div>
           <div class="event-row failure"><time>+08.069s</time><span class="event-name">finalize.publish_failed</span><span>source_conflict · shared revision unchanged</span><span class="event-owner">A08</span></div>
           <div class="event-row"><time>+08.178s</time><span class="event-name">workspace.destroy.completed</span><span>Discarded unpublished upperdir</span><span class="event-owner">ws_a08_7b12</span></div>
@@ -1337,12 +1337,13 @@
           <div class="layer"><i class="layer-block" style="--height:39px"></i><span>A05</span></div>
           <div class="layer"><i class="layer-block" style="--height:58px"></i><span>A06</span></div>
           <div class="layer"><i class="layer-block" style="--height:37px"></i><span>A07</span></div>
+          <div class="layer"><i class="layer-block" style="--height:45px"></i><span>A08 primary</span></div>
           <div class="layer"><i class="layer-block" style="--height:47px"></i><span>A09</span></div>
           <div class="layer"><i class="layer-block" style="--height:55px"></i><span>A10</span></div>
         </div>
         <aside class="reject-marker">
-          <strong>A08 did not become a layer</strong>
-          <p>Revision stayed at 12. Its entire captured changeset was rejected before the implicit workspace was destroyed.</p>
+          <strong>A08 conflict attempt did not become a layer</strong>
+          <p>Revision stayed at 13. Its entire captured changeset was rejected before the implicit workspace was destroyed.</p>
         </aside>
       </div>
     </div>
@@ -1357,16 +1358,16 @@
 
   <script>
     const agents = [
-      { id: 'A01', role: 'Foundation', workspace: 'ws_a01_9f20', command: 'cmd_a01_build_01', color: '#3e6077', duration: '1.22s', calls: 34, files: '+3 files · 1 registry line' },
-      { id: 'A02', role: 'Design system', workspace: 'ws_a02_0c4a', command: 'cmd_a02_build_01', color: '#6857a8', duration: '1.09s', calls: 34, files: '+2 files · 1 registry line' },
-      { id: 'A03', role: 'Product data', workspace: 'ws_a03_5d41', command: 'cmd_a03_build_01', color: '#a35c00', duration: '0.88s', calls: 35, files: '+1 file · 1 registry line' },
-      { id: 'A04', role: 'Catalog & PDP', workspace: 'ws_a04_b760', command: 'cmd_a04_build_01', color: '#267a50', duration: '1.47s', calls: 42, files: '+2 files · 1 registry line' },
-      { id: 'A05', role: 'Search & facets', workspace: 'ws_a05_c826', command: 'cmd_a05_build_01', color: '#527890', duration: '1.35s', calls: 37, files: '+1 file · 1 registry line' },
-      { id: 'A06', role: 'Cart & pricing', workspace: 'ws_a06_13c8', command: 'cmd_a06_price_02', color: '#b45d87', duration: '1.62s', calls: 41, files: '+2 files · 1 registry line' },
-      { id: 'A07', role: 'Wishlist', workspace: 'ws_a07_e210', command: 'cmd_a07_build_01', color: '#80724d', duration: '0.94s', calls: 32, files: '+1 file · 1 registry line' },
-      { id: 'A08', role: 'Checkout', workspace: 'ws_a08_7b12', command: 'cmd_a08_build_02', color: '#b83535', duration: '1.84s', calls: 45, files: '+1 file · 1 registry line' },
-      { id: 'A09', role: 'A11y & performance', workspace: 'ws_a09_62ad', command: 'cmd_a09_build_01', color: '#397c7a', duration: '1.52s', calls: 46, files: '+2 files · 1 registry line' },
-      { id: 'A10', role: 'Integration QA', workspace: 'ws_a10_dd19', command: 'cmd_a10_build_01', color: '#75649c', duration: '1.71s', calls: 43, files: '+2 files · 1 registry line' }
+      { id: 'A01', role: 'Foundation', workspace: 'ws_a01_9f20', command: 'cmd_a01_build_01', color: '#3e6077', duration: '1.22s', calls: 43, files: '+3 files · 1 registry line' },
+      { id: 'A02', role: 'Design system', workspace: 'ws_a02_0c4a', command: 'cmd_a02_build_01', color: '#6857a8', duration: '1.09s', calls: 44, files: '+2 files · 1 registry line' },
+      { id: 'A03', role: 'Product data', workspace: 'ws_a03_5d41', command: 'cmd_a03_build_01', color: '#a35c00', duration: '0.88s', calls: 45, files: '+1 file · 1 registry line' },
+      { id: 'A04', role: 'Catalog & PDP', workspace: 'ws_a04_b760', command: 'cmd_a04_build_01', color: '#267a50', duration: '1.47s', calls: 50, files: '+2 files · 1 registry line' },
+      { id: 'A05', role: 'Search & facets', workspace: 'ws_a05_c826', command: 'cmd_a05_build_01', color: '#527890', duration: '1.35s', calls: 46, files: '+1 file · 1 registry line' },
+      { id: 'A06', role: 'Cart & pricing', workspace: 'ws_a06_13c8', command: 'cmd_a06_price_02', color: '#b45d87', duration: '1.62s', calls: 50, files: '+2 files · 1 registry line' },
+      { id: 'A07', role: 'Wishlist', workspace: 'ws_a07_e210', command: 'cmd_a07_build_01', color: '#80724d', duration: '0.94s', calls: 42, files: '+1 file · 1 registry line' },
+      { id: 'A08', role: 'Checkout', workspace: 'ws_a08_7b12', command: 'cmd_a08_build_02', color: '#b83535', duration: '1.84s', calls: 54, files: '+1 file · 1 registry line' },
+      { id: 'A09', role: 'A11y & performance', workspace: 'ws_a09_62ad', command: 'cmd_a09_build_01', color: '#397c7a', duration: '1.52s', calls: 54, files: '+2 files · 1 registry line' },
+      { id: 'A10', role: 'Integration QA', workspace: 'ws_a10_dd19', command: 'cmd_a10_build_01', color: '#75649c', duration: '1.71s', calls: 49, files: '+2 files · 1 registry line' }
     ];
 
     const scenes = [
@@ -1377,7 +1378,7 @@
         description: 'All ten commands are gated and visible as active workspace sessions before any publishes.',
         phase: 'fanout',
         focus: 'A01',
-        metrics: ['10 parallel', '10 active', '0 accepted', '0', '44 / 389', 'rev 2'],
+        metrics: ['10 parallel', '10 active', '0 accepted', '0', '54 / 477', 'rev 2'],
         messages: [
           ['RUNNER', 'All ten workspace sessions are active. Releasing the build wave.'],
           ['A01', 'Foundation is ready; my filesystem view is private until publish.']
@@ -1390,7 +1391,7 @@
         description: 'Every agent edits a separate registry line, creating ten distinct blame owners.',
         phase: 'merge',
         focus: 'A04',
-        metrics: ['10 parallel', '0 active', '10 accepted', '0', '281 / 389', 'rev 12'],
+        metrics: ['10 parallel', '0 active', '10 accepted', '0', '343 / 477', 'rev 12'],
         messages: [
           ['A04', 'Catalog published. The registry kept every sibling agent entry.'],
           ['RUNNER', 'Blame now maps ten lines to ten workspace-session owners.']
@@ -1403,10 +1404,10 @@
         description: 'A08 exits zero, but its overlapping multi-file changeset is rejected and discarded.',
         phase: 'conflict',
         focus: 'A08',
-        metrics: ['10 parallel', '0 active', '9 accepted', '1 atomic', '327 / 389', 'rev 12'],
+        metrics: ['10 parallel', '0 active', '11 accepted', '1 atomic', '404 / 477', 'rev 13'],
         messages: [
           ['A08', 'Pricing changed under me. Publication rejected; my unrelated file was discarded too.'],
-          ['A06', 'Shared head keeps the accepted 6000 threshold. Retry from revision 12.']
+          ['A06', 'Shared head keeps the accepted 6000 threshold. Retry from revision 13.']
         ]
       },
       {
@@ -1416,7 +1417,7 @@
         description: 'A04 and A09 both serve port 4173 in disposable isolated workspace sessions.',
         phase: 'network',
         focus: 'A09',
-        metrics: ['10 agents', '2 isolated', '10 accepted', '0', '361 / 389', 'rev 13'],
+        metrics: ['10 agents', '2 isolated', '12 accepted', '0', '451 / 477', 'rev 14'],
         messages: [
           ['A04', 'Dense catalog experiment is online at isolated=ws_a04 / 4173.'],
           ['A09', 'Accessibility variant uses the same port with no collision.']
@@ -1429,7 +1430,7 @@
         description: 'The final view joins CLI results, blame, traces, events, resources, and layer history.',
         phase: 'evidence',
         focus: 'A10',
-        metrics: ['10 agents', '0 active', '10 accepted', '1 retained', '389 / 389', 'rev 13'],
+        metrics: ['10 agents', '0 active', '12 accepted', '1 retained', '477 / 477', 'rev 14'],
         messages: [
           ['A10', 'Storefront smoke tests pass; every explicit session and lease is cleaned up.'],
           ['RUNNER', 'Evidence manifest complete. Raw product IDs remain available for audit.']

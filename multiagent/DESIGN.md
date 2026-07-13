@@ -6,6 +6,7 @@
 | Working title | **FlashCart: ten agents, one workspace** |
 | Visual prototype | [Open the interactive light-theme control room](./index.html) |
 | Implementation spec | [Build plan, contracts, tests, and acceptance gates](./IMPLEMENTATION_SPEC.md) |
+| Implementation prompt | [Copy-ready full implementation and verification prompt](./IMPLEMENTATION_PROMPT.md) |
 | Primary goal | Prove concurrent workspace isolation, merge-back, conflict handling, auditability, network isolation, and observability with real sandbox operations |
 | Presentation rule | Agent personas and dialogue may be staged; CLI results, file changes, conflicts, blame, previews, and telemetry must be real |
 
@@ -14,9 +15,10 @@
 Build a polished, test-backed, dependency-free e-commerce storefront from an
 almost-empty workspace using ten deterministic agent lanes. Author each lane as
 a granular transcript of real `sandbox-*cli` calls rather than one monolithic
-shell payload. The run must contain at least 300 agent-attributed CLI calls; the
-authored target is **389**, excluding observability polling and trusted explicit
-session lifecycle control.
+shell payload. A qualified run contains **350–500** meaningful agent-attributed
+CLI calls, excluding observability polling and trusted explicit-session
+lifecycle control. Prefer 450–500 when every call remains useful; the
+illustrative recommendation below is 477, not a fixed gate.
 
 Hold one automatic `publish_then_destroy` workspace open for each active agent
 with a gated anchor command. While that command is running, the lane performs
@@ -143,25 +145,25 @@ integration regression coverage. The toolchain remains preloaded and offline;
 “from scratch” refers to the application source, not downloading dependencies
 during the presentation.
 
-### 3.1 Agent CLI-call budget
+### 3.1 Recommended agent CLI-call allocation
 
-Every number below is a real CLI invocation with a parsed response. Timeline
-animations, staged dialogue, barriers, sleeps, and telemetry queries do not
-count.
+Each recommended number below represents real CLI invocations with parsed
+responses. Timeline animations, staged dialogue, barriers, sleeps, and
+telemetry queries do not count.
 
 | Agent | Workspace control | Inspect | Patch | Build/lint | Test/debug | Conflict/network/audit | Total |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| A01 Foundation | 2 | 7 | 11 | 5 | 8 | 1 | **34** |
-| A02 Design system | 2 | 7 | 12 | 5 | 7 | 1 | **34** |
-| A03 Product data | 2 | 8 | 11 | 5 | 8 | 1 | **35** |
-| A04 Catalog and PDP | 2 | 8 | 12 | 5 | 7 | 8 | **42** |
-| A05 Search and facets | 2 | 8 | 11 | 5 | 8 | 3 | **37** |
-| A06 Cart and pricing | 2 | 8 | 12 | 5 | 8 | 6 | **41** |
-| A07 Wishlist and recommendations | 2 | 7 | 10 | 4 | 8 | 1 | **32** |
-| A08 Checkout | 2 | 9 | 13 | 5 | 9 | 7 | **45** |
-| A09 Accessibility and performance | 2 | 8 | 11 | 4 | 10 | 11 | **46** |
-| A10 Integration QA | 2 | 9 | 8 | 6 | 14 | 4 | **43** |
-| **Total** | **20** | **79** | **111** | **49** | **87** | **43** | **389** |
+| A01 Foundation | 2 | 8 | 14 | 6 | 11 | 2 | **43** |
+| A02 Design system | 2 | 8 | 15 | 6 | 11 | 2 | **44** |
+| A03 Product data | 2 | 9 | 14 | 6 | 12 | 2 | **45** |
+| A04 Catalog and PDP | 2 | 9 | 15 | 6 | 10 | 8 | **50** |
+| A05 Search and facets | 2 | 9 | 14 | 6 | 11 | 4 | **46** |
+| A06 Cart and pricing | 2 | 9 | 15 | 6 | 11 | 7 | **50** |
+| A07 Wishlist and recommendations | 2 | 8 | 13 | 5 | 11 | 3 | **42** |
+| A08 Checkout | 2 | 10 | 16 | 6 | 12 | 8 | **54** |
+| A09 Accessibility and performance | 2 | 9 | 14 | 5 | 12 | 12 | **54** |
+| A10 Integration QA | 2 | 10 | 11 | 7 | 15 | 4 | **49** |
+| **Recommended total** | **20** | **89** | **141** | **59** | **116** | **52** | **477** |
 
 The two workspace-control calls per agent are the anchor `exec_command` and its
 final `write_command_stdin`. The last column includes only actual public CLI
@@ -169,17 +171,22 @@ work such as port-server commands and probes, conflict attempts and retries,
 command-log reads, blame queries, and final audit checks. Trusted explicit
 session create/destroy calls used by the network scene are recorded separately.
 
-The 389-call plan is the authored target, not a ceiling. Enforce a hard minimum
-of 300 and a review band of 350–430 agent calls. A roughly 120-second run adds
-about 350–500 read-only cgroup, snapshot, events, trace, and layerstack samples,
-so the complete evidence stream should contain roughly 740–900 real runtime
-interactions.
+Treat every row and category number as a recommendation only. Script repair and
+tuning may move calls freely between agents and categories. Enforce the 350–500
+total band, prefer 450–500, and enforce required proof cycles plus no-padding
+rules instead of per-agent quotas. Record the generated totals in
+call-budget.json and use them everywhere in the runner and UI. At 90–120
+seconds, per-request trace lookups, 500 ms cgroup samples, and the remaining
+lifecycle, event, snapshot, layer, and blame queries produce roughly 750–1,000
+engine/lifecycle/observability interactions. A preferred run therefore produces
+roughly 1,200–1,500 real interactions overall. These are capacity expectations,
+not quotas.
 
 ## 4. Presentation story
 
-Target a five-to-seven-minute guided presentation and a roughly 90-second
-automatic execution. Presenter controls can pause between scenes while the
-underlying logical clock remains deterministic.
+Target a five-to-seven-minute guided presentation and a 90–120-second automatic
+execution. Presenter controls can pause between scenes while the underlying
+logical clock remains deterministic.
 
 ### Scene 0 — Reset and preflight
 
@@ -203,10 +210,12 @@ sandbox-runtime-cli --sandbox-id <id> exec_command \
 
 Each response supplies a real `command_session_id` and
 `workspace_session_id`. Do not release any command until all ten report
-`status: running`. The engine then runs each agent's ordered JSONL lane against
-that workspace ID. Every file read, file write/edit, search, build, unit test,
-failure diagnosis, patch, and rerun is a separate real CLI process. One lane is
-sequential; up to ten lanes execute concurrently.
+`status: running`. The engine then runs each agent's ordered JSONL lane;
+workspace-scopable rows carry that workspace ID, command-control rows carry the
+command ID, and post-publish checks are sessionless. Every file read, file
+write/edit, search, build, unit test, failure diagnosis, patch, and rerun is a
+separate real CLI process. One lane is sequential; up to ten lanes execute
+concurrently.
 
 The Control Room should now show:
 
@@ -320,6 +329,12 @@ ephemeral-sandbox-test/demo/multi-agent/
 ├── README.md
 ├── run_demo.py
 ├── scenario.json                 # phases and cross-lane barriers
+├── recipes.py
+├── generate_scripts.py
+├── update_oracle.py
+├── call-budget.json              # generated actual advisory matrix
+├── expected-final.json           # reviewed pre-run path/hash oracle
+├── test-inventory.json           # exact test names and counts
 ├── agents/
 │   ├── A01-foundation.plan.jsonl
 │   ├── A02-design-system.plan.jsonl
@@ -335,6 +350,7 @@ ephemeral-sandbox-test/demo/multi-agent/
 │   ├── A01/
 │   └── ... A10/                  # file bodies and edit specs
 └── runs/<run-id>/
+    ├── manifest.json
     ├── run.json
     ├── events.ndjson
     ├── commands/
@@ -382,12 +398,13 @@ Pure timestamp ordering is too fragile for merge and port demonstrations.
 when a correctness-sensitive step may start. The engine uses a monotonic clock,
 `asyncio`, and subprocess argument arrays.
 
-Before execution, validate that there are exactly ten lanes and at least 300
-counted calls; every step ID is unique; dependency edges are acyclic; referenced
-payloads exist; expected-red tests have a later relevant mutation and green
-rerun; and no write or edit is a no-op. Repeated tests on an unchanged workspace
-revision are rejected unless explicitly classified as conflict retry or final
-regression coverage.
+Before execution, validate that there are exactly ten lanes and 350–500 counted
+calls, warning below the preferred 450; every step ID is unique; dependency
+edges are acyclic; referenced payloads exist; expected-red tests fail the exact
+inventoried subtests for the expected reasons and have a later relevant mutation
+and exact-inventory green rerun; and no write or edit is a no-op. Repeated tests
+on an unchanged workspace revision are rejected unless explicitly classified as
+conflict retry or A10 final regression coverage.
 
 ### 5.3 Runner responsibilities
 
@@ -464,15 +481,16 @@ evidence.
 
 ## 6. Control Room presentation UI
 
-Add one demo-focused route to the existing React/Mantine console rather than a
-second dashboard. Reuse the current observability API types, resource charts,
-trace waterfall, event list, layerstack view, terminal cards, preview proxy,
-and blame gutter.
+Use the standalone light-theme `ephemeral-sandbox-docs/multiagent/index.html`
+control room specified for this demo. Reuse the current observability data
+shapes and visual language for resources, traces, events, layers, terminal
+cards, preview, and blame, without adding a React build or another dashboard
+service.
 
 Suggested route:
 
 ```text
-/demos/multi-agent/:run_id
+/multiagent/?mode=live&run=RUN_ID
 ```
 
 Suggested desktop composition:
@@ -524,23 +542,25 @@ first spike, polling `run.json` at 250–500 ms is sufficient.
 | Layers | `layerstack` | successful publishes advance shared state; rejection does not |
 | File ownership | `file_blame` | final lines join back to the sessions that published them |
 
-Repeated resource queries are important: workspace sampling occurs after
-operations and on snapshot/query, rather than through an independent
-high-frequency sampler. Capture the samples during the live workspace lifetime;
-do not expect destroyed workspaces to remain queryable.
+Repeated resource queries are important: aggregate cgroup sampling runs every
+500 ms, while workspace-specific resource snapshots occur after selected
+operations and queries. Capture samples during the live workspace lifetime; do
+not expect destroyed workspaces to remain queryable.
 
 ## 8. Preflight and acceptance criteria
 
 ### 8.1 Preflight
 
-- required CLI binaries resolve and report compatible catalogs;
+- required CLI binaries resolve, and `help <required-operation>` succeeds for
+  every operation used by the scenario;
 - configured Node image exists locally; no image pull occurs during the talk;
 - the trusted lifecycle adapter can create/destroy one isolated canary session;
-- the console proxy can forward one isolated port;
+- the runner’s constrained loopback proxy can forward one isolated port through
+  the existing daemon_http route contract;
 - snapshot, cgroup, trace, events, layerstack, and blame operations respond;
 - project paths used for conflict proof are not ignored;
-- autosquash threshold remains above the planned demo layer count, or the
-  assertions use manifest revisions instead of physical layer count;
+- autosquash is disabled or its threshold exceeds the maximum projected
+  publication count; otherwise qualification is blocked;
 - run workspace is unique and contains no user files;
 - a throwaway two-command canary confirms the current build surfaces
   `publish_rejected` and `source_conflict` on the terminal response;
@@ -581,6 +601,11 @@ do not expect destroyed workspaces to remain queryable.
 
 ## 10. Implementation slices
 
+These slices are refined into phases 0–5 in IMPLEMENTATION_SPEC.md. Every phase
+has a normative evidence-backed checkbox list: all boxes in phase N must be
+satisfied before phase N+1 begins, and an invalidated check reopens its phase and
+dependent later gates.
+
 ### Slice A — Truth spike
 
 - scale the existing five-command line-disjoint E2E pattern to ten;
@@ -597,8 +622,8 @@ Exit condition: a terminal-only run produces every required fact and cleans up.
 - add correlation, assertions, artifacts, sampling, interrupt cleanup, and replay;
 - keep all scenario data deterministic and offline.
 
-Exit condition: one command starts a reproducible 90-second run with a passing
-evidence manifest.
+Exit condition: one command starts a reproducible 90–120-second run with a
+passing evidence manifest.
 
 ### Slice C — Control Room
 
