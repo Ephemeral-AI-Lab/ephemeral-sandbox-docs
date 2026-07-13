@@ -5,7 +5,7 @@
 | Status | Rewritten; interaction implementation not started |
 | System contract | [e2e-test-system-spec.md](e2e-test-system-spec.md) |
 | Technical contract | [e2e-test-design.md](e2e-test-design.md) |
-| Existing prototype | `<PRODUCT_ROOT>/e2e/ui-prototype` — visual reference only |
+| Prototype migration | Move `<PRODUCT_ROOT>/e2e/ui-prototype` to `<E2E_SOURCE_ROOT>/web/prototype`; visual reference only, never production UI |
 
 The Control Room is a catalog and run-comprehension tool. It is not a generic
 pytest console, infrastructure dashboard, or domain portal. The interface must
@@ -18,7 +18,7 @@ help an engineer answer four questions quickly:
 
 ## 1. UX verdict and cuts
 
-The static prototype establishes useful visual direction: restrained dark
+The migrated static prototype establishes useful visual direction: restrained dark
 surfaces, dense operational rows, status chips, a selection tray, and a
 catalog-first hierarchy. It does not prove routing, state, APIs, selection,
 keyboard behavior, accessibility, or responsive execution.
@@ -64,9 +64,39 @@ Feature discovery is also catalog state:
 /e2e/catalog?feature_id=<id>
 ```
 
+Domain/family and Harness diagnostic navigation use the same route state:
+
+```text
+/e2e/catalog?domain_id=observability&family_id=cgroup
+/e2e/catalog?domain_id=runtime&family_id=shell_security
+/e2e/catalog?kind=harness&family_id=runner
+```
+
 Back, forward, refresh, and copied URLs preserve server-backed filters. Selection
 is revision-qualified browser session state and is not encoded into an
 unbounded URL.
+
+### 2.1 Prototype route mapping
+
+The static implementation served at `http://127.0.0.1:4173/*` is a visual
+reference, not the route contract. Its nine hash sections map as follows:
+
+| Prototype section | Production route/state |
+| --- | --- |
+| `#catalog` | `/e2e/catalog` |
+| `#manager` | `/e2e/catalog?domain_id=manager` |
+| `#runtime` | `/e2e/catalog?domain_id=runtime` |
+| `#observability` | `/e2e/catalog?domain_id=observability` |
+| `#compound` | `/e2e/catalog?domain_id=compound` |
+| `#test-detail` | `/e2e/catalog?test_id=<id>&case_id=<id>` |
+| `#live-run` | `/e2e/runs/:run_id` |
+| `#runs` | `/e2e/runs` |
+| `#workspaces` | `/e2e/workspaces` |
+
+The production IA therefore has four route patterns rather than nine bespoke
+pages. It adds the Health drawer and a subordinate Harness Diagnostics catalog
+entry, while preserving the prototype's useful visual flows. No prototype
+section requires a parallel Runtime-internal hierarchy.
 
 ## 3. Visual system
 
@@ -134,11 +164,39 @@ Different facts must not collapse into interchangeable chips:
 | Status / verdict | High-emphasis status badge with icon and text |
 | Evidence health | Separate `Evidence: Complete/Degraded/Unavailable` badge |
 
+Feature tags identify covered capabilities; the Purpose annotation is the test
+description; named Validations are the assertion checkpoints. A checkpoint
+always exposes its stable name, requiredness, phase, mapped feature, state, and
+evidence link when evidence exists. These three concepts never share one chip.
+
+These fields come only from the mandatory
+`@e2e_test(id, title, description, features, validations)` declaration and its
+`validation(...)` reports. The UI never infers a feature from a pytest mark or
+an assertion from a test name. An undecorated test is a catalog-health error,
+not a case card with guessed tags or checkpoints.
+
 Rows show at most one status, one boundary, and one exceptional execution label.
 The rest belongs in detail or Review. Color never carries a category alone, and
 tooltips only supplement visible text.
 
 ## 4. Catalog journey
+
+Catalog navigation has four primary domain cards generated from the combined
+catalog: Manager, Runtime, Observability, and Compound. A separate Harness
+Diagnostics card is visually subordinate because it tests the E2E control
+system rather than a product domain. Selecting a card reveals families, then
+cases.
+
+Runtime initially reveals `Command`, `File`, `Daemon HTTP`, `Network
+Isolation`, `Reserved Paths`, `Shell Security`, and `Workspace Session`, with
+exact IDs `command`, `file`, `daemon_http`, `network_isolation`,
+`reserved_paths`, `shell_security`, and `workspace_session`.
+Observability initially reveals `Snapshot`, `Trace`, `Events`, `Cgroup`, and
+`Layerstack`, with exact IDs `snapshot`, `trace`, `events`, `cgroup`, and
+`layerstack`. Harness Diagnostics reveals `Catalog`, `Runner`, `Reducer`,
+`Storage`, `API`, and `UI`, with exact IDs `catalog`, `runner`, `reducer`,
+`storage`, `api`, and `ui`. The frontend contains no domain/family allowlist and
+no Runtime-, Observability-, or Harness-specific page component.
 
 ### 4.1 Desktop layout
 
@@ -147,6 +205,8 @@ tooltips only supplement visible text.
 │ E2E Control Room    Catalog  Runs  Workspaces   Health ●           │
 ├───────────────┬────────────────────────────────────────────────────┤
 │ Search        │  214 matching cases            3 selected         │
+│ Domains       │ Manager · Runtime · Observability · Compound      │
+│ Diagnostics   │ Harness Diagnostics                               │
 │ Filters       │ ┌────────────────────────────────────────────────┐ │
 │ - Feature     │ │ □ Runtime · File read                         │ │
 │ - Family      │ │ Purpose: reads through the real runtime CLI   │ │
@@ -199,6 +259,11 @@ Aggregate selection labels must be explicit:
 The checkbox state derives from the selection expression, including off-page
 cases.
 
+The page has no folder/test registry. On `catalog.revision`, its normal catalog
+refetch renders any newly discovered valid `e2e/**` test or folder using the
+same topology, tags, and checkpoint rows. No UI release is required for a new
+test family that is represented by catalog data.
+
 ## 5. Test detail
 
 The detail surface answers intent before machinery. Sections appear in this
@@ -217,7 +282,7 @@ order:
 7. **History** — recent frozen results labeled with run and source revision;
 8. **Source** — path and pytest selector as contributor diagnostics.
 
-Harness cases omit product coverage. A no-surface harness case shows:
+Harness cases omit product coverage. A no-surface case shows:
 
 > Harness diagnostic — no product boundary claimed
 
@@ -230,6 +295,7 @@ check icon in catalog/detail.
 
 Clicking Review sends one preview request and opens a full-height dialog on
 desktop or a full-screen route-like surface on mobile.
+
 
 ### 6.1 Review content
 
@@ -327,6 +393,13 @@ overlay proves ownership and the event stream is fresh.
 The first-failure panel appears before cases and logs. It contains causal entity,
 failure kind, concise message, time, and evidence link. When primary differs, a
 second sentence explains why the terminal severity is higher.
+
+The prototype's count-only mid-flight failure state is insufficient. As soon as
+a failed or errored case exists, the live page pins the first-failure panel even
+while another case is running or cleanup is active. The operator can see the
+case and validation state, phase, boundary-proof state, cleanup state, stream
+freshness, bounded logs, evidence health, and the causal link for every not-run
+case without waiting for the run to become terminal.
 
 Failure labels are concrete: Assertion, Setup, Fixture, Infrastructure, Timeout,
 Teardown, Cancellation, Recorder, Contract, or Controller restart. “Something
@@ -536,11 +609,14 @@ No essential state relies on pulsing or color.
 
 ## 14. Genericity and fixtures
 
-The UI renders records, not known domains. Add fixture data for:
+The UI renders records, not known domains. The default fixture proves the four
+primary domains, seven initial Runtime families, five initial Observability
+families, and subordinate Harness Diagnostics area without a frontend registry.
+Also add fixture data for:
 
 - a fifth domain, new family, group, scenario, feature, owner, and validation;
 - unknown display hints and additive schema fields;
-- product, surface-declaring harness, and no-surface harness cases;
+- product, Compound, and no-surface Harness cases;
 - all six execution surfaces and proof failures;
 - every row in the async-state matrix;
 - first failure differing from primary error;

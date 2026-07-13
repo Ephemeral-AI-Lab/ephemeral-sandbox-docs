@@ -1,14 +1,15 @@
 # EphemeralOS E2E Control Room — System Specification
 
-| Field | Value |
-| --- | --- |
-| Status | Rewritten after adversarial review; implementation not started |
-| Date | 2026-07-12 |
-| Product checkout | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox` |
-| Planned test repository | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test` |
-| Mutable store | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test-workspace` |
-| Technical design | [e2e-test-design.md](e2e-test-design.md) |
-| UI design | [e2e-test-ui-design.md](e2e-test-ui-design.md) |
+| Field                           | Value                                                              |
+| ------------------------------- | ------------------------------------------------------------------ |
+| Status                          | Reconciled after cross-document review; implementation not started |
+| Date                            | 2026-07-13                                                         |
+| Product checkout                | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`                |
+| Planned test repository         | `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`           |
+| Derived E2E state leaf          | `<TEST_REPOSITORY_ROOT>/.e2e-state` (Git-ignored)                  |
+| Derived benchmark state leaf    | `<TEST_REPOSITORY_ROOT>/.benchmark-state` (Git-ignored)            |
+| Technical design                | [e2e-test-design.md](e2e-test-design.md)                           |
+| UI design                       | [e2e-test-ui-design.md](e2e-test-ui-design.md)                     |
 | Delivery plan and review ledger | [e2e-test-implementation-plan.md](e2e-test-implementation-plan.md) |
 
 The words **MUST**, **SHOULD**, and **MAY** are normative. “Current” means
@@ -18,7 +19,7 @@ implementation evidence.
 
 ## 1. Executive verdict and design rule
 
-The architecture is **PASS AFTER REWRITE**. The previous draft had a credible
+The architecture is **PASS AFTER RECONCILIATION**. The previous draft had a credible
 safety core but surrounded it with duplicate journals, projections, registries,
 API resources, telemetry machinery, and recovery records. Those additions made
 the system harder to build and harder to trust.
@@ -62,6 +63,8 @@ A first-time engineer can:
 
 - side-effect-free collection mode;
 - stable test and expanded-case identity;
+- complete E2E-source extraction: the product checkout contains no `e2e/`
+  source, shim, or symlink after migration;
 - one product/E2E metadata merge and one atomic last-good catalog;
 - mixed selection, exact preview, serial execution, optional run-wide fail-fast,
   bounded cancellation, and child-run retry;
@@ -107,47 +110,58 @@ these verified facts:
 | Item | Current fact | Consequence |
 | --- | --- | --- |
 | Test location | Live pytest source is under `<PRODUCT_ROOT>/e2e`; the planned external test repository does not exist. | Migration begins only after stable IDs are recorded. |
-| Suite shape | 103 tracked E2E files, 75 Python files, and 264 test functions were observed; existing design material reports 373 expanded cases. | Counts are migration baselines, never UI constants. |
+| Suite shape | Read-only inventory on 2026-07-13 found 106 tracked E2E files, 75 Python files, and 275 test functions; the former 373-expanded-case figure remains unverified orientation only. | Counts are migration evidence, never UI constants. |
 | Collection | Session autouse fixture starts/reuses the gateway. | A separate side-effect-free collector entry point is a hard Phase 0 gate. |
 | Cleanup | Several cleanup paths catch and discard exceptions. | Cleanup aggregation must be fixed before a passing verdict is trusted. |
-| Source writes | Session summary writes timing artifacts into product documentation. | Collection and controller output move entirely to the external store. |
+| Source writes | Session summary writes timing artifacts into product documentation. | Collection and controller output move entirely to the external test repository's state leaves. |
 | Product catalog | Rust `sandbox-operation-catalog` owns declarations; the console exposes `/api/catalog` only while running. | Add a small offline export from the same Rust projection; do not copy vocabulary into Python. |
 | Product boundaries | CLI, direct daemon HTTP, raw gateway, and allowlisted direct daemon RPC helpers exist; console `/api/rpc` and proxy routes exist product-side. | Surface proof can wrap real boundaries; the Control Room itself is not implemented. |
-| Prototype | `e2e/ui-prototype` is static HTML/CSS plus screenshots. | It is visual direction only and proves no interaction, data, accessibility, or runtime state. |
+| Prototype | `e2e/ui-prototype` is static HTML/CSS plus screenshots. | Move it to `<E2E_SOURCE_ROOT>/web/prototype` as visual reference material; it cannot remain in the product checkout after extraction and proves no interaction, data, accessibility, or runtime state. |
 | Benchmark store | Benchmark currently appends `benchmark/` below a configurable root and owns its own marker. | The fixed store contract must avoid `benchmark/benchmark` and preserve benchmark ownership. |
 
 ## 4. Roots, ownership, and source boundaries
 
-Only three roots are configured at controller startup:
+Only two roots are configured at controller startup:
 
 - `TEST_REPOSITORY_ROOT`: one Git repository containing `e2e/` and optional
   non-product benchmark configuration;
-- `PRODUCT_ROOT`: the EphemeralOS checkout;
-- `WORKSPACE_STORE_ROOT`: the external mutable parent.
+- `PRODUCT_ROOT`: the EphemeralOS checkout.
 
 The controller derives without override:
 
 - `E2E_SOURCE_ROOT=<TEST_REPOSITORY_ROOT>/e2e`;
 - `BENCHMARK_SOURCE_ROOT=<TEST_REPOSITORY_ROOT>/benchmark`;
-- `E2E_WORKSPACE_ROOT=<WORKSPACE_STORE_ROOT>/e2e`;
-- `BENCHMARK_WORKSPACE_ROOT=<WORKSPACE_STORE_ROOT>/benchmark`.
+- `E2E_STATE_ROOT=<TEST_REPOSITORY_ROOT>/.e2e-state`;
+- `BENCHMARK_STATE_ROOT=<TEST_REPOSITORY_ROOT>/.benchmark-state`.
 
-All configured roots MUST be canonical, absolute, pairwise disjoint, and neither
-aliases nor ancestors of one another. Source roots are read-only during
-collection and execution. Browser requests cannot contain any root or path.
+The configured roots MUST be canonical, absolute, disjoint, and neither aliases
+nor ancestors of one another. The four derived leaves MUST be canonical direct
+children of `TEST_REPOSITORY_ROOT`, pairwise disjoint, and non-aliased.
+`e2e/` and `benchmark/` are read-only during collection and execution;
+`.e2e-state/` and `.benchmark-state/` are Git-ignored mutable leaves. Browser
+requests cannot contain any root or path.
 
-Each mutable child root has its own immutable ownership marker. The E2E
-controller never initializes or mutates the benchmark child. Benchmark code
-never initializes or mutates the E2E child. Neither owner may delete a child
-root, its marker, a direct role directory, either repository, or the store
-parent.
+Each state leaf has its own immutable ownership marker. The E2E controller never
+initializes or mutates the benchmark state leaf. Benchmark code never
+initializes or mutates the E2E state leaf. Neither owner may delete a state
+leaf, its marker, a direct role directory, either source leaf, either configured
+root, or an ancestor of a state leaf.
+
+The final product checkout MUST contain no `<PRODUCT_ROOT>/e2e` directory or
+tracked `e2e/**` path. The move includes every former E2E asset, including the
+static UI prototype; it is retained, if needed, only at
+`<E2E_SOURCE_ROOT>/web/prototype`. A symlink, compatibility wrapper, duplicate
+copy, Git submodule, or runtime fallback from the product checkout is forbidden.
+The external suite may invoke only explicit product binaries and public network
+boundaries; it must not discover its source location by walking from
+`PRODUCT_ROOT` or read product-source files as test configuration.
 
 ## 5. One owner per fact
 
 | Fact | Sole owner | Consumers |
 | --- | --- | --- |
-| Product domain, family, operation, public route | Rust `sandbox-operation-catalog` | offline export, collector, UI through combined catalog |
-| E2E-owned Harness topology, Compound scenario topology/complexity, owners, execution-label definitions, display hints | `<E2E_SOURCE_ROOT>/metadata/catalog.yaml` | collector only |
+| Manager, Runtime, and Observability domain/family/operation/feature/route facts | Rust `sandbox-operation-catalog` | offline export, collector, UI through combined catalog |
+| Compound topology; Harness diagnostic families; owners; execution-label definitions; display hints | `<E2E_SOURCE_ROOT>/metadata/catalog.yaml` | collector only |
 | Test purpose, stable ID, expanded case ID, validations, feature claims, policies, expected surface | typed declaration beside the pytest test | collector, runner through frozen manifest |
 | Current combined catalog | atomically published `catalog/current.json` | API and preview |
 | Catalog availability/diagnostics | `catalog/health.json` | health and UI |
@@ -173,9 +187,15 @@ Collection MUST use a dedicated command that:
 - collects expanded pytest items and their typed declarations;
 - reports every independent local error in one attempt;
 - publishes no partial catalog;
-- writes candidates only below `<E2E_WORKSPACE_ROOT>/tmp`;
+- writes candidates only below `<E2E_STATE_ROOT>/tmp`;
 - atomically replaces `catalog/current.json` only after complete validation;
 - preserves the last-good catalog and updates `catalog/health.json` on failure.
+
+Collection verifies that the product and E2E source trees have identical
+before/after digests. It may write only a staged candidate below the declared
+E2E state leaf; it never writes a source/product leaf, including reports or
+timing artifacts. This permits controller output without weakening the
+source-tree immutability proof.
 
 Refresh uses a simple complete input digest and a coalesced watcher. Manual
 refresh MAY exist as a controller action, but the ordinary UI receives one
@@ -183,27 +203,71 @@ revision notification and performs one catalog refetch. A refresh journal is
 not required because refresh attempts are operational diagnostics, not durable
 product evidence.
 
-### 6.2 One declaration shape
+### 6.2 Mandatory per-test declaration and checkpoint pattern
 
-The declaration API is a thin pytest annotation, not an executor. Every expanded
-case has:
+The declaration API is a thin pytest annotation, not an executor. Every test
+case in `e2e/**` MUST use this pattern; collection rejects an undecorated test,
+an unknown validation name, a duplicate validation report, or a declared
+validation that never reports a terminal state.
+
+```python
+@e2e_test(
+    id="runtime.workspace-session.ex04",
+    title="Rider defers finalization",
+    description="...",
+    features=("runtime.workspace-session", "behavior.concurrency"),
+    validations={"session-remains-active": "..."},
+)
+def test_...(…, validation):
+    with validation(
+        "session-remains-active",
+        expected="active",
+        actual=lambda: snapshot["state"],
+        evidence=[snapshot_path],
+    ):
+        assert ...
+```
+
+`id` is the stable test ID; an unparameterized test has `case_id=default` and
+each parameterized variant MUST declare a stable pytest parameter ID that the
+collector records as its `case_id`. `title` is the catalog title and
+`description` is the searchable Purpose. `features` are direct feature claims,
+not pytest marks. Product and Compound tests MUST declare at least one feature;
+Harness tests use `features=()` because they do not claim product coverage.
+Every test MUST declare at least one validation, and every entry in
+`validations` declares one required assertion checkpoint. The injected
+`validation(...)` context reports its expected value, lazy actual observation,
+and bounded evidence references as append-only facts; the assertion remains the
+executable check.
+
+The collector maps a declared validation to the test's direct features by
+default. When a validation covers only a subset, the declaration supplies an
+explicit mapping extension; an unmapped required validation is a collection
+error. `validation(...)` emits `validation.state`, `failure.recorded`, and
+evidence events, but never computes a final verdict independently of the
+reducer.
+
+Every expanded case therefore has:
 
 - globally stable `test_id` and explicit stable `case_id` (`default` when not
   parameterized);
 - title, purpose, owner, source location, and current pytest node ID;
-- `kind=product | harness`;
+- `kind=product | compound | harness` plus explicit `domain_id` and
+  `family_id`;
 - named validations with stable ID, description, phase, and requiredness;
 - references to E2E-wide execution labels categorized as scheduling, cost, or
   risk when applicable;
 - workspace policy, evidence policy, resource claims, and timeout;
-- for product cases, one taxonomy leaf, at least one direct product feature,
+- for product cases, one Manager, Runtime, or Observability taxonomy leaf, at
+  least one direct product feature,
   validation-to-feature mappings, and one expected execution surface;
-- for Compound product cases, the same Product claims plus one E2E-owned
+- for Compound cases, the same coverage claims plus one E2E-owned
   `compound` record containing a complexity ID, at least two subject domains,
   ordered component IDs with `subject | fixture | evidence` roles, and an
   explicit shared-workspace/teardown contract;
-- for harness cases, no product taxonomy or coverage claim; an optional surface
-  or explicit `product_boundary_claim=not_applicable`.
+- for Harness cases, one E2E-owned diagnostic family and
+  `product_boundary_claim=not_applicable`; Harness diagnostics do not claim
+  product feature coverage.
 
 Parameters are represented only by author-supplied bounded JSON summaries. The
 collector never calls arbitrary `repr`, `str`, pickle, or custom serializers.
@@ -213,6 +277,31 @@ collector never calls arbitrary `repr`, `str`, pickle, or custom serializers.
 `(test_id, case_id)` is the durable identity. File paths and pytest node IDs are
 diagnostic selectors only. Moving a file or reordering parameters MUST preserve
 identity and history.
+
+Source placement is a validated mirror of the combined catalog:
+`manager/<family>`, `runtime/<family>`, `observability/<family>`,
+`compound/<family>`, or `harness/<family>`. A declaration that
+disagrees with its path is a collection error. The path validates placement; it
+never becomes the stable ID or an independent taxonomy authority.
+
+The combined navigation `domain_id` is `manager | runtime | observability |
+compound | harness`. Only the first three are Rust Product domains. Compound
+is an E2E-owned scenario classification and Harness is an E2E-owned diagnostic
+classification. Catalog metadata marks the first four
+`navigation_tier=primary` and Harness `navigation_tier=secondary`; the UI
+renders those facts rather than hardcoding names.
+
+Runtime families are canonical capability families even when the exercised
+boundary is not a public CLI route. The initial exact family IDs are `command`,
+`file`, `daemon_http`, `network_isolation`, `reserved_paths`,
+`shell_security`, and `workspace_session`. A Runtime case declares its real
+execution surface; using an internal product boundary does not move the case
+out of `runtime/<family>`.
+
+Observability families mirror the public CLI/catalog rather than one generic
+`observability` family. The initial exact family IDs are `snapshot`, `trace`,
+`events`, `cgroup`, and `layerstack`. There is no `internal` catch-all for
+missing product catalog declarations.
 
 Feature provenance is `direct | inherited`. Inheritance may expand a valid
 direct claim but never hide the absence of a direct claim. Declaration coverage
@@ -228,11 +317,19 @@ execution surface; the generic runner executes the case exactly like any other.
 | Addition | Expected edits | Forbidden ripple |
 | --- | --- | --- |
 | Parameterized case or test in an existing group | test declaration | registry, API, or frontend edit |
-| New Harness group, scenario, family, or feature | one E2E metadata record plus declarations/tests | Rust, API, route, component, style, or icon edit |
-| New Product domain, family, operation, or feature | legitimate Rust catalog edits plus declarations/tests | Harness taxonomy, Python allowlist, or frontend taxonomy edit |
+| New Harness diagnostic family | one E2E metadata record plus declarations/tests in `harness/<family>` | Rust, API, route, component, style, or icon edit |
+| New Manager, Runtime, or Observability family/operation/feature | legitimate Rust catalog edits plus declarations/tests in the matching path | Python allowlist, alternate taxonomy, or frontend taxonomy edit |
 | New Compound scenario or complexity | one E2E metadata record plus declarations/tests | runner, route, reducer, or bespoke scenario UI edit |
 | New named validation | declaration and reporter calls | reducer branch or bespoke panel |
-| New Harness diagnostic area | Harness metadata plus tests | frontend navigation or color edit |
+| New Harness diagnostic area | Harness metadata plus co-located tests | frontend navigation or color edit |
+
+The collector recursively discovers this mandatory pattern from every canonical
+`e2e/**` path on each refresh and publishes the validated records in
+`catalog/current.json`. The UI refetches that one generic catalog when it
+receives `catalog.revision`; it has no folder/test registry, feature allowlist,
+or manually registered page. A new valid test or folder is therefore loaded by
+the UI automatically. An unclassified or undecorated path fails collection and
+appears in catalog health; it is never silently omitted.
 
 ## 7. Selection, preview, and admission
 
@@ -269,6 +366,13 @@ States are `checking | ready | blocked | stale`. A ready preview expires after
 ten minutes; volatile lane ownership and preflight older than 60 seconds are
 rechecked at admission.
 
+`POST /api/v1/previews` also accepts one mutually exclusive semantic retry
+request: `retry={parent_run_id, subset=failed|not_run|failed_or_not_run}`. The
+controller resolves it only against the parent run's frozen manifest and
+projection, creates a child preview with `parent_run_id`, and never admits a
+passed case through this path. It accepts no test IDs, selectors, paths, or
+execution inputs in a retry request.
+
 ### 7.3 Admission
 
 `POST /api/v1/runs` accepts only `preview_id`, its one-use token, and an
@@ -287,6 +391,10 @@ Admission atomically:
 
 Failure before publication creates no run and does not consume the token.
 Concurrent reuse of the same idempotency key and digest returns the same run.
+The snapshot accepts only declared regular files; links, devices, sockets,
+FIFOs, unsafe modes, and size/digest/tree-digest mismatches reject admission.
+The published snapshot is non-writable, and child execution receives only its
+snapshot/import/config root rather than the live source tree.
 
 ## 8. Execution boundaries
 
@@ -301,7 +409,7 @@ The surface is test-owned metadata but driver choice is controller policy:
 | `daemon_http` | daemon allowlisted HTTP listener | Python standard-library HTTP | existing helper |
 | `direct_daemon_rpc` | authenticated daemon RPC for a fixed allowlist | fixed product probe preferred | Python allowlist helper exists; probe planned |
 
-Every product or surface-declaring harness result records expected and observed
+Every product result records expected and observed
 surface, driver, boundary, product binary/probe digest, dispatch outcome, timing,
 and redacted transport evidence. Missing, duplicate, mismatched, or unavailable
 proof is `error(kind=contract|infrastructure)`; it can never pass. There is no
@@ -517,33 +625,68 @@ quarantined.
 The smallest source tree is:
 
 ```text
-<TEST_REPOSITORY_ROOT>/
+`/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+├── .git/
+├── .gitignore                  # ignores .e2e-state/ and .benchmark-state/
 ├── README.md
 ├── pyproject.toml
 ├── package.json                 # only if the web build needs it
 ├── package-lock.json
 ├── e2e/
 │   ├── metadata/catalog.yaml
-│   ├── harness/                 # declaration, collection, runner, adapters
-│   ├── tests/
-│   │   ├── product/             # single-subject product behavior
-│   │   ├── compound/            # cross-domain shared-context scenarios
-│   │   └── harness/             # infrastructure/control-plane diagnostics
-│   ├── web/                     # generic Control Room
-│   └── offline_tests/           # collector/reducer/API/UI contract tests
+│   ├── harness/                 # implementation and co-located diagnostics
+│   │   ├── catalog/
+│   │   ├── runner/
+│   │   ├── reducer/
+│   │   ├── storage/
+│   │   ├── api/
+│   │   └── ui/
+│   ├── manager/
+│   │   └── management/
+│   ├── runtime/
+│   │   ├── command/
+│   │   ├── file/
+│   │   ├── daemon_http/
+│   │   ├── network_isolation/
+│   │   ├── reserved_paths/
+│   │   ├── shell_security/
+│   │   └── workspace_session/
+│   ├── observability/
+│   │   ├── snapshot/
+│   │   ├── trace/
+│   │   ├── events/
+│   │   ├── cgroup/
+│   │   └── layerstack/
+│   ├── compound/
+│   │   ├── configuration/
+│   │   └── lifecycle/
+│   ├── web/
+│   │   └── prototype/           # migrated static visual reference; never runtime UI
+│   └── conftest.py
 └── benchmark/                   # optional non-product benchmark config
 ```
 
-`tests/` may contain domain/family folders for contributor navigation. Paths do
-not own taxonomy or identity. There are no `core`, `common`, `shared`, `utils`,
-`schemas`, and `control` top-level buckets. Split a harness module only when it
-has two real consumers or is independently testable.
+Manager, Runtime, Observability, and Compound and their family children are
+canonical source placement and primary UI navigation. Rust owns Manager,
+Runtime, and Observability; E2E metadata owns Compound and the subordinate
+Harness diagnostic classification. All Runtime-facing tests live directly
+under `runtime/<family>`, including `daemon_http`, `network_isolation`,
+`reserved_paths`, `shell_security`, and `workspace_session`; execution-surface
+visibility does not create a second taxonomy.
+`compound/configuration` receives cross-domain configuration behavior and
+`compound/lifecycle` receives shared create/use/observe/destroy journeys.
+Harness implementation, contract tests, and diagnostics are co-located by real
+family under `harness/<family>` and appear in the UI as subordinate Harness
+diagnostics. Compound is reserved for multi-domain behavior with a shared
+context, not for Runtime internals or harness tests.
+Paths do not own identity. There are no `tests`, `core`, `common`, `shared`,
+`utils`, `schemas`, `control`, or `internal` top-level buckets.
 
-The smallest mutable tree is:
+The smallest mutable tree is Git-ignored and derived inside the test repository:
 
 ```text
-<WORKSPACE_STORE_ROOT>/
-├── e2e/
+`/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+├── .e2e-state/
 │   ├── root.json
 │   ├── TEST-REPORT.md           # append-only delivery proof; not run truth
 │   ├── catalog/{current.json,health.json}
@@ -556,18 +699,20 @@ The smallest mutable tree is:
 │   ├── workspaces/{template,attempts,quarantine}/
 │   ├── tmp/
 │   └── tooling/
-└── benchmark/
+└── .benchmark-state/
     ├── root.json
     └── {fixtures,runs,results,runtime,tmp}/
 ```
 
-The E2E root has five direct role directories: `catalog`, `runs`, `workspaces`,
-`tmp`, and `tooling`. `TEST-REPORT.md` is an append-only implementation/live-proof
-ledger required by the delivery process; it is never a run, catalog, API, or UI
-authority. History listing scans the small `run.json` file in each run directory
-and paginates deterministically. A disposable index may be introduced only after
-a benchmark shows p95 listing above 500 ms at the supported retained run count;
-it must remain rebuildable and non-authoritative.
+The E2E state leaf has five direct role directories: `catalog`, `runs`,
+`workspaces`, `tmp`, and `tooling`. `TEST_REPOSITORY_ROOT`, `.git/`, `e2e/`,
+`benchmark/`, and both state-leaf roots are protected targets. `TEST-REPORT.md`
+is an append-only implementation/live-proof ledger required by the delivery
+process; it is never a run, catalog, API, or UI authority. History listing scans
+the small `run.json` file in each run directory and paginates deterministically.
+A disposable index may be introduced only after a benchmark shows p95 listing
+above 500 ms at the supported retained run count; it must remain rebuildable and
+non-authoritative.
 
 Disk admission requires estimated run bytes plus at least 1 GiB finalization
 reserve. At the reserve threshold the controller stops scheduling, completes
@@ -582,6 +727,7 @@ errors. The v1 surface is:
 ```text
 GET  /health
 GET  /catalog
+POST /catalog/refresh
 GET  /events
 POST /previews
 POST /runs
@@ -591,6 +737,7 @@ POST /runs/:run_id/cancel
 POST /runs/:run_id/purge
 GET  /runs/:run_id/evidence/:evidence_id
 GET  /workspaces
+POST /workspaces/template/prepare
 POST /workspaces/:workspace_id/purge
 ```
 
@@ -598,6 +745,13 @@ Catalog detail is returned by the same `GET /catalog` query using an exact
 identity filter. Feature views are catalog queries, not endpoints. Run case,
 validation, cleanup, and evidence summaries are fields of `GET /runs/:run_id`;
 large evidence payloads are fetched on demand.
+
+`POST /catalog/refresh` is a bodyless, nonce-protected controller action that
+requests one coalesced complete recollection; it neither accepts browser-authored
+collection inputs nor promises that a new catalog is already published.
+`POST /workspaces/template/prepare` is likewise bodyless and only available when
+the projection reports that no valid template exists. It prepares the
+controller-defined template and cannot alter an active template or attempt.
 
 The primary budget is:
 
@@ -626,74 +780,86 @@ retried. The server accepts no cross-origin CORS permission.
 1. Two unchanged collections produce identical semantic catalog bytes.
 2. Duplicate case ID, unknown feature, and unmapped required validation are all
    reported together; the last-good catalog remains and admission is blocked.
-3. Collection from an unrelated CWD starts no gateway/Docker resource and leaves
-   both repositories byte-identical.
+3. Collection from an unrelated CWD starts no gateway/Docker resource, records
+   no process/network/filesystem-write spy hit, and leaves both source trees
+   byte-identical; only the declared E2E state leaf may receive staged output.
 4. A new family, group, feature, validation, and fifth domain flow through
    collection, query, preview, run fixtures, and UI with no frontend/API change.
 5. Moving source and reordering parameters preserve `(test_id, case_id)`.
+6. After migration, `<PRODUCT_ROOT>/e2e` and every tracked product `e2e/**`
+   path are absent; no symlink, wrapper, duplicate source, or product-source
+   traversal remains in the external suite.
 
 ### 15.2 Admission and execution
 
-6. Three mixed cases require one preview and one admission request and freeze the
+7. Three mixed cases require one preview and one admission request and freeze the
    same ordered identities.
-7. Stale preview, active-run conflict, empty selection, excessive selection,
+8. Stale preview, active-run conflict, empty selection, excessive selection,
    insufficient disk, and arbitrary input are typed non-mutating failures.
-8. Same idempotency key and digest creates one run; mismatched reuse returns 409.
-9. Editing live source after admission cannot affect the run snapshot.
-10. All six surfaces prove their actual boundary; missing or mismatched proof
+9. Same idempotency key and digest creates one run; mismatched reuse returns 409.
+10. Editing live source after admission cannot affect the run snapshot, which
+    rejects links/devices/sockets/FIFOs and unsafe/digest-mismatched inputs.
+11. Retry creates a child preview from exactly the frozen parent `failed`,
+    `not_run`, or union membership; passed cases are never selected.
+12. All six surfaces prove their actual boundary; missing or mismatched proof
     cannot pass; console-down blocks only console surfaces.
 
 ### 15.3 Verdict, failure, and cleanup
 
-11. Five-case fail-fast yields one passed, one failed/error, three causal
+13. Five-case fail-fast yields one passed, one failed/error, three causal
     not-run, completed mandatory cleanup, and stable first/primary failures.
-12. Assertion followed by teardown failure keeps assertion first and teardown
+14. Assertion followed by teardown failure keeps assertion first and teardown
     primary; terminal severity is error.
-13. Failure of the first and third cleanup action still attempts every action,
+15. Failure of the first and third cleanup action still attempts every action,
     records both failures, quarantines the attempt, and prevents pass.
-14. Missing required validation never becomes an inferred pass.
-15. Cancellation always reaches a terminal state and records every escalation.
+16. Missing required validation never becomes an inferred pass.
+17. Cancellation always reaches a terminal state and records every escalation.
 
 ### 15.4 Replay, recovery, and history
 
-16. Every valid event prefix folds deterministically; duplicate SSE delivery
+18. Every valid event prefix folds deterministically; duplicate SSE delivery
     does not duplicate counts or announcements.
-17. Gapped, corrupt, truncated, or incompatible journals fail visibly and never
+19. Gapped, corrupt, truncated, or incompatible journals fail visibly and never
     produce guessed state.
-18. Exact-bundle restart performs scoped, idempotent recovery and terminalizes;
-    a mismatched bundle mutates and signals nothing and blocks admission.
-19. Crash at every recovery action boundary performs each external action at
+20. Exact-bundle recovery starts on controller startup, persists its deterministic
+    action plan before effects, and terminalizes; a mismatched bundle mutates and
+    signals nothing and blocks admission.
+21. Crash at every recovery action boundary performs each external action at
     most once or records manual intervention.
-20. History renders from frozen manifest/projection data without current catalog
+22. History renders from frozen manifest/projection data without current catalog
     joins; directory-scan listing stays below the 500 ms p95 index threshold at
     the supported retained-run fixture.
 
 ### 15.5 Evidence, security, and retention
 
-21. Supporting evidence loss yields passed with degraded evidence; a required
+23. Supporting evidence loss yields passed with degraded evidence; a required
     validation-bound loss yields error.
-22. Truncation exposes caps and omitted counts; missing values are never shown as
+24. Truncation exposes caps and omitted counts; missing values are never shown as
     zero.
-23. Plain and encoded token canaries never appear in durable files, SSE, API, or
+25. Plain and encoded token canaries never appear in durable files, SSE, API, or
     UI fixtures.
-24. Cross-run, traversal, purged, and corrupt evidence requests return the exact
+26. Cross-run, traversal, purged, and corrupt evidence requests return the exact
     safe 404/410/500 behaviors without leaking bytes.
-25. Purge retains manifest, terminal truth, lineage, and deletion provenance;
+27. Purge retains manifest, terminal truth, lineage, and deletion provenance;
     it cannot target roots, markers, role directories, source, active work, or
     an arbitrary path.
+28. Every API request validates Host; every mutation requires the exact Origin and
+    memory-only nonce, receives no CORS permission, and is never auto-retried.
 
 ### 15.6 UI and accessibility
 
-26. A first-time user completes feature search, mixed selection, review, Start,
+29. A first-time user completes feature search, mixed selection, review, Start,
     first-failure inspection, cleanup review, and retry without pytest knowledge.
-27. Loading, empty, stale, blocked, disconnected, recovering, recovery-blocked,
+30. Loading, empty, stale, blocked, disconnected, recovering, recovery-blocked,
     incompatible, degraded, purged, and failed states use the exact message and
     action matrix in the UI design.
-28. Keyboard-only operation and 200% zoom work at all five viewports with no
+31. Keyboard-only operation and 200% zoom work at all five viewports with no
     page-level horizontal overflow, hidden status, or pointer target below 44 px.
-29. First failure is announced once; event/log/timer updates do not flood the
+32. First failure is announced once; event/log/timer updates do not flood the
     live region or steal focus.
-30. Fixture/demo routes are persistently labeled “Demo data — no runner
+33. Refresh Catalog and Prepare Template use only their safe bodyless controller
+    actions and disclose their enabled/disabled reason.
+34. Fixture/demo routes are persistently labeled “Demo data — no runner
     connected” and expose no real Start/Cancel claim.
 
 ## 16. Proof status
@@ -703,7 +869,8 @@ The current proof status is:
 
 - **implemented today:** pytest suite, product catalogs, product CLIs, gateway,
   console routes, daemon HTTP, direct daemon helper, benchmark store machinery;
-- **visual only:** static E2E UI prototype;
+- **visual only:** static E2E UI prototype, to be retained only under the
+  external test repository's `e2e/web/prototype/` during migration;
 - **specified only:** external test repository, collector, combined catalog,
   controller, journal/reducer, source snapshot, Control Room API/UI, recovery,
   run retention model;
