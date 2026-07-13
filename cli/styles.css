@@ -1,0 +1,19 @@
+@import url("../mcp/styles.css");
+
+.command-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.command-stack .code-shell {
+  margin-top: 0;
+}
+
+.argument-syntax {
+  white-space: nowrap;
+}
+
+.output-contract {
+  margin-top: 18px;
+}
+

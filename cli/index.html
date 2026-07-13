@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="EphemeralOS CLI setup, operation manuals, command syntax, and output contracts.">
+  <title>EphemeralOS CLI Manual</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="home">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="EphemeralOS CLI manual home">
+      <span class="brand-mark" aria-hidden="true">E</span>
+      <span><strong>EphemeralOS</strong><small>CLI manual</small></span>
+    </a>
+    <nav class="topnav" aria-label="Catalogs">
+      <a href="management.html">Management</a>
+      <a href="runtime.html">Runtime</a>
+      <a href="observability.html">Observability</a>
+    </nav>
+    <button class="icon-button theme-toggle" type="button" aria-label="Switch color theme" title="Switch color theme">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 13.35 3.1C12.91 3.04 12.46 3 12 3Z"/></svg>
+    </button>
+  </header>
+
+  <main id="main-content" class="home-main">
+    <section class="hero">
+      <div class="eyebrow"><span class="status-dot"></span>Repository wrappers · 20 operations</div>
+      <h1>One gateway.<br><span>Three direct CLIs.</span></h1>
+      <p class="hero-lede">Build and start EphemeralOS once, then manage sandboxes, run commands and file operations, and inspect live evidence through focused JSON-line clients.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#quick-start">Start the gateway</a>
+        <a class="button secondary" href="management.html">Browse operations</a>
+      </div>
+      <dl class="hero-facts" aria-label="CLI facts">
+        <div><dt>Executables</dt><dd>3</dd></div>
+        <div><dt>Gateway</dt><dd>127.0.0.1:7878</dd></div>
+        <div><dt>Success output</dt><dd>JSON · stdout</dd></div>
+        <div><dt>Exit codes</dt><dd>0 · 1 · 2</dd></div>
+      </dl>
+    </section>
+
+    <section class="section-block" aria-labelledby="catalog-heading">
+      <div class="section-heading">
+        <div><span class="kicker">Command map</span><h2 id="catalog-heading">Choose the executable that owns the work.</h2></div>
+        <p>Each reference page is searchable and includes exact usage, flags, examples, operation behavior, and representative output.</p>
+      </div>
+      <div class="catalog-grid">
+        <a class="catalog-card management" href="management.html">
+          <span class="card-index">01</span>
+          <div><span class="catalog-label">Fleet control</span><h3>Management</h3><p>Discover local inputs, create or inspect sandboxes, and deliver published changes.</p></div>
+          <span class="tool-count">8 operations</span>
+        </a>
+        <a class="catalog-card runtime" href="runtime.html">
+          <span class="card-index">02</span>
+          <div><span class="catalog-label">Inside a sandbox</span><h3>Runtime</h3><p>Run commands, interact with sessions, and read or mutate workspace files.</p></div>
+          <span class="tool-count">7 operations</span>
+        </a>
+        <a class="catalog-card observability" href="observability.html">
+          <span class="card-index">03</span>
+          <div><span class="catalog-label">Read-only evidence</span><h3>Observability</h3><p>Inspect current state, traces, events, resources, and active layer inventory.</p></div>
+          <span class="tool-count">5 operations</span>
+        </a>
+      </div>
+    </section>
+
+    <section id="quick-start" class="section-block manual-grid" aria-labelledby="manual-heading">
+      <div class="section-heading full-span">
+        <div><span class="kicker">Quick start</span><h2 id="manual-heading">From checkout to first command</h2></div>
+        <p>Run Docker Desktop first. The gateway launcher builds the host clients, rebuilds the Linux daemon, starts in the background, and creates the shared private token.</p>
+      </div>
+      <article class="manual-card">
+        <span class="step-number">01</span>
+        <h3>Expose repo tools</h3>
+        <p>Add the checkout's <code>bin</code> directory to this shell. After this export, use <code>sandbox-manager-cli</code> directly—without a <code>bin/</code> prefix. Repeat the export in each new terminal.</p>
+        <div class="code-shell">
+          <div class="code-label"><span>Shell</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
+export PATH="$PWD/bin:$PATH"</code></pre>
+        </div>
+      </article>
+      <article class="manual-card">
+        <span class="step-number">02</span>
+        <h3>Start the gateway</h3>
+        <p>The launcher returns after starting the gateway in the background. Its wrappers read the generated token automatically.</p>
+        <div class="code-shell">
+          <div class="code-label"><span>Build and start</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>start-sandbox-docker-gateway --rebuild-binary</code></pre>
+        </div>
+      </article>
+      <article class="manual-card">
+        <span class="step-number">03</span>
+        <h3>Use the clients</h3>
+        <p>Create a sandbox, capture its id, then run a command against that sandbox scope.</p>
+        <div class="code-shell">
+          <div class="code-label"><span>First sandbox</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>SID=$(sandbox-manager-cli create_sandbox \
+  --image ubuntu:24.04 \
+  --workspace-bind-root /absolute/path/to/project | jq -r '.id')
+
+sandbox-runtime-cli --sandbox-id "$SID" exec_command pwd</code></pre>
+        </div>
+      </article>
+      <div class="callout info full-span"><strong>PATH is the deciding factor</strong><span><code>--rebuild-binary</code> builds the three host CLI binaries, but running the launcher cannot change its parent shell's <code>PATH</code>. Export <code>$PWD/bin</code> first, or keep using <code>bin/sandbox-manager-cli</code>.</span></div>
+    </section>
+
+    <section class="section-block split-panel" aria-labelledby="help-heading">
+      <div>
+        <span class="kicker">Built-in reference</span>
+        <h2 id="help-heading">Help is always local.</h2>
+        <p>Each executable lists only its own authority set. Use <code>help OPERATION</code> for the exact usage, argument descriptions, defaults, and examples compiled into the current binary.</p>
+        <div class="callout info"><strong>Common mistake</strong><span>Runtime's global <code>--sandbox-id</code> appears before the operation. Management and Observability operation flags appear after it.</span></div>
+      </div>
+      <div class="code-shell tall">
+        <div class="code-label"><span>Help commands</span><button class="copy-button" type="button">Copy</button></div>
+        <pre><code>sandbox-manager-cli help
+sandbox-runtime-cli help
+sandbox-observability-cli help
+
+sandbox-manager-cli help create_sandbox
+sandbox-runtime-cli help exec_command
+sandbox-observability-cli help snapshot</code></pre>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="output-heading">
+      <div class="section-heading">
+        <div><span class="kicker">Process contract</span><h2 id="output-heading">Stable channels and exits.</h2></div>
+        <p>Automation can branch on the process exit code and parse the documented channel as one JSON line.</p>
+      </div>
+      <div class="guardrail-grid">
+        <article><span class="risk-badge safe">Exit 0</span><h3>Operation success</h3><p>One compact operation-result JSON line on stdout. Help also exits 0 and writes human-readable text to stdout.</p></article>
+        <article><span class="risk-badge stateful">Exit 1</span><h3>Remote failure</h3><p>Gateway operation, connection, or response-protocol failures write one structured error envelope to stderr.</p></article>
+        <article><span class="risk-badge danger">Exit 2</span><h3>Local usage failure</h3><p>Argument, scope, projection, or gateway-configuration failures are rejected locally and written to stderr.</p></article>
+      </div>
+    </section>
+
+    <section class="section-block source-note" aria-label="Reference provenance">
+      <span class="kicker">Reference snapshot</span>
+      <p>Command syntax reflects the CLI projections in the EphemeralOS sandbox checkout on 2026-07-14. Shared descriptions and representative output shapes reuse the adjacent MCP manual's verified semantic catalog; no credentials are included.</p>
+    </section>
+  </main>
+
+  <footer><span>EphemeralOS CLI Manual</span><span>Static · portable · credential-free</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
