@@ -66,6 +66,58 @@ flowchart TD
 /health` is a deliberate 404, while `GET /files/list` reveals only that the
 allowlisted resource requires POST.*
 
+## Example: access a sandbox web server from the host
+
+The Docker provider does not publish every application port. Instead, the host
+connects to the sandbox's random loopback-only `daemon_http` port and names the
+application port in the forwarding path. This example uses an automatic shared
+workspace session, so the daemon can reach the server on sandbox loopback.
+
+```sh
+export SANDBOX_ID=eos-abc
+
+DAEMON_HTTP=$(
+  sandbox-manager-cli inspect_sandbox --sandbox-id "$SANDBOX_ID" |
+    jq -er '.daemon_http | select(. != null) | "http://\(.host):\(.port)"'
+)
+
+SERVER=$(
+  sandbox-runtime-cli --sandbox-id "$SANDBOX_ID" \
+    exec_command --yield-time-ms 1000 \
+    "python3 -m http.server 8000 --bind 127.0.0.1 --directory ."
+)
+COMMAND_SESSION_ID=$(
+  printf '%s\n' "$SERVER" |
+    jq -er '.command_session_id // error("server exited during the initial wait")'
+)
+
+APP_URL="$DAEMON_HTTP/forward/shared/8000/"
+curl --fail --show-error "$APP_URL"
+printf 'Open in a browser: %s\n' "$APP_URL"
+```
+
+`http://127.0.0.1:8000/` would target the host, not the sandbox. The actual
+path is host `127.0.0.1:<published daemon HTTP port>` → container daemon
+`/forward/shared/8000/` → container `127.0.0.1:8000`. Stop the example server
+by sending Ctrl-C to its command session (Bash/zsh syntax):
+
+```sh
+sandbox-runtime-cli --sandbox-id "$SANDBOX_ID" \
+  write_command_stdin --command-session-id "$COMMAND_SESSION_ID" \
+  --yield-time-ms 1000 $'\003'
+```
+
+The daemon strips the forwarding prefix before contacting the application, so
+the URL above arrives upstream as `/`. Applications should use relative URLs
+or honor `X-Forwarded-Prefix`; direct daemon forwarding does not rewrite
+absolute asset URLs or `Location` headers. An isolated-session server must bind
+to `0.0.0.0` and use
+`/forward/isolated=<workspace_session_id>/<port>/`, because the daemon dials the
+session's veth IP rather than its loopback address.
+
+*What to notice: application ports stay private to the sandbox. The only host
+publish is the daemon HTTP endpoint, and the route selects the in-sandbox port.*
+
 ## Why only `file_list` crosses HTTP
 
 The console needs a bounded read-only tree view and app preview; it does not
