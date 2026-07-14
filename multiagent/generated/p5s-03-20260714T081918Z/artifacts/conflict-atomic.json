@@ -1,0 +1,1 @@
+{"checks":{"same_manifest":true,"same_revision":true,"stale_absent":true,"winner_blame":true,"winner_content":true},"process":{"exit_code":0,"status":"ok"},"provenance":"public_cli","publication":{"class":"source_conflict","publish_rejected":true}}

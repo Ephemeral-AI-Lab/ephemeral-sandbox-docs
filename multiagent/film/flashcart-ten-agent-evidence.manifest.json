@@ -1,0 +1,27 @@
+{
+  "kind": "recorded_flashcart_evidence_film",
+  "generated_at": "2026-07-14T09:47:18Z",
+  "output": {
+    "path": "flashcart-ten-agent-evidence.mp4",
+    "sha256": "0075a0ab32c8c78bcec9138de59de2a4b3936925fbff5f2bcc00e41993269b68",
+    "video": "h264, 1920x1080, 30 fps",
+    "audio": "aac",
+    "duration_seconds": 62.361
+  },
+  "generator": {
+    "path": "../../../ephemeral-sandbox-test/demo/multi-agent/create_evidence_film.sh",
+    "sha256": "ebee74b6c725d56aa0e806dce9c030b4e9885e04b9a0e6807213e2989c365611",
+    "regression_check": "sh ephemeral-sandbox-test/demo/multi-agent/create_evidence_film.sh --check"
+  },
+  "verified_inputs": [
+    {
+      "path": "../../../ephemeral-sandbox-test/.e2e-state/flashcart/phase5/rehearsals/screenshots/live-desktop.png",
+      "sha256": "b88c52f139a2686c80b1c28b7b505254dfcc80b3b2d73ee1379933d8a0d2edbb"
+    },
+    {
+      "path": "../generated/flashcart-p5-final-20260714T092631Z.json",
+      "sha256": "8795b859a01774819ad94c44e050ac0d8d1de0b901d78a7fcc981563929d3c8e"
+    }
+  ],
+  "provenance": "Recorded evidence only: the film does not reenact or claim a new live agent run."
+}
