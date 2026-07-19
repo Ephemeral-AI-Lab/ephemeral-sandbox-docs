@@ -55,10 +55,10 @@ Every platform Phase 0 is limited to five feasibility claims:
 2. a seeded incompressible, fully allocated source of at least 1 GiB directly
    clones with at least 99% of allocated payload bytes shared, allowing one
    filesystem block per mapped extent of reconciliation error; after one
-   aligned 4 KiB overwrite, the source hash is unchanged and both
-   shared-byte loss and exclusive-byte growth are at most
-   `max(128 KiB, two reported filesystem extent-granularity units,
-   32 × filesystem block size)`;
+   aligned 4 KiB overwrite, the source hash is unchanged, at most two new
+   exclusive extent intervals appear, and both shared-byte loss and
+   exclusive-byte growth are at most
+   `max(128 KiB, 32 × filesystem block size)`;
 3. real OverlayFS mounted with exported production options retains at least 99%
    sharing over unchanged allocated payload under the same reconciliation and
    mutation bounds;

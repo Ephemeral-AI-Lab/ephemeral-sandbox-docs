@@ -73,10 +73,9 @@ exact stock production storage path:
 2. a seeded, incompressible, fully allocated source of at least 1 GiB directly
    clones with at least 99% of allocated payload shared, allowing at most one
    filesystem block per mapped extent of reconciliation error; after one
-   aligned 4 KiB overwrite, the source hash is exact and both shared-byte loss
-   and exclusive-byte growth are no greater than
-   `max(128 KiB, two reported filesystem extent-granularity units,
-   32 × filesystem block size)`;
+   aligned 4 KiB overwrite, the source hash is exact, at most two new exclusive
+   extent intervals appear, and both shared-byte loss and exclusive-byte growth
+   are no greater than `max(128 KiB, 32 × filesystem block size)`;
 3. OverlayFS mounted with the exported production options retains at least 99%
    of unchanged allocated payload during real copy-up under the same
    reconciliation and mutation bounds;

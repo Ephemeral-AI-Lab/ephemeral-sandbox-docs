@@ -162,9 +162,9 @@ On the exact volume used by the runtime:
    payload bytes are shared, allowing reconciliation error of at most one
    filesystem block per mapped extent;
 6. overwrite one aligned 4 KiB block in the clone;
-7. prove the source hash is unchanged and that both shared-byte loss and
-   exclusive-byte growth are no more than `max(128 KiB, two reported
-   filesystem extent-granularity units, 32 × filesystem block size)`; and
+7. prove the source hash is unchanged, at most two new exclusive extent
+   intervals appear, and both shared-byte loss and exclusive-byte growth are no
+   more than `max(128 KiB, 32 × filesystem block size)`; and
 8. destroy the test domain and prove no resource remains.
 
 Logical size, `ls -l`, sparse zero files, compression, and `du` alone are

@@ -70,10 +70,10 @@ The non-weakenable numeric Gate A floor uses at least 1 GiB of seeded,
 incompressible, fully allocated source data; direct clone and real OverlayFS
 copy-up must retain at least 99% sharing over allocated payload, with at most
 one filesystem block per mapped extent of reconciliation error. After one
-aligned 4 KiB overwrite, the source hash must remain exact and both shared-byte
-loss and exclusive-byte growth must be no greater than
-`max(128 KiB, two reported filesystem extent-granularity units,
-32 × filesystem block size)`.
+aligned 4 KiB overwrite, the source hash must remain exact, at most two new
+exclusive extent intervals may appear, and both shared-byte loss and
+exclusive-byte growth must be no greater than
+`max(128 KiB, 32 × filesystem block size)`.
 
 ## 3. Core design
 
