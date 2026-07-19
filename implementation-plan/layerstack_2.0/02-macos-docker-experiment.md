@@ -1,6 +1,6 @@
 # LayerStack 2.0 macOS Docker experiment
 
-Status: **DISCOVERY RECORDED — ACCEPTANCE NOT RUN**
+Status: **UNVERIFIED DISCOVERY CONTEXT — ACCEPTANCE NOT RUN**
 
 Verdict: **INCONCLUSIVE / BLOCKING**
 
@@ -28,13 +28,18 @@ verdict.
 
 ## 2. Verdict rules
 
-The final verdict is one of:
+Gate A-macOS receives one feasibility verdict:
 
-- `PASS`: every mandatory gate passes and the evidence bundle is complete;
-- `FAIL`: any mandatory compatibility, privilege, correctness, storage,
-  latency, blame, or memory gate fails; or
-- `INCONCLUSIVE`: the run or evidence is incomplete. This keeps
-  implementation blocked.
+- `PASS`: every Phase-0 same-domain, direct-clone/CoW, production-option
+  OverlayFS copy-up, security-diff, and teardown gate passes with a sealed
+  evidence bundle;
+- `FAIL`: any mandatory Phase-0 gate fails on a required stock environment; or
+- `INCONCLUSIVE`: a Phase-0 run, required cell, or evidence receipt is
+  incomplete. This keeps implementation blocked.
+
+Storage, performance, image, blame, remount, crash, and memory verdicts belong
+to post-implementation Gate B. They cannot be prerequisites for Gate A and
+remain `BLOCKED_NOT_RUN` until global Gate A authorizes product work.
 
 Only the repository owners may change the status at the top after reviewing
 the raw artifact digest and pinned product revision.
@@ -42,18 +47,20 @@ the raw artifact digest and pinned product revision.
 ## 3. Harness location and two-stage sequencing
 
 Before product code, use a disposable external prototype to prove A-macOS:
-Docker-native storage provisioning, production mount-builder compatibility,
-real shared extents, and an empty security-profile diff. A-macOS currently has
-no qualifying backend. Product implementation remains blocked until A-macOS,
-A-Windows, and A-Linux all pass and global Gate A is reviewed.
+same-domain Docker-native storage, numeric direct reflink and CoW behavior,
+real OverlayFS copy-up with exported production options, an empty security
+profile diff, and complete teardown. A-macOS currently has no qualifying
+receipt. Product implementation remains blocked until A-macOS, A-Windows, and
+A-Linux all pass and global Gate A is reviewed.
 
 A-macOS's helper is a standalone reference implementation committed to the test
 repository, not a nonexistent product primitive. It uses raw `FICLONE`,
 FIEMAP, `mount(2)`, and the exact mount flags/options exported from the current
 production builder; its source, binary digest, syscall trace, and cleanup are
 evidence. Gate B must repeat every probe through the implemented `layerstore`
-primitive and the actual v2 production mount path. A mismatch invalidates Gate
-A rather than allowing the reference helper to define product behavior.
+primitive and the actual v2 production mount path. A mismatch blocks Gate B,
+requires a classified discrepancy review and rerun, and may motivate a new
+Gate A receipt; it never rewrites the historical evidence-addressed receipt.
 
 The executable harness, platform adapters, and append-only evidence record
 belong on this platform branch in the dedicated experiment repository, not in
@@ -101,29 +108,37 @@ Record this table before running either baseline or candidate:
 | `ephemeral-sandbox-test` commit | full SHA | PENDING |
 | config and binary SHA-256 | digest | PENDING |
 | candidate storage layout/schema | exact version | PENDING |
+| product support-matrix/corpus revision | full commit/digest | PENDING |
 | image references | immutable digests | PENDING |
 
-Local discovery on 2026-07-19 saw macOS 26.4.1 arm64, Docker Desktop 4.76.0,
-Engine 29.5.2, and LinuxKit 6.12.76. This is **not** an acceptance run and does
-not fill the table; the complete experiment must capture all fields in one
-sealed artifact bundle.
+Unverified imported notes dated 2026-07-19 mention macOS 26.4.1 arm64, Docker
+Desktop 4.76.0, Engine 29.5.2, and LinuxKit 6.12.76. They have no sealed receipt
+or evidence digest, do not fill this table, and cannot affect a verdict.
 
-Use at least Alpine, Ubuntu or Debian, and a scratch/distroless-style image
-with the experiment helper injected externally. The workload must not depend
-on a shell or package manager inside the target image.
+Gate B runs every image in the complete product supported-image corpus pinned
+above, not a selected subset. It additionally includes Alpine, Ubuntu or
+Debian, and a scratch/distroless-style semantic extreme with the experiment
+helper injected externally. The workload must not depend on a shell, package
+manager, library, hook, or helper inside the target image.
 
-## 5. Variants
+## 5. Gate B benchmark variants
+
+This section, Sections 7–14, and Section 15.2 are a preregistered Gate B
+protocol. They are not executable before global Gate A and do not contribute
+to A-macOS.
 
 Run randomized paired samples for all three variants:
 
 | ID | Layout | Transfer path | Purpose |
 |---|---|---|---|
 | A | current separate volumes | current full copy | vanilla LayerStack baseline |
-| B | v2 single storage domain | reflink forced off | isolates topology/metadata effects |
+| B | v2 single storage domain | runtime publish/squash clone disabled | runtime-transfer control |
 | C | v2 single storage domain | reflink required | candidate |
 
-A comparison of A and C alone is invalid because it attributes volume layout,
-metadata, and scheduling changes to reflink. Variant B is mandatory.
+A comparison of A and C alone includes topology, metadata, kernel copy-up, and
+runtime transfer. Variant B is mandatory when isolating the runtime transfer,
+but it cannot disable OverlayFS's kernel copy-up clone attempt. Measure and
+report kernel copy-up sharing in B and C; never prescribe or prefill it.
 
 All variants use identical image digests, daemon configuration apart from the
 declared layout/extent mode, Docker resource limits, test order distribution,
@@ -139,13 +154,17 @@ On the exact volume used by the runtime:
    and allocated/free bytes;
 2. prove `objects`, `staging`, session `upper`, and session `work` share
    `st_dev`;
-3. create deterministic, incompressible, fully allocated source data;
+3. create at least 1 GiB of deterministic seeded, incompressible, fully
+   allocated source data and record its seed and cryptographic hash;
 4. clone it using A-macOS's reviewed reference primitive (and, in Gate B, the
    actual product primitive);
-5. show shared physical extents with FIEMAP or filesystem-native tooling;
+5. show with FIEMAP or filesystem-native tooling that at least 99% of allocated
+   payload bytes are shared, allowing reconciliation error of at most one
+   filesystem block per mapped extent;
 6. overwrite one aligned 4 KiB block in the clone;
-7. prove source content is unchanged and only a bounded extent region became
-   exclusive; and
+7. prove the source hash is unchanged and that both shared-byte loss and
+   exclusive-byte growth are no more than `max(128 KiB, two reported
+   filesystem extent-granularity units, 32 × filesystem block size)`; and
 8. destroy the test domain and prove no resource remains.
 
 Logical size, `ls -l`, sparse zero files, compression, and `du` alone are
@@ -164,43 +183,53 @@ as a lowerdir and a v2 session upper/work pair. Measure extents and allocation:
 4. after 1,024 scattered 4 KiB overwrites; and
 5. after an atomic full-file replacement.
 
-For the tiny overwrite, the copied-up upper file must share extents with the
-lower except around dirtied blocks. This proves the kernel clone path, not just
-the runtime clone path.
+For the tiny overwrite, at least 99% of the unchanged allocated payload must
+remain physically shared between lower and upper, with at most one filesystem
+block per mapped extent of reconciliation error. The source hash must remain
+unchanged and the same mutation-growth bound from Section 6.1 applies. This
+proves the kernel clone path, not just the runtime clone path.
 
 ### 6.3 Privilege diff
 
-Capture normalized `docker inspect`, effective capability masks, devices,
-device-cgroup rules, seccomp/security options, mount propagation, namespaces,
-and helper processes for A, B, and C.
+Capture raw and canonical `docker inspect`, effective capability masks,
+devices, device-cgroup rules, seccomp/security options, mount propagation,
+namespaces, Docker/VM settings, host changes, and helper processes for the
+production baseline and Gate A candidate. Repeat for A/B/C in Gate B.
 
 Mandatory gate `PRIV-01`:
 
 ```text
-normalized_security(B) == normalized_security(A)
-normalized_security(C) == normalized_security(A)
+canonical_security(gate_a_candidate) == canonical_security(production_baseline)
+canonical_security(B) == canonical_security(A)
+canonical_security(C) == canonical_security(A)
 ```
 
-Only volume names, paths, and the declared v2 configuration may differ. Fail
-if C needs privileged mode, an extra capability, `/dev/fuse`, a loop device,
-new device rule, host filesystem setup, Docker plugin, helper daemon, socket,
-or relaxed seccomp/LSM/no-new-privileges setting.
+The versioned canonicalizer may normalize only timestamps, runtime-generated
+IDs, semantically irrelevant ordering, and declared experiment path tokens. It
+must never normalize capabilities, privileged state, devices/device rules,
+seccomp, LSM, no-new-privileges, namespaces, propagation, helper processes,
+Docker/VM settings, or host changes. Retain raw snapshots, canonical snapshots,
+both diffs, and the canonicalizer source/binary SHA-256. Fail if the candidate
+needs privileged mode, an extra capability, `/dev/fuse`, a loop device, new
+device rule, host filesystem setup, Docker plugin, helper daemon, socket, or a
+relaxed security setting.
 
 ### 6.4 Feasibility table
 
-| Gate | A | B | C | Required C result | Evidence |
-|---|---:|---:|---:|---|---|
-| same `st_dev` for lower/upper/work | PENDING | PENDING | PENDING | PASS | PENDING |
-| direct clone shares physical extents | N/A | N/A | NOT RUN; default volume disqualified | PASS | D1: ext4, `FICLONE` → errno 95 |
-| 4 KiB mutation preserves source | N/A | N/A | PENDING | PASS | PENDING |
-| OverlayFS copy-up shares extents | NO | NO | PENDING | PASS | PENDING |
-| no security-profile delta | baseline | PENDING | PENDING | PASS | PENDING |
-| no host install/helper/plugin/device | baseline | PENDING | PENDING | PASS | PENDING |
+| Gate | Production baseline | Gate A reference candidate | Required result | Evidence |
+|---|---:|---:|---|---|
+| one `st_dev` for objects/staging/lower/upper/work | reference only | PENDING | PASS | PENDING |
+| direct clone shared allocated payload | N/A | PENDING | at least 99% | PENDING |
+| aligned 4 KiB CoW isolation | N/A | PENDING | source hash exact; growth within bound | PENDING |
+| OverlayFS unchanged payload remains shared | reference only; sharing unprescribed | PENDING | at least 99% | PENDING |
+| raw/canonical security delta | reference snapshot required | PENDING | empty outside declared paths | PENDING |
+| no host install/helper/plugin/device | reference snapshot required | PENDING | PASS | PENDING |
+| strict teardown | reference inventory required | PENDING | no experiment-owned residue | PENDING |
 
-D1 is a discovery result that eliminates one backend; it is not a completed C
-run because no alternative candidate backend has been selected. Stop after
-Phase 0 and record `FAIL` if a selected candidate fails. Do not run performance
-tests on a candidate that is not actually reflink-backed.
+The imported D0–D2 notes have no sealed receipt and do not fill this table.
+Stop after Phase 0 and record `FAIL` if a selected candidate fails. If it
+passes, seal A-macOS and stop: product benchmarks remain blocked until global
+Gate A has passed and implementation exists.
 
 ## 7. Workload matrix
 
@@ -225,6 +254,7 @@ cases use the designated benchmark image.
 | W13 | 1, 10, and 100 concurrent agent processes in one session | shared-container execution |
 | W14 | squash an 8-layer and a 100-layer eligible run | compaction |
 | W15 | active request service during remount | application pause/continuity |
+| W16 | external helper: sequentially hash/read a 1 GiB lower file, walk/stat the W07 tree, and perform 10,000 seeded 4 KiB random `pread`s | read-only data/metadata non-regression |
 
 ## 8. Measurement method
 
@@ -259,7 +289,8 @@ Named intervals:
 ## 9. Storage result tables
 
 Report filesystem-wide allocation deltas and object-exclusive/shared extents.
-The values below are intentionally blank.
+Every delta subtracts the quiescent pre-run domain allocation measured after
+the common warm-up. The values below are intentionally blank.
 
 ### 9.1 One 4 KiB edit in a 1 GiB file
 
@@ -288,8 +319,15 @@ Mandatory storage gates:
   file size and is at least 70% lower than A.
 - `SPACE-03`: W06 is reported honestly; C may not claim savings when content
   shares no blocks, and its overhead must be no more than 5% above B.
-- `SPACE-04`: after squash, lease release, and destroy, allocation returns to
-  within 1% or 16 MiB (whichever is larger) of the expected retained set.
+- `SPACE-04`: before execution, write the exact retained object IDs and policy
+  to the run manifest. Define the expected retained set as the union of unique
+  allocated extents belonging to pre-existing pinned bases/control metadata,
+  objects reachable from the declared retained revisions after squash, the
+  checkpointed SQLite DB/WAL/SHM, and explicitly listed quarantine objects.
+  Sessions, staging, export spools, released-lease objects, and unreachable
+  objects are excluded. After squash, lease release, destroy, checkpoint, and
+  one recovery sweep, filesystem allocation must be within 1% or 16 MiB
+  (whichever is larger) of that unique-extent inventory.
 - `SPACE-05`: logical bytes reconcile exactly. The absolute residual between
   filesystem allocation delta and unique shared-plus-exclusive payload
   accounting is no more than the greater of 1% or 16 MiB; per-file FIEMAP
@@ -321,7 +359,12 @@ Mandatory latency gates:
 - `PERF-02`: C p95 is not more than 5% slower than B for W06, W07, or no-op
   W01; these no-sharing/metadata controls are non-regression tests, not claims
   that reflink must beat B everywhere.
-- `PERF-03`: C adds no more than 5% p95 command latency to read-only workloads.
+- `PERF-03`: for each W16 command separately, both cold and warm series satisfy
+  `p95(C) <= 1.05 × p95(B)`. The named interval begins immediately before the
+  helper's first read/stat/pread and ends immediately after its last operation
+  completes. Sequential hashing is itself the W16 read workload and remains
+  inside that interval; setup, cache treatment, and correctness verification
+  stay outside it and are identical for B and C.
 - `PERF-04`: C squash p95 is no slower than A by more than 5%; current hardlink
   squash is already byte-neutral, so no speedup is presumed.
 - `PERF-05`: during a 15-minute W13 window at 100 concurrent agents, C
@@ -331,9 +374,13 @@ Mandatory latency gates:
 
 ## 11. File-blame and transaction proof
 
-For every relevant workload, capture normalized `file_blame` responses before
-and after publish, squash, remount, daemon restart, and GC. Compare exact
-`start_line`, `line_count`, and `owner` tuples—not only owner presence.
+Before implementation, freeze raw v1 `file_blame` status, headers, and response
+body fixtures. For every relevant workload, capture them before and after
+publish, squash, remount, daemon restart, and GC. Compare bytes and exact
+`start_line`, `line_count`, and `owner` tuples—not only owner presence. The
+explicit comparison allowlist may ignore only `Date` and request-ID header
+values; header presence, every other header/value, JSON encoding, ordering, and
+body bytes remain exact.
 
 | Case | Expected | A | B | C | Evidence |
 |---|---|---|---|---|---|
@@ -343,7 +390,7 @@ and after publish, squash, remount, daemon restart, and GC. Compare exact
 | delete and delete→recreate | v1 output preserved exactly | PENDING | PENDING | PENDING | PENDING |
 | rename/copy; empty/binary; trailing newline | v1 characterization fixture preserved | PENDING | PENDING | PENDING | PENDING |
 | base-only/absent path | current `NotFound` behavior preserved | PENDING | PENDING | PENDING | PENDING |
-| huge sparse owner ranges | legacy whole-array response exact; bounded RSS via internal paging/spool | PENDING | PENDING | PENDING | PENDING |
+| one million sparse owner ranges; 64–256 MiB serialized v1 body | byte-exact whole-array response; spool ≤ body + 16 MiB; anon RSS/PSS delta ≤ 64 MiB | PENDING | PENDING | PENDING | PENDING |
 | squash | response byte-identical before/after | PENDING | PENDING | PENDING | PENDING |
 | live remount | response byte-identical before/after | PENDING | PENDING | PENDING | PENDING |
 | restart | response byte-identical | PENDING | PENDING | PENDING | PENDING |
@@ -353,11 +400,12 @@ and after publish, squash, remount, daemon restart, and GC. Compare exact
 | metadata/WAL/checkpoint ENOSPC or I/O failure | old-or-new state; never partial attribution | PENDING | PENDING | PENDING | PENDING |
 
 Mandatory gate `BLAME-01`: every row passes, and no successful v2 publish can
-be observed without its matching provenance state. The existing public
-`file_blame` status, headers, JSON shape, ordering, and values must remain
-compatible; internal paging is not permission to replace or truncate that API.
-Any public cursor endpoint is tested only as an additive, separately approved
-API.
+be observed without its matching provenance state. Except for the two allowed
+volatile header values, the existing public `file_blame` status, headers, and
+body must remain byte-for-byte identical. Internal paging is not permission to
+replace or truncate that API. The huge fixture's spool allocation and
+baseline-subtracted daemon anonymous RSS/PSS must meet the numeric row. Any
+public cursor endpoint is tested only as an additive, separately approved API.
 
 ## 12. Squash, remount, and active-execution proof
 
@@ -401,11 +449,10 @@ separate client.
 | B | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
 | C | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING | PENDING |
 
-The published idle baseline—p50 5 ms, p95 6 ms, pooled p99 7.1 ms, max
-18 ms across 145 measurements—is context only. It measured the complete
-operation for an idle session, not application `SIGSTOP` → `SIGCONT`, and is
-not an SLA. The current 500 ms freeze budget and 30 s runner timeout are safety
-ceilings, not performance targets.
+No historical idle number is accepted without an environment receipt, raw
+samples, command interval, commit, and artifact digest. The current 500 ms
+freeze budget and 30 s runner timeout are safety ceilings, not performance
+targets.
 
 Mandatory gates:
 
@@ -492,29 +539,49 @@ Mandatory gates:
 - `MEM-01`: for B and C separately, 10 GiB transfer peak anonymous memory is
   within 16 MiB of the corresponding 1 GiB transfer after baseline
   subtraction; A/B/C use identical buffer, concurrency, and cache conditions.
-- `MEM-02`: no daemon-owned payload cache or data structure scales with file
-  bytes; profiler evidence identifies every retained allocation class.
+- `MEM-02`: profiler evidence identifies every retained allocation class. From
+  1 GiB to 10 GiB, no daemon-retained class outside the declared fixed pools
+  may grow by more than 16 MiB, and every request-owned allocation must return
+  to zero or its recorded warm baseline within 60 seconds of completion or
+  cancellation.
 - `MEM-03`: after warm-up and completed cleanup, the Theil–Sen anonymous-RSS
-  slope over the final 12 soak hours is no greater than 1 MiB/hour and its
-  seeded 95% bootstrap confidence interval includes zero with an upper bound
-  no greater than 1 MiB/hour.
-- `MEM-04`: fds, tasks, leases, staged objects, parked mounts, and bounded
-  queue entries return to their expected steady-state counts.
+  slope over the final 12 soak hours has a seeded one-sided 95% bootstrap upper
+  confidence bound no greater than 1 MiB/hour. Candidate steady anonymous
+  RSS/PSS p95 is also no greater than
+  `max(A steady p95 + 64 MiB, 1.10 × A steady p95)`.
+- `MEM-04`: within 60 seconds of normal cleanup and within five minutes after
+  an injected recovery, live leases, staged objects, parked mounts, and queue
+  entries return to zero; fds and tasks return to within two of their recorded
+  warm baseline and stay there for five minutes.
 - `MEM-05`: zero OOM kills, allocator failures, panics, daemon restarts, or
   unexpected health/readiness failures; WAL checkpoints target 64 MiB and WAL
   never exceeds the 256 MiB hard ceiling.
-- `MEM-06`: growing blame history increases disk usage but not resident heap
-  proportional to total paths/events.
+- `MEM-06`: comparing 100,000 with one million events under the same active
+  query load, baseline-subtracted steady anonymous RSS/PSS p95 may increase by
+  at most 16 MiB for both bounded and growing path sets. Query-owned memory
+  returns to the warm baseline plus 16 MiB within 60 seconds; durable DB growth
+  is reported separately.
 - `MEM-07`: staging, export, recovery, and combined transient allocation never
   exceed the numeric table; one boot sweep returns unreachable transient bytes
   to zero or an explicitly accounted quarantine below its limit.
 - `MEM-08`: fill and concurrent-race tests at every high-water reject new work
   before visibility, preserve at least 4 GiB recovery reserve, leave old state
-  readable, and recover without bypassing admission or deleting blame.
+  readable, and recover without bypassing admission or deleting blame. A short
+  fault drains rejected/private work and restores its pre-run counters within
+  60 seconds; after an ENOSPC injection is removed, recovery completes within
+  five minutes. Neither path permits manual DB edits or broad deletion.
 
 ## 14. Crash, ENOSPC, and recovery
 
-Inject process death and storage failures at every durable boundary:
+The committed harness owns a versioned `failpoints-v1.json` registry. Its file
+digest is part of every receipt, IDs are immutable, and each row records the
+operation/state transition, whether injection occurs immediately before or
+after its flushed durable marker, injected failure, required old-or-new state,
+content/blame oracle, cleanup owner, and deadline. Every durability transition
+listed below must have distinct before/after IDs; an unregistered “during” test
+does not count as coverage.
+
+Inject process death and storage failures at every registered durable boundary:
 
 - during clone/copy;
 - after object-tree fsync, promotion rename, and objects-parent fsync;
@@ -536,23 +603,44 @@ unpinned live chain, no duplicate result for an uncertain retry, bounded WAL,
 and deterministic cleanup/quarantine. A dead epoch alone never authorizes
 release of a lease whose mount/session state has not been proven.
 
-## 15. Final gate table
+Mandatory `RECOVERY-01`: every registry ID has one reviewed receipt. At most
+one idempotent client retry is allowed after an uncertain commit. Short
+kill/I/O cases must reach their registered invariant within 60 seconds of
+restart; ENOSPC cases must do so within five minutes after the injection is
+removed and the reserved recovery space is available. Timeout, unbounded retry,
+manual metadata editing, or broad deletion fails the gate.
+
+## 15. Gate tables
+
+### 15.1 A-macOS feasibility
 
 | Gate family | Required | Result | Evidence artifact |
 |---|---|---|---|
-| FEASIBILITY | all Phase 0 gates pass | **UNSATISFIED** | D1 eliminated the default volume; no candidate selected |
-| PRIVILEGE | `PRIV-01` | PENDING | PENDING |
-| STORAGE | `SPACE-01` … `SPACE-05` | PENDING | PENDING |
-| PERFORMANCE | `PERF-01` … `PERF-05` | PENDING | PENDING |
-| BLAME | `BLAME-01` | PENDING | PENDING |
-| REMOUNT | `REMOUNT-01`, `REMOUNT-02` | PENDING | PENDING |
-| ACTIVE | `ACTIVE-01` … `ACTIVE-03` | PENDING | PENDING |
-| MEMORY | `MEM-01` … `MEM-08` | PENDING | PENDING |
-| CRASH/RECOVERY | every injected boundary | PENDING | PENDING |
-| ARBITRARY IMAGES | every pinned image | PENDING | PENDING |
-| TEARDOWN | no experiment-owned residue | PENDING | PENDING |
+| DOMAIN | one production storage domain and exact production mount options | NOT RUN | PENDING |
+| DIRECT CLONE | at least 99% allocated payload shared | NOT RUN | PENDING |
+| COW ISOLATION | exact source hash and mutation growth within bound | NOT RUN | PENDING |
+| OVERLAY COPY-UP | at least 99% of unchanged allocated payload shared | NOT RUN | PENDING |
+| PRIVILEGE/SECURITY | `PRIV-01`; raw and canonical diff empty | NOT RUN | PENDING |
+| TEARDOWN | no experiment-owned residue | NOT RUN | PENDING |
 
-Final verdict: **INCONCLUSIVE — DEFAULT BACKEND DISQUALIFIED; C NOT RUN**
+A-macOS verdict: **INCONCLUSIVE — NO SEALED PHASE-0 RECEIPT**
+
+### 15.2 Gate B integrated product acceptance
+
+Gate B status: **BLOCKED_NOT_RUN — GLOBAL GATE A AND PRODUCT REQUIRED**
+
+| Gate family | Required | Result | Evidence artifact |
+|---|---|---|---|
+| REPEATED FEASIBILITY | Phase 0 through integrated `layerstore` and mount builder | BLOCKED_NOT_RUN | PENDING |
+| STORAGE | `SPACE-01` … `SPACE-05` | BLOCKED_NOT_RUN | PENDING |
+| PERFORMANCE | `PERF-01` … `PERF-05` | BLOCKED_NOT_RUN | PENDING |
+| BLAME | `BLAME-01` | BLOCKED_NOT_RUN | PENDING |
+| REMOUNT | `REMOUNT-01`, `REMOUNT-02` | BLOCKED_NOT_RUN | PENDING |
+| ACTIVE | `ACTIVE-01` … `ACTIVE-03` | BLOCKED_NOT_RUN | PENDING |
+| MEMORY | `MEM-01` … `MEM-08` | BLOCKED_NOT_RUN | PENDING |
+| CRASH/RECOVERY | `RECOVERY-01` registry complete | BLOCKED_NOT_RUN | PENDING |
+| SUPPORTED IMAGES | complete pinned product corpus plus extremes | BLOCKED_NOT_RUN | PENDING |
+| TEARDOWN | no experiment-owned residue | BLOCKED_NOT_RUN | PENDING |
 
 Evidence bundle SHA-256: `PENDING`
 
@@ -562,12 +650,9 @@ Reviewer and date: `PENDING`
 
 This document's A-macOS verdict applies only to the pinned macOS Docker Desktop
 environment and architecture. Apple Silicon does not prove Intel macOS. The
-dedicated experiment repository has three peer evidence branches, executed in
-this order:
-
-1. `macos_experiment`;
-2. `windows_experiment`; and
-3. `linux_experiment`.
+dedicated experiment repository has three independently owned peer evidence
+branches—`macos_experiment`, `windows_experiment`, and `linux_experiment`—which
+may execute in parallel and cannot inherit one another's verdict.
 
 Global Gate A is the conjunction of A-macOS, A-Windows, and A-Linux across
 every declared host/architecture lane. No LayerStack 2.0 product code starts
@@ -576,7 +661,7 @@ arbitrary-image, correctness, storage, performance, blame, remount, crash, and
 memory suite through the integrated runtime on:
 
 - supported native Linux kernels/filesystems;
-- Windows Docker Desktop/WSL 2; and
+- stock Windows Docker Desktop's WSL 2 Linux-container backend; and
 - every other host architecture declared supported by the product.
 
 Each host records whether `required`, `preferred`, or only `disabled` is
@@ -587,10 +672,13 @@ one host's successful probe as another host's capability. Every platform
 receipt records its branch commit, shared-protocol commit, exact environment
 cell, and evidence-bundle SHA-256.
 
-## Appendix A: discovery run report
+## Appendix A: unverified imported discovery context
 
-This appendix is append-only. Discovery results identify blockers but do not
-replace the complete acceptance run above.
+The notes below were copied without the branch commit, raw artifact bundle, or
+sealed SHA-256 required by this protocol. They are not authoritative results,
+do not fill a table, and cannot support `PASS` or `FAIL`. Preserve them only as
+leads for a fresh, preregistered Phase-0 run; once a receipt exists, append a new
+verified entry rather than converting these notes in place.
 
 ### 2026-07-19 D0 — default named-volume clone probe
 
@@ -621,7 +709,8 @@ Good: a complete JSON result identifies filesystem, `st_dev`, effective
 capabilities, allocated bytes, and either successful clone independence or a
 precise unsupported errno; cleanup removes the volume.
 
-D1 result: Docker's default named volume reported filesystem `ext2/ext3`
+Imported D1 claim: Docker's default named volume reportedly used filesystem
+`ext2/ext3`
 (the `statfs` family name for ext4), `st_dev=65025`, and a fully allocated
 64 MiB source. `FICLONE` failed with errno 95, `EOPNOTSUPP`. The container had
 Docker's ordinary default effective capability mask `00000000a80425fb`; no

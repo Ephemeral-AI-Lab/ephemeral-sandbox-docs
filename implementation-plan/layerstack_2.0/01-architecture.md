@@ -37,12 +37,15 @@ layout decision, not by retaining accidental implementation constraints.
 |---|---|
 | Linux | Linux containers on the host kernel |
 | macOS | Linux containers inside Docker Desktop's Linux VM |
-| Windows | Linux containers inside Docker Desktop or WSL 2 |
+| Windows | Linux containers inside stock Docker Desktop's WSL 2 backend |
 
 OverlayFS itself is Linux-only. LayerStack 2.0 does not promise a native
-macOS filesystem, native Windows containers, or a Windows filesystem filter.
-It accepts arbitrary OCI image contents because no guest image library or
-agent-side integration is required.
+macOS filesystem, standalone WSL 2 deployment, native Windows containers, or a
+Windows filesystem filter. It accepts arbitrary OCI image contents because no
+guest image library or agent-side integration is required. Qualification pins
+the product's complete supported-image corpus revision and image digests, then
+adds Alpine, Debian/Ubuntu, and scratch/distroless semantic extremes; a hand
+selected three-image sample cannot stand in for the support matrix.
 
 The runtime must select behavior by a probe on the exact production storage
 domain, never by host OS name, Docker version, filesystem name, or a static
@@ -53,6 +56,24 @@ and Linux platform gates must all prove the production storage path. A
 correct copy fallback does not satisfy a reflink gate, and a successful result
 on one host, architecture, filesystem, or Docker backend cannot qualify a
 different cell.
+
+Those platform gates are feasibility-only Gate A receipts: same-domain layout,
+numeric direct-clone and CoW evidence, real OverlayFS copy-up with exported
+production options, an empty security/privilege delta, and exact teardown.
+They may use a reviewed standalone syscall harness and do not require product
+code. The post-implementation Gate B repeats the probes through `layerstore`
+and owns every runtime correctness, performance, recovery, image, blame, and
+memory requirement. A Gate B mismatch blocks Gate B and triggers discrepancy
+review; it does not retroactively edit an immutable Gate A receipt.
+
+The non-weakenable numeric Gate A floor uses at least 1 GiB of seeded,
+incompressible, fully allocated source data; direct clone and real OverlayFS
+copy-up must retain at least 99% sharing over allocated payload, with at most
+one filesystem block per mapped extent of reconciliation error. After one
+aligned 4 KiB overwrite, the source hash must remain exact and both shared-byte
+loss and exclusive-byte growth must be no greater than
+`max(128 KiB, two reported filesystem extent-granularity units,
+32 × filesystem block size)`.
 
 ## 3. Core design
 
@@ -145,6 +166,12 @@ This is a hypothesis until FIEMAP/shared-extent and allocated-block evidence
 passes on the target kernel. If OverlayFS falls back to byte copy, LayerStack
 publish may still clone the upper file, but the end-to-end storage claim has
 failed and the implementation gate stays closed.
+
+The v2 copy control disables only the runtime publish/squash clone primitive.
+It cannot disable OverlayFS's kernel copy-up clone attempt, so kernel copy-up
+sharing is always observed rather than prescribed for the control. Therefore
+copy-control versus candidate isolates runtime extent transfer only; vanilla
+versus candidate measures the complete topology plus kernel/runtime path.
 
 ### 3.3 Metadata plane: one durable commit boundary
 
@@ -241,10 +268,12 @@ Blame semantics remain product-compatible:
 - path normalization remains the existing `LayerPath` normalization; and
 - squash and remount create no new publisher attribution.
 
-Before code changes, characterization tests freeze current behavior for
-rename/copy, empty files, binary files, trailing-newline changes, and very
-large mixed-owner range sets. V2 must match those fixtures exactly unless a
-separate public API change is approved.
+Before code changes, characterization tests freeze raw v1 status, headers, and
+body bytes for rename/copy, empty files, binary files, trailing-newline changes,
+and very large mixed-owner range sets. V2 must match those fixtures byte for
+byte. Only `Date` and request-ID header values may be ignored, using an explicit
+fixture allowlist; header presence, all other header values, body ordering, and
+encoding remain exact unless a separate public API change is approved.
 
 Unlike the current eager `path -> latest event` `HashMap`, the storage-side
 `file_blame` query reads indexed, bounded pages. The existing public
@@ -256,6 +285,12 @@ new lower response limit. Retained provenance consumes disk, not daemon heap.
 Squash changes active storage structure but leaves the provenance head
 unchanged. Provenance GC, if ever added, is a separate versioned retention
 policy and cannot be implied by layer GC.
+
+Gate B includes a one-million-range fixture whose serialized v1 body is between
+64 MiB and 256 MiB. The returned bytes must be exact, peak spool allocation may
+not exceed serialized body bytes plus 16 MiB, and baseline-subtracted daemon
+anonymous RSS/PSS may not increase by more than 64 MiB. These are qualification
+limits for the fixed fixture, not permission to impose a new public API limit.
 
 ### 3.5 Squash
 
@@ -343,7 +378,9 @@ approximating ownership, or silently imposing a new API limit.
 The daemon must expose current and peak anonymous RSS, file/page-cache usage,
 metadata queue depth, SQLite cache/WAL bytes, open descriptors, live leases,
 staged bytes, and parked remounts. Soak acceptance is based on steady-state
-slope after warm-up, not only a final RSS snapshot.
+slope after warm-up and an absolute ceiling, not only a final RSS snapshot.
+For the fixed qualification workload, candidate steady anonymous RSS/PSS p95
+must be no greater than `max(A p95 + 64 MiB, 1.10 × A p95)`.
 
 ## 5. Capability and security contract
 
@@ -363,6 +400,14 @@ Direct `FICLONE` needs no capability; mounting OverlayFS continues to use the
 runtime's existing authority. A managed XFS/Btrfs loop device is unacceptable
 if it requires a new device mapping, privileged mode, or host setup.
 
+The security canonicalizer is versioned and content-addressed. It may normalize
+only timestamps, runtime-generated IDs, semantically irrelevant ordering, and
+declared experiment path tokens. It must never normalize capabilities,
+privileged state, devices or device rules, seccomp/LSM/no-new-privileges,
+namespaces, propagation, helper processes, Docker/VM settings, or host changes.
+Every receipt retains both raw and canonical snapshots, their diff, and the
+canonicalizer source/binary digest.
+
 ## 6. Capability modes
 
 ```yaml
@@ -376,8 +421,9 @@ runtime:
   every kernel gate passes.
 - `preferred`: clone where proved; atomically fall back to copy on a classified
   unsupported path and emit a stable reason.
-- `disabled`: v2 transactional metadata and unified layout, but force copy;
-  this is the benchmark control and emergency rollback.
+- `disabled`: v2 transactional metadata and unified layout, but force runtime
+  publish/squash copy. This is the benchmark control and emergency mode; it
+  does not and cannot disable a kernel OverlayFS copy-up clone.
 
 Production rollout cannot silently change `required` to `preferred`.
 Per-operation fallback due to corruption, I/O errors, ENOSPC, or identity

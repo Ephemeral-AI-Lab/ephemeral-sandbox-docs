@@ -11,11 +11,12 @@ Runtime implementation started: **NO**
 This document is deliberately implementation-ready, but it does not authorize
 changes to the runtime. Global Gate A requires independent macOS, Windows, and
 Linux feasibility passes; the macOS snapshot in
-[the experiment](02-macos-docker-experiment.md) is not satisfied. In the first
-discovery run that reached `FICLONE`, Docker Desktop's default named volume was
-ext4-family and returned `EOPNOTSUPP`. A qualifying, Docker-native,
-reflink-capable storage domain still has to be found without adding a device,
-helper daemon, plugin, privilege, host installation, or VM customization.
+[the experiment](02-macos-docker-experiment.md) has no sealed Phase-0 receipt.
+Imported notes claim that one default Docker Desktop named volume returned
+`EOPNOTSUPP`, but they lack the required artifact digest and are not a result. A
+qualifying Docker-native reflink-capable storage domain still has to be proven
+without adding a device, helper daemon, plugin, privilege, host installation,
+or VM customization.
 
 No simulated number, Linux-only result, direct `FICLONE` microbenchmark, or
 loop-device experiment can change this status.
@@ -27,7 +28,7 @@ There are two non-circular gates:
 | Gate | Work allowed | Required result |
 |---|---|---|
 | A-macOS | Disposable external reference primitive and measurement harness only | Phase 0 passes on every supported stock macOS Docker Desktop architecture |
-| A-Windows | Disposable external reference primitive and measurement harness only | Phase 0 passes on every supported stock Windows Docker Desktop/WSL 2 architecture |
+| A-Windows | Disposable external reference primitive and measurement harness only | Phase 0 passes on every supported stock Windows Docker Desktop WSL 2 Linux-backend architecture |
 | A-Linux | Disposable external reference primitive and measurement harness only | Phase 0 passes in every declared native-Linux filesystem/runtime cell |
 | A — global backend feasibility | No product implementation | A-macOS ∧ A-Windows ∧ A-Linux, with reviewed receipts and evidence digests |
 | B — product acceptance | Feature-gated LayerStack 2.0 implementation after global Gate A | The integrated runtime passes every correctness, blame, storage, performance, remount, crash, image, and memory gate in every mandatory platform lane |
@@ -37,7 +38,9 @@ migrations, or configuration to `ephemeral-sandbox`. After global Gate A,
 experimental implementation
 may begin, but it remains disabled and unmergeable as a production default
 until Gate B. A failed Gate B removes or revises the experiment-only code; it
-does not silently relax thresholds.
+does not silently relax thresholds. A Gate B discrepancy blocks Gate B and
+requires classification and rerun; it does not alter a historical Gate A
+receipt whose environment, harness, and evidence digest remain immutable.
 
 Each Gate A branch uses a standalone test reference primitive that calls raw
 `FICLONE`, FIEMAP, and `mount(2)` with the exact exported production options.
@@ -45,12 +48,32 @@ Gate B repeats the proof through the real `layerstore` and v2 mount builder.
 This makes feasibility non-circular without allowing test code to define the
 product contract.
 
+Every platform Phase 0 is limited to five feasibility claims:
+
+1. objects, staging, lower, upper, and work occupy one production storage
+   domain;
+2. a seeded incompressible, fully allocated source of at least 1 GiB directly
+   clones with at least 99% of allocated payload bytes shared, allowing one
+   filesystem block per mapped extent of reconciliation error; after one
+   aligned 4 KiB overwrite, the source hash is unchanged and both
+   shared-byte loss and exclusive-byte growth are at most
+   `max(128 KiB, two reported filesystem extent-granularity units,
+   32 × filesystem block size)`;
+3. real OverlayFS mounted with exported production options retains at least 99%
+   sharing over unchanged allocated payload under the same reconciliation and
+   mutation bounds;
+4. the canonical security delta is empty; and
+5. strict teardown leaves no experiment-owned resource.
+
+No product schema, runtime benchmark, blame implementation, or memory soak is a
+Gate A prerequisite. Those are Gate B work.
+
 Executable authorities are peer branches in
 `ephemeral-sandbox-layerstack-2-experiment`: `macos_experiment`,
-`windows_experiment`, and `linux_experiment`, run in that order. Every receipt
-records its platform branch commit, shared-protocol commit, exact environment
-cell, and raw evidence-bundle SHA-256. One branch can never satisfy another
-branch's gate.
+`windows_experiment`, and `linux_experiment`. They are independently owned and
+may run in parallel. Every receipt records its platform branch commit,
+shared-protocol commit, exact environment cell, and raw evidence-bundle
+SHA-256. One branch can never satisfy another branch's gate.
 
 Assign one agent to each platform branch. Each branch must contain a
 platform-specific `README.md` defining stock-host setup, execution ownership,
@@ -70,8 +93,10 @@ only after global Gate A.
 
 LayerStack 2.0 must preserve these external behaviors:
 
-- any currently supported OCI Linux image works without binaries, libraries,
-  hooks, or filesystem support inside the image;
+- every image in the complete product supported-image corpus at a pinned
+  support-matrix commit works without binaries, libraries, hooks, or filesystem
+  support inside the image; Alpine, Debian/Ubuntu, and scratch/distroless
+  semantic extremes are additionally pinned by digest;
 - all agents in one sandbox continue to share one ordinary `/workspace`
   mount and the same live upperdir;
 - reads, writes, `mmap`, executable files, xattrs, symlinks, hardlinks,
@@ -324,6 +349,16 @@ without holding it in heap. It must not expand an owner per line or load all
 history/all paths on startup. A public cursor endpoint is additive only after
 separate API approval; v2 must not introduce a new lower legacy-response limit.
 
+Before implementation, freeze raw v1 status, headers, and body fixtures.
+Gate B requires byte-for-byte equality; the only comparison allowlist is the
+value of `Date` and request-ID headers. Header presence, every other value,
+body encoding, and ordering remain exact. The fixed stress fixture contains one
+million sparse owner ranges and a serialized body between 64 MiB and 256 MiB:
+the response must remain exact, peak file-backed spool allocation must not
+exceed body bytes plus 16 MiB, and baseline-subtracted daemon anonymous RSS/PSS
+must increase by no more than 64 MiB. These fixture bounds are not a new public
+response-size limit.
+
 Known semantics to preserve are: attribution is published-only; an unaudited
 base-only or absent path is `NotFound`; deletion keeps the last published
 attribution because blame is a pure provenance-store read. A delete transition
@@ -331,10 +366,10 @@ records `after_digest = NULL`, its prior head, no ranges, and that same prior
 head as its resulting query head; a delete without a prior audited head keeps
 `NotFound`. Recreate records the recreating publisher. Non-text/ignored
 wholesale attribution remains the existing synthetic range, and path keys use
-existing `LayerPath` normalization. Before implementation, v1 characterization fixtures must freeze
+existing `LayerPath` normalization. V1 characterization fixtures cover
 rename/copy, empty and binary content, trailing-newline changes, huge sparse
-range sets, mixed-owner conflicts, and delete/recreate output byte-for-byte.
-Squash, lease rewrite, and remount create no ownership.
+range sets, mixed-owner conflicts, and delete/recreate. Squash, lease rewrite,
+and remount create no ownership.
 
 A later provenance-retention feature needs its own explicit product policy;
 layer GC is not provenance GC. The domain quota may reject future publishes,
@@ -438,6 +473,20 @@ transient allocation, a 4 GiB recovery-only reserve, a 44 GiB normal-state
 admission high-water, and at most 64 parked remounts. Production sizing may
 differ, but every value remains explicit and boundary-tested.
 
+The qualification memory oracle is also fixed. Candidate steady anonymous
+RSS/PSS p95 must be no greater than
+`max(A steady p95 + 64 MiB, 1.10 × A steady p95)`. Over the final 12 soak
+hours, the seeded one-sided 95% bootstrap upper confidence bound for the
+Theil–Sen anonymous-RSS slope must be no greater than 1 MiB/hour; “confidence
+interval includes zero” is not the acceptance test. Request-owned allocation
+returns to zero or the warm baseline within 60 seconds. After normal cleanup,
+leases, staged objects, parked mounts, and queues reach zero within 60 seconds;
+fds and tasks return to within two of the warm baseline. Injected recovery gets
+five minutes, including after ENOSPC is removed. A 100,000-to-one-million-event
+blame/history increase may add at most 16 MiB to baseline-subtracted steady
+anonymous RSS/PSS p95 and must return to warm baseline plus 16 MiB within 60
+seconds after queries finish.
+
 Set and verify explicit SQLite controls: `mmap_size=0`, negative `cache_size`
 derived from the byte ceiling, file-backed temporary storage, WAL mode,
 `wal_autocheckpoint` plus an explicit byte/deadline checkpoint policy,
@@ -491,6 +540,14 @@ Docker VM modification. Current production capabilities such as `SYS_ADMIN`
 and `NET_ADMIN` must be recorded exactly; the design must not inaccurately
 claim a `SYS_ADMIN`-only baseline.
 
+Security comparison uses a versioned, content-addressed canonicalizer. It may
+normalize only timestamps, runtime-generated IDs, semantically irrelevant
+ordering, and declared experiment path tokens. It may never normalize
+capabilities, privileged state, devices or device rules, seccomp/LSM/
+no-new-privileges, namespaces, propagation, helper processes, Docker/VM
+settings, or host changes. Each receipt includes raw and canonical snapshots,
+both diffs, and the canonicalizer source/binary digest.
+
 The macOS and Windows lanes run from ordinary, non-elevated host accounts.
 Windows qualification forbids UAC elevation, `wsl --mount`, a custom WSL
 distro/kernel/VHDX, Docker data-root or settings changes, and any new Windows
@@ -500,10 +557,11 @@ architecture, filesystem feature bits, rootful/rootless mode, user namespace,
 cgroup mode, seccomp, and LSM cell. The runtime never provisions, reformats,
 or remounts a host filesystem to manufacture reflink support.
 
-Global Gate A passes only when every declared macOS architecture, Windows
-architecture/WSL 2 cell, and mandatory native-Linux filesystem/runtime cell
-has its own reviewed receipt. Copy mode can remain a correctness fallback,
-but it cannot be counted as a passing reflink result.
+Global Gate A passes only when every declared macOS architecture, stock
+Windows Docker Desktop WSL 2 Linux-backend architecture, and mandatory
+native-Linux filesystem/runtime cell has its own reviewed receipt. Copy mode
+can remain a correctness fallback, but it cannot be counted as a passing
+reflink result.
 
 If the only reflink-capable backend violates this rule, that platform gate
 fails and global Gate A remains blocked, so this implementation is not built.
@@ -526,8 +584,9 @@ Rollout rules:
 
 - defaults remain `v1` and `disabled` until Gate B and an explicit rollout
   decision;
-- `layout=v2, extent_sharing=disabled` is the co-located-copy control and
-  emergency mode;
+- `layout=v2, extent_sharing=disabled` disables runtime publish/squash cloning
+  and is the co-located-copy control and emergency mode; it cannot disable the
+  kernel OverlayFS copy-up clone attempt, which must be measured independently;
 - `required` fails readiness unless the persisted startup probe passes;
 - `preferred` selects one mode for the boot and emits a reason; it does not
   silently downgrade a required deployment; and
@@ -639,9 +698,18 @@ receipts with retention.
 | 7 | full benchmark and 24-hour health soak | every Gate B table is filled from retained raw evidence and passes |
 | 8 | guarded rollout and rollback drill | explicit approval; default remains unchanged until the rollout decision |
 
-Each phase adds a closed failpoint at its durability boundaries. Crash tests
-use `SIGKILL` after a flushed phase marker; returned errors are not substitutes
-for power/process-loss ordering tests.
+Each phase updates a committed, versioned failpoint registry. Registry IDs are
+immutable; each entry names the operation/state transition, injects immediately
+before or after a flushed durable marker, declares the expected old-or-new
+content/blame state, cleanup owner, and deadline, and is included by digest in
+the evidence receipt. Every durability transition has distinct before/after
+IDs. Crash tests use `SIGKILL` after the selected marker; returned errors are
+not substitutes for process-loss ordering tests. Gate B permits at most one
+idempotent client retry after an uncertain commit. Short kill/I/O cases must
+reach their invariant within 60 seconds after restart; ENOSPC cases get five
+minutes after the fault is removed and reserved recovery space is available.
+Unbounded retry, manual database repair, broad deletion, or an unregistered
+“during” injection fails recovery qualification.
 
 ## 15. Required test suites
 
@@ -655,23 +723,26 @@ Unit and property tests:
 - squash newest-wins, whiteouts, opaque dirs, xattrs, hardlink groups; and
 - bounded queues, cancellation permit release, fixed-cardinality metrics.
 
-Build qualification includes the existing Linux target matrix, including the
-project's musl/static lanes and supported architectures, with bundled SQLite
-requiring no dynamic package in the image. Record binary-size and cold-start
-deltas, license inventory, and cross-compile results; replacing the dependency
-guard is an explicit reviewed architecture change, not a test deletion done to
-make CI green.
+Build qualification pins the product support-matrix commit and complete
+supported-image corpus, including the existing Linux targets, musl/static
+lanes, and supported architectures. Bundled SQLite requires no dynamic package
+in the image. Record binary-size and cold-start deltas, license inventory, and
+cross-compile results; replacing the dependency guard is an explicit reviewed
+architecture change, not a test deletion done to make CI green.
 
 Paired integration tests compare v1 and v2 after every operation using a
 canonical snapshot of content digest, type, mode, UID/GID, xattrs, symlink,
-hardlink identity, sparse layout, active manifest, and `file_blame`. Generated
-IDs are normalized; everything else must match exactly.
+hardlink identity, sparse layout, and active manifest. Generated IDs may be
+normalized only in these internal canonical-tree fixtures; everything else
+must match exactly. Public `file_blame` uses the separate raw status/header/body
+fixtures from Section 7 and permits only `Date` and request-ID header values to
+differ.
 
 Live Docker E2E tests run feature by feature and retain append-only command,
 good-result, defect, and fix records. They include:
 
-- Ubuntu, Debian, Alpine, native architecture, and supported emulation images
-  pinned by digest;
+- every image in the pinned complete product corpus plus Alpine,
+  Debian/Ubuntu, and scratch/distroless semantic extremes by digest;
 - one, five, and twenty agents sharing one workspace;
 - publish/amend conflicts, deletes, binary/ignored files, deep history;
 - squash depths 8, 100, and 499 with racing publish;
@@ -680,8 +751,9 @@ good-result, defect, and fix records. They include:
 - 1/10/50 GiB payload scaling, 1k/10k/100k files, and 10k sessions; and
 - at least a 24-hour mixed workload with continuous health probes.
 
-The experiment document owns numeric thresholds and benchmark statistics.
-This spec does not duplicate or weaken them.
+The experiment document owns the complete numeric matrix and all benchmark
+statistics. This spec repeats selected non-weakenable cross-document floors;
+neither document may weaken the other.
 
 ## 16. Rollout and rollback
 
@@ -703,16 +775,27 @@ decision with its own recovery plan.
 
 ## 17. Acceptance checklist
 
+Gate A—feasibility only:
+
 - [ ] A-macOS, A-Windows, and A-Linux each pass on their declared stock
       platform cells without extra privilege, device, helper, plugin, host
       install, VM customization, or storage provisioning.
 - [ ] Intel and Apple Silicon macOS claims are separately qualified where both
-      are supported; Linux and Windows Docker/WSL claims have their own runs.
-- [ ] Real production OverlayFS copy-up and publish retain shared extents.
+      are supported; Linux and stock Windows Docker Desktop WSL 2 claims have
+      their own runs.
+- [ ] The standalone reference harness proves the numeric same-domain direct
+      clone, CoW, production-option OverlayFS copy-up, canonical security diff,
+      and teardown requirements in every required cell.
+
+Gate B—integrated product acceptance after global Gate A:
+
+- [ ] The real `layerstore` and production v2 mount builder repeat every
+      feasibility proof; any mismatch is classified and rerun.
 - [ ] Candidate reflink-sensitive space beats both controls; tiny-edit latency
       beats vanilla; and no-sharing, unrelated, and read-only paths remain
       within their predeclared non-regression margins versus co-located copy.
-- [ ] Arbitrary supported OCI images and multi-agent sharing are unchanged.
+- [ ] The complete pinned supported-image corpus, semantic extremes, and
+      multi-agent sharing are unchanged without image-side dependencies.
 - [ ] Exact file blame is transactionally paired with every committed publish.
 - [ ] Blame is identical through squash, remount, restart, delete, and crash.
 - [ ] Squash remains independently correct and live remount remains fail-closed.
@@ -721,7 +804,8 @@ decision with its own recovery plan.
       WAL, metrics cardinality, descriptor, task, lease, or recovery growth.
 - [ ] Anonymous RSS and cgroup memory pass every size-scaling and 24-hour soak
       threshold with zero OOM, panic, restart, or health failure.
-- [ ] Crash/ENOSPC/fsync fault matrices prove deterministic old-or-new recovery.
+- [ ] Every immutable failpoint-registry ID proves deterministic old-or-new
+      recovery within its retry and deadline limits.
 - [ ] Raw artifacts, environment, commands, binary/image digests, and evidence
       bundle SHA-256 are retained and independently reviewed.
 - [ ] Gate B is explicitly approved before changing any production default.

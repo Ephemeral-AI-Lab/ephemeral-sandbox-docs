@@ -30,7 +30,7 @@ or logical byte count alone is not proof.
 
 ```mermaid
 flowchart LR
-    IMG["Any supported OCI Linux image"] --> IMP["one-time base import"]
+    IMG["OCI Linux image from the pinned support corpus"] --> IMP["one-time base import"]
     IMP --> OBJ["immutable layer objects"]
 
     subgraph V["one Docker-managed storage domain · one st_dev"]
@@ -64,37 +64,49 @@ layer.
 
 Global Gate A (backend feasibility) must pass before LayerStack 2.0 product
 code is added to `ephemeral-sandbox`. It is the conjunction of independently
-reviewed macOS, Windows, and Linux platform gates. Gate B (full product
-acceptance) must pass before
-merge as a production-ready path or any default rollout. The requirements are:
+reviewed A-macOS, A-Windows, and A-Linux receipts. Each platform Gate A is
+limited to a disposable standalone harness proving all of the following on the
+exact stock production storage path:
 
-1. macOS Docker Desktop proves real OverlayFS copy-up sharing and LayerStack
-   clone sharing on allocated extents;
-2. the candidate adds no privilege, capability, device, FUSE mount, plugin,
-   helper daemon, seccomp exception, or host installation relative to the
-   production baseline;
-3. reflink-sensitive space beats vanilla LayerStack and the co-located copy
-   control; tiny-edit latency beats vanilla, while unrelated and no-sharing
-   paths do not regress the co-located copy control beyond their declared
-   margins;
-4. squash, lease rewrite, same-upperdir remount, and active-execution quiesce
-   preserve their fail-closed contracts;
-5. file contents and exact `file_blame` ranges remain identical through
-   publish, squash, remount, restart, and injected crashes;
-6. daemon memory remains bounded: no resident payload cache, no global chunk
-   index, no growth proportional to retained layers, file bytes, or completed
-   operations; and
-7. arbitrary-image and fallback tests pass on the supported Docker host matrix;
-   a cross-platform **reflink-backed** release additionally requires the real
-   reflink gates to pass on every host/architecture in that matrix.
+1. immutable objects, staging, `upperdir`, and `workdir` occupy one storage
+   domain;
+2. a seeded, incompressible, fully allocated source of at least 1 GiB directly
+   clones with at least 99% of allocated payload shared, allowing at most one
+   filesystem block per mapped extent of reconciliation error; after one
+   aligned 4 KiB overwrite, the source hash is exact and both shared-byte loss
+   and exclusive-byte growth are no greater than
+   `max(128 KiB, two reported filesystem extent-granularity units,
+   32 × filesystem block size)`;
+3. OverlayFS mounted with the exported production options retains at least 99%
+   of unchanged allocated payload during real copy-up under the same
+   reconciliation and mutation bounds;
+4. the raw and canonical security profiles show no privilege, capability,
+   device, helper, plugin, host-installation, or security-policy delta; and
+5. teardown leaves no experiment-owned mount, process, volume, path, or helper.
 
-The 2026-07-19 discovery run already disqualified Docker Desktop's default
-ext4-family named volume: `FICLONE` returned `EOPNOTSUPP`. That is not a full
-candidate run, so the overall verdict remains inconclusive, but A-macOS is
+The versioned security canonicalizer may normalize only timestamps,
+runtime-generated IDs, semantically irrelevant ordering, and declared
+experiment paths. It never normalizes security, capabilities, devices,
+namespaces, propagation, helpers, Docker/VM settings, or host changes, and each
+receipt retains the raw snapshot, canonical snapshot, both diffs, and the
+canonicalizer digest.
+
+Gate B starts only after product implementation is allowed by global Gate A.
+It repeats the feasibility proof through the integrated runtime and runs the
+full correctness, storage, performance, squash/remount/quiesce, exact-blame,
+crash/recovery, supported-image, and bounded-memory suite. Gate B must pass
+before merge as a production-ready path or any default rollout. A Gate B
+mismatch blocks Gate B and requires discrepancy review and rerun; it does not
+rewrite a historical, evidence-addressed Gate A receipt.
+
+The notes dated 2026-07-19 are unverified imported discovery context because no
+sealed receipt and evidence digest accompany them. They suggest that Docker
+Desktop's default ext4-family named volume returned `EOPNOTSUPP`, but they do
+not change any gate or constitute a measured result. A-macOS therefore remains
 unsatisfied and product implementation remains blocked. If no Docker-native
-backend can satisfy the constraints, the final experiment verdict is `FAIL`.
-The team must not disguise a loop-device, privileged, FUSE, or host-plugin
-requirement as a reflink success.
+backend can satisfy Gate A, the platform verdict is `FAIL`; a loop device,
+privileged container, FUSE dependency, or host plugin cannot manufacture a
+passing result.
 
 ## Documents
 
@@ -104,10 +116,14 @@ requirement as a reflink success.
 
 Executable experiment plans and append-only run records live in the dedicated
 [`ephemeral-sandbox-layerstack-2-experiment`](https://github.com/Ephemeral-AI-Lab/ephemeral-sandbox-layerstack-2-experiment)
-repository. Its peer branches are
-`macos_experiment`, `windows_experiment`, and `linux_experiment`, executed in
-that order. The documentation copy states the architecture gate; the
+repository. Its independent peer branches are `macos_experiment`,
+`windows_experiment`, and `linux_experiment`; their platform owners may execute
+in parallel. The documentation copy states the architecture gate; the
 platform-branch `EXPERIMENT.md` is the run authority.
+
+The Windows branch qualifies only the stock Docker Desktop WSL 2
+Linux-container backend. It does not claim standalone WSL 2, native Windows
+containers, or a custom kernel, distribution, or VHDX.
 
 One platform agent owns each branch. Its branch-local `README.md` is the
 operator contract for stock-host setup, randomized A/B/C benchmark analysis,
