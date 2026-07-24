@@ -162,7 +162,7 @@ record.
 | Chunking/hash/object/mixed-root/corruption | deferred-to-stage_03 / 04 / 06 | absent from Stage 01 |
 | OCC, leases, publication crash points | deferred-to-stage_03 | absent |
 | Pack/GC and squash/remount | deferred-to-stage_05 | absent |
-| Required host/release-runner matrix using the sole pinned Ubuntu target | planned-final | focused now proves no target-image helper; unavailable required hosts remain unverified |
+| Required target-image, architecture, provider, and Linux native-backend capability matrix | planned-final | focused now proves no target-image helper; unavailable required cells remain unverified |
 
 A generic command pass is insufficient: `scratch_route=workspace_scoped`, zero fallback concept, zero global-root new writes, exact tree state, and resource return must accompany it.
 
@@ -202,10 +202,10 @@ through public file/command APIs; and prove the runtime invokes no target-image
 shell, libc utility, package manager, or helper for scratch placement.
 Read-only and non-root runtime variants use that same image identity. No
 SIMD/SeqCDC differential applies because no chunker exists; scalar proof is
-deferred to Stage 03. Stage 07 executes every required host/release-runner row
-using this same OCI index and records the resolved platform manifest.
-Cross-image portability is deferred beyond Phase 1 and is neither an
-acceptance nor a retirement gate.
+deferred to Stage 03. Stage 07 executes every required target-image,
+architecture, provider, and Linux native-backend cell and records each resolved
+platform manifest. The pinned Stage 01 image remains one baseline cell; it does
+not stand in for unexecuted cells.
 
 ## 9. Focused and final-stage commands
 
@@ -383,7 +383,8 @@ The harness must remove only tracked run IDs, restore generated config/gateway
 custody, and show the final tree. Rerun only the failed focused node after
 root-cause correction; rebuild on any product change, reuse only unchanged
 passing binary. Roll back to the legacy locator on a disqualifier. Stage 07
-still owns the affected regression, required host/release-runner matrix using
-the sole pinned Ubuntu target, sustained memory/history scale, normative
-command/PTY p50/p95, soak, and full Phase 1 qualification; none is claimed
-here. Cross-image portability remains outside Phase 1 and is not a gate.
+still owns the affected regression, required target-image, architecture,
+provider, and Linux native-backend capability matrix, sustained memory/history
+scale, normative command/PTY p50/p95, soak, and full Phase 1 qualification;
+none is claimed here. An unexecuted required matrix cell remains unverified and
+blocks the corresponding support claim.

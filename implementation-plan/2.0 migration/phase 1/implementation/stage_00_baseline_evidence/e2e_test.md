@@ -136,7 +136,7 @@ Every validation key above is emitted exactly once as a terminal
 | PTY resize/arbitrary signal/literal EOF | deterministic unsupported response preserved | no parity work planned |
 | Candidate strict fallback | impossible; candidate absent | Stage 04 strict gate requires zero fallback |
 | Scalar/accelerated SeqCDC | absent | scalar Stage 03; acceleration excluded unless separately approved |
-| Target-image userland independence | baseline records assumptions only | Stage 04 and Stage 07 required-host rows using the sole pinned Ubuntu target |
+| Target-image userland independence | baseline records assumptions only | Stage 04 proves helper-free materialization; Stage 07 executes the declared target-image, architecture, and Linux native-backend capability matrix |
 
 Any difference between frozen expected behavior and actual current behavior is a baseline defect, not silently updated data. The stage owner decides whether the defect blocks migration or receives a versioned, reviewed expectation.
 
@@ -204,8 +204,10 @@ run records and verifies the resolved platform manifest. Test-report Iteration
 value to the descriptor contained in the immutable captured raw index. The
 index, tag, and historical captures were not changed. Read-only and non-root
 runtime variants of this image are allowed. No image is a product dependency
-and no target image helper is added. Cross-image portability is deferred beyond
-Phase 1 and is neither an acceptance nor a retirement gate.
+and no target image helper is added. This completed Stage 00 run qualifies only
+its pinned baseline cell; Stage 07 owns the declared target-image and Linux
+native-backend capability matrix and must leave any unexecuted required cell
+unverified.
 
 ## 9. Focused and final-stage commands
 
@@ -388,9 +390,9 @@ Mandatory:
 - dependency/package/feature/direct-edge/system/service/helper evidence is exactly unchanged;
 - artifacts validate, are run-owned, and cleanup is proven.
 
-Warnings may note unavailable optional RSS splits or unexecuted required-host
-rows using the sole pinned Ubuntu image only when an approved independent source
-covers every stage-gating value. `measurement-unavailable` for a gating value,
+Warnings may note unavailable optional RSS splits or unexecuted required
+capability-matrix rows only when an approved independent source covers every
+stage-gating value. `measurement-unavailable` for a gating value,
 any route ambiguity, silent fallback, corruption/durability error, suspected
 leak, unexpected residue, dependency delta, artifact/schema gap, or cross-run
 cleanup is a blocker.

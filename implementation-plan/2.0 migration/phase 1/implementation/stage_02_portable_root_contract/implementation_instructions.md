@@ -969,10 +969,11 @@ evidence does not count. Stage 02 proves only:
 - dormant feature-off compatibility on the selected POC environment.
 
 The Stage 02 result is at most `designed-compatible`/POC contract evidence.
-It does not qualify the macOS arm64, Ubuntu amd64, or Windows amd64 release
-rows. Stage 07 runs the required-host matrix using the same pinned Ubuntu OCI
-index. Cross-image portability is after Phase 1 and is not a Stage 02 or
-Stage 07 acceptance/retirement gate.
+It does not qualify the macOS arm64, Ubuntu amd64, Windows amd64, additional
+target-image, or additional Linux native-backend release cells. Stage 07 runs
+the declared target-image, architecture, provider, and Linux native-backend
+capability matrix. The pinned Stage 02 Ubuntu OCI index is one baseline cell,
+not evidence for any unexecuted cell and not a universal-image claim.
 
 ## 14. Completion criteria
 

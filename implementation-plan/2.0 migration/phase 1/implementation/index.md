@@ -49,16 +49,22 @@ orientation map:
 │   ├── objects/
 │   │   ├── loose/<kind>/<digest-prefix>/<typed-id>
 │   │   ├── packs/<pack-id>.pack
-│   │   └── locators/{<run-id>.sst,CURRENT}
+│   │   └── locators/
+│   │       ├── <run-id>.sst
+│   │       └── CURRENT
 │   ├── refs/
 │   │   ├── heads/<branch-id>
 │   │   ├── checkpoints/<checkpoint-id>
 │   │   ├── pins/<pin-id>
 │   │   └── leases/<lease-id>
-│   ├── operations/<operation-id>/{STATE,work/...}
+│   ├── operations/<operation-id>/
+│   │   ├── STATE
+│   │   └── work/...
 │   ├── materializations/<materialization-id>/
 │   │   ├── CURRENT
-│   │   └── generations/<generation>/{MANIFEST,carriers/<carrier-id>/...}
+│   │   └── generations/<generation>/
+│   │       ├── MANIFEST
+│   │       └── carriers/<carrier-id>/...
 │   ├── gc/CURRENT
 │   ├── manifest.json
 │   ├── workspace.json
@@ -69,9 +75,18 @@ orientation map:
 ├── workspace/
 │   ├── manager.json
 │   ├── .export/<spool-id>
-│   └── <workspace-session-id>/{upper/,work/,executions/<execution-id>/transcript.log}
-├── storage/{file_auditability/...,workspace_recovery/...}
-└── runtime/daemon/{runtime.sock,runtime.pid}
+│   └── <workspace-session-id>/
+│       ├── upper/
+│       ├── work/
+│       └── executions/<execution-id>/
+│           └── transcript.log
+├── storage/
+│   ├── file_auditability/...
+│   └── workspace_recovery/...
+└── runtime/
+    └── daemon/
+        ├── runtime.sock
+        └── runtime.pid
 ```
 
 The v1 entries directly under `layer-stack/` exist only during the rollback window;

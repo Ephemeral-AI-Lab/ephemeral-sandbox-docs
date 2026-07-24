@@ -165,7 +165,7 @@ pub(crate) struct ExecutionScratchLease {
 
 | Boundary | Host/image assumption before | Assumption after | Core/adapter | Evidence now | Later evidence |
 | --- | --- | --- | --- | --- | --- |
-| Scratch paths | Host filesystem and Linux permissions | same; path composition centralized | provider-local workspace adapter | sole pinned Ubuntu 24.04 packaged case | required host triples on that same image at Stage 07 |
+| Scratch paths | Host filesystem and Linux permissions | same; path composition centralized | provider-local workspace adapter | pinned Stage 01 Ubuntu 24.04 packaged case | Stage 07 target-image, architecture, and Linux native-backend capability matrix |
 | Target image | workload cannot see `/eos`; no helper needed | unchanged | namespace/OverlayFS adapter | read-only/non-root runtime variants of pinned Stage 01 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | Stage 07 target-image and Linux native-backend capability matrix |
 | CPU/encoding | native path identifiers | validated byte-safe ID encoding, no CPU-specific code | provider-local | unit vectors on current host only | cross-architecture Stage 07; untested rows remain unverified |
 

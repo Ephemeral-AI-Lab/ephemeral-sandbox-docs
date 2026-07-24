@@ -178,9 +178,10 @@ Supporting execution references below are not additional typed E2E declarations:
 - Existing `runtime.workspace-session.publish.changed` is a
   `run-now-focused` compatibility reference when the changed-flow fixture is
   required; it proves one legacy revision and exact visible bytes.
-- Cross-host root-ID acceptance executes in Stage 07 on every required runner
-  using the pinned Ubuntu 24.04 target image. Cross-image acceptance is deferred
-  beyond Phase 1 and is not an executable Phase 1 catalog row.
+- Cross-host root-ID and native compatibility acceptance executes in Stage 07
+  for every declared target-image, architecture, provider, and Linux
+  native-backend capability cell. The pinned Ubuntu 24.04 image remains a
+  baseline cell and does not qualify unexecuted cells.
 
 PRC-01 reports its one validation exactly once with the declaration-backed `validation(...)` context. Receiving a successful CLI response alone is insufficient: content, revision, authority, counters, and teardown all participate.
 
@@ -444,7 +445,7 @@ Every retained POC bundle records:
 
 - run/case ID; exact product/test commits and dirty state; mandated
   `upgrade-2.0-phase-1` and its recorded newest approved immutable base;
-- host OS/architecture, Docker Desktop/Engine, guest kernel/filesystem, the sole pinned Ubuntu OCI index, and the verified resolved platform-manifest digest;
+- host OS/architecture, Docker Desktop/Engine, guest kernel/filesystem, target-image OCI index, and verified resolved platform-manifest digest for each executed capability cell;
 - Rust/Cargo/Python/pytest versions; config digest; gateway rebuild/reuse fact;
 - declaration fields, exact pytest node, command, timeout, execution-surface proof;
 - validation terminal record with expected/actual and bounded artifact references;

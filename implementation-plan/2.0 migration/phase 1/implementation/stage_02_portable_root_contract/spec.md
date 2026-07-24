@@ -223,13 +223,13 @@ Using LayerStack’s existing `sha2` and `serde` edges is intentional responsibi
 
 | Concern | Canonical rule | Backend adapter responsibility | Stage 02 proof | Later execution proof |
 | --- | --- | --- | --- | --- |
-| Paths | Non-empty relative byte components separated by byte `/`; reject leading/trailing `/`, NUL, empty, `.` and `..`; byte `\` is ordinary data; no Unicode or case folding | Convert captured Linux names to bytes and reject unsupported source state | golden raw-byte vectors including invalid UTF-8 and backslash | required hosts use the sole pinned Ubuntu 24.04 image in Stage 07 |
+| Paths | Non-empty relative byte components separated by byte `/`; reject leading/trailing `/`, NUL, empty, `.` and `..`; byte `\` is ordinary data; no Unicode or case folding | Convert captured Linux names to bytes and reject unsupported source state | golden raw-byte vectors including invalid UTF-8 and backslash | Stage 07 target-image, architecture, provider, and Linux native-backend capability matrix |
 | Integers | Explicit-width unsigned/signed fields in big-endian order; checked lengths | none | exact cross-width/endian bytes | cross-architecture build/test |
 | Ordering | Lexicographic unsigned byte order; unique paths/xattr keys | external bounded ordering if capture is unordered | permutation property test | large-tree bounded sort |
 | Object identity | Type/domain/version/length-separated SHA-256 preimage | LayerStack `sha2` adapter | fixed digest vectors | persisted CAS proof |
 | Root identity | Hash canonical `RootRecordV2`; excludes host path, inode, carrier/layer ID, mount/provider locator | persistence and materialization keyed outside identity | mutation/exclusion matrices | migration/materialization |
 | CPU | No CPU-specific code in contract | none | ordinary safe Rust | Stage 03 scalar and Stage 07 matrix |
-| Target image | No in-image helper or userland assumption | Docker/OverlayFS capture/materialization later | dependency/source audit | sole pinned Ubuntu OCI capability proof |
+| Target image | No in-image helper or userland assumption | Docker/OverlayFS capture/materialization later | dependency/source audit plus pinned Stage 02 baseline | Stage 07 declared target-image/native-backend capability matrix; no percentage or universal-image claim |
 | Future WASM/Firecracker | Same logical root values | separate `MaterializationKey=(RootId, backend_kind, backend_format_version, target_profile)` | dependency-boundary compile/audit | separate future backend qualification |
 
 ## 5. Type, class, and field design
