@@ -1,5 +1,7 @@
 # Phase 1 storage solution examination: StreamCDC versus SeqCDC
 
+> Evidence review for the [Phase 1 storage overview](../index.md).
+
 This review is a read-only architecture decision. It compares only the two
 specified internal implementations and holds the native-carrier, CAS, digest,
 manifest, pack, index, transaction, recovery, and collection design constant.

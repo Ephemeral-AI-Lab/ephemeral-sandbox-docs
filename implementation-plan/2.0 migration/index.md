@@ -10,15 +10,18 @@
 | Main outcome | A durable checkpoint graph over fast, native sandbox execution |
 | Phase 1 | Replace LayerStack history storage with a portable CDC/CAS-backed design |
 | Phase 2 | Add branch, checkpoint, rollback, bounded rollout, and MCTS |
-| Execution path | Native OCI/Linux filesystem, command, PTY, and stdin behavior |
-| Initial qualification | One pinned Ubuntu 24.04 Docker environment |
+| Phase 3 | Reuse the same state plane through Firecracker and WASI execution adapters |
+| Execution path | Backend adapters: native OCI/Linux, Firecracker microVM, or capability-scoped WASI |
+| Phase 1 qualification | One pinned Ubuntu 24.04 Docker environment |
 
 ## 1. The migration in one sentence
 
 Ephemeral Sandbox 2.0 first makes LayerStack checkpoints portable, compact,
 recoverable, and independent of a running sandbox; it then uses those
 checkpoints as the nodes of a durable branch graph that can activate a bounded
-number of isolated sandboxes for multiagent work and MCTS rollouts.
+number of isolated sandboxes for multiagent work and MCTS rollouts; finally, it
+reuses the same state and graph planes through OCI/Linux, Firecracker, and WASI
+execution adapters.
 
 The organizing principle is:
 
@@ -32,9 +35,9 @@ flowchart TB
     G --> N["Immutable SandboxNodes"]
     N --> S["LayerStack roots"]
     S --> H["Portable history and metadata"]
-    S --> A["Native materialization"]
+    S --> A["Backend-local workspace projection"]
     N --> E["Bounded ExecutionAttempts"]
-    E --> O["Separate isolated sandboxes"]
+    E --> O["OCI/Linux · Firecracker · WASI adapters"]
     O --> R["Checkpoint, evaluate, promote, merge, or prune"]
     R --> G
 ```
@@ -55,7 +58,7 @@ detail, not the durable identity of a branch.
 | `Lease` | Protects roots and active work from reclamation |
 | `Checkpoint` | Atomically sealed filesystem state, logical state, and provenance |
 | `Promotion` | Explicit compare-and-swap advance of the group’s canonical node |
-| `Materialization` | Native worker-local representation used for command execution |
+| `Workspace projection` | Verified backend-local representation used for one execution attempt |
 | `Portable history` | CDC/CAS-backed retained history used outside the execution hot path |
 
 Three distinctions are essential:
@@ -67,7 +70,7 @@ Three distinctions are essential:
 - A **checkpoint** seals the result as a new immutable node. It never mutates
   its parent.
 
-## 4. Two main phases
+## 4. Three main phases
 
 ### Phase 1 — LayerStack 2.0 storage
 
@@ -134,6 +137,43 @@ pool; siblings remain isolated; stale promotion cannot overwrite newer work;
 retries cannot double-count evaluation or reward; and recovery preserves
 frontier leases and selectable nodes.
 
+### Phase 3 — Firecracker and WASI execution
+
+**Goal:** run the same immutable roots and SandboxGraph attempts through
+Firecracker microVMs and WebAssembly/WASI without creating backend-specific
+storage or checkpoint truth.
+
+Phase 3 reuses without modification:
+
+- the selected CDC/CAS design and versioned root identity;
+- manifests, native carriers, packed objects, and indexes;
+- publication, OCC, leases, blame, journals, recovery, and garbage collection;
+  and
+- SandboxGroup, node, attempt, evaluation, promotion, and rollout semantics.
+
+Phase 3 replaces only the execution-facing adapters:
+
+- the current OCI/Linux OverlayFS workspace projection;
+- Linux namespace process execution; and
+- their mount, process, stream, cancellation, and lifecycle implementations.
+
+The Firecracker adapter prepares an isolated microVM-local workspace and
+executes through a guest-control channel. Firecracker memory snapshots may be
+worker-local startup accelerators, but never become LayerStack checkpoint
+identity or replace filesystem publication.
+
+The WASI adapter exposes a capability-scoped workspace and command/component
+execution. It preserves unsupported Linux metadata in LayerStack and reports
+backend capability limits explicitly rather than silently claiming Linux,
+signal, or PTY parity.
+
+**Phase 3 exit:** one `RootId` can be activated, changed, checkpointed,
+recovered, and rolled back through OCI/Linux, Firecracker, or WASI; the same
+durable transaction and retention rules apply; backend-local failure cannot
+corrupt or advance a root; and inactive nodes require no resident executor.
+
+See the [Phase 3 overview](phase%203/index.md).
+
 ## 5. Dependency order
 
 | Order | Milestone | Depends on | Main proof |
@@ -148,12 +188,20 @@ frontier leases and selectable nodes.
 | 7 | Add checkpoint, rollback, merge, and promotion workflows | 6 | No lost updates or ambiguous branch state |
 | 8 | Add rollout and MCTS coordination | 7 | Retry-safe evaluation and backpropagation survive failure |
 | 9 | Default-on migration and compatibility retirement | 8 | Rollback window and production evidence are complete |
+| 10 | Freeze backend-neutral workspace and execution contracts | 9 | Existing OCI/Linux behavior fits behind adapters without changing roots |
+| 11 | Add the Firecracker adapter | 10 | The same root executes and checkpoints through a microVM |
+| 12 | Add the WASI adapter | 10 | The same root executes and checkpoints through declared capabilities |
+| 13 | Prove cross-backend equivalence and routing | 11, 12 | Backend changes preserve durable truth and schedule only compatible work |
 
 This order creates one hard boundary:
 
 > Phase 2 may design its schema in parallel, but it must not depend on the new
 > storage path until Phase 1 has proven immutable roots, leases, OCC, recovery,
 > blame, and native-path performance.
+
+Phase 3 has the same boundary: adapter design may begin earlier, but Firecracker
+and WASI runtime integration must not fork the LayerStack format or bypass the
+proven Phase 1 and Phase 2 contracts.
 
 ## 6. What can run in parallel
 
@@ -165,6 +213,10 @@ This order creates one hard boundary:
 | SandboxGraph runtime | After Phase 1 exit | Must consume the proven root, lease, OCC, and recovery contracts |
 | MCTS scheduler and evaluator design | Late Phase 1 or early Phase 2 | Runtime integration waits for durable nodes and idempotency |
 | MCTS execution | After bounded sandbox activation | Must not create one resident sandbox per durable node |
+| Backend adapter contract | During late Phase 2 | Design only until root, attempt, evaluation, and recovery semantics freeze |
+| Firecracker adapter | After the backend contract freezes | Reuses the state plane; requires a KVM-capable Linux worker |
+| WASI adapter | After the backend contract freezes | Reuses the state plane; capability differences must be explicit |
+| Cross-backend routing | After both adapters reach conformance | Must preserve root identity and reject unsupported workloads |
 
 The benchmark lane should finish before approach results are judged. If an
 implementation finishes first, its evaluation clock starts only when the
@@ -172,7 +224,7 @@ shared baseline and verifier are ready.
 
 ## 7. Storage and performance posture
 
-The product optimizes two different lifecycles:
+The product optimizes two different lifecycles across every executor:
 
 - **Hot execution:** keep current, active, recently used, and frontier roots in
   native mount-ready form.
@@ -193,9 +245,9 @@ Priority order for evaluation:
 4. bounded memory and operational simplicity;
 5. portability expansion.
 
-No CDC algorithm is selected by this overview. The algorithm and packed layout
-remain versioned and replaceable until identical benchmark evidence identifies
-a production winner.
+No execution backend may select a different CDC algorithm or packed layout.
+The Phase 1 choice remains versioned and shared by OCI/Linux, Firecracker, and
+WASI.
 
 ## 8. Migration posture
 
@@ -219,15 +271,20 @@ does not become a second architecture.
 - nested workspace sessions as the public branching model;
 - one permanently resident container or VM per durable node;
 - FUSE, JuiceFS, a CAS-backed VFS, or per-read CAS reconstruction;
-- required reflink, custom kernels, loop devices, or target-image utilities;
+- required reflink, host-kernel customization, loop devices, or target-image
+  utilities in the shared LayerStack path;
 - an external database service or SQLite dependency in the storage core;
 - automatic semantic conflict resolution;
 - distributed or remote CAS in the first implementation;
-- production WASI execution in the initial Ubuntu 24.04 qualification; and
+- Firecracker VM-memory snapshots as LayerStack checkpoint truth;
+- instruction-exact process migration between OCI, Firecracker, and WASI;
+- implicit Linux PTY, signal, namespace, or syscall parity on WASI;
+- production Firecracker or WASI execution in the initial Ubuntu 24.04
+  qualification; and
 - broad host or image matrices before the initial Docker path is proven.
 
-The logical root format should remain backend-neutral so wider OCI and WASI
-qualification can be added later without changing checkpoint identity.
+The logical root format remains backend-neutral so Firecracker and WASI
+qualification can be added without changing checkpoint identity.
 
 ## 10. Source authority and superseded direction
 
@@ -258,7 +315,11 @@ next documents should separately define:
 2. Phase 1 benchmark and acceptance specification;
 3. Phase 2 SandboxGraph and checkpoint specification;
 4. Phase 2 bounded sandbox activation specification;
-5. Phase 2 rollout and MCTS specification; and
-6. production migration, rollback, and observability specification.
+5. Phase 2 rollout and MCTS specification;
+6. [Phase 3 portable execution overview](phase%203/index.md);
+7. Phase 3 backend-neutral adapter and filesystem-semantics specification;
+8. Phase 3 Firecracker adapter specification;
+9. Phase 3 WASI adapter specification; and
+10. production migration, rollback, and observability specification.
 
-No Phase 2 implementation should begin from this overview alone.
+No Phase 2 or Phase 3 implementation should begin from this overview alone.

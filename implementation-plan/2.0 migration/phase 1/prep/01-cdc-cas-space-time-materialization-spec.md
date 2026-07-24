@@ -2,7 +2,7 @@
 
 > Normative Phase 1 requirements for the storage implementation and its
 > benchmark. This document refines the
-> [Phase 1 overview](index.md); correctness remains a hard prerequisite.
+> [Phase 1 overview](../index.md); correctness remains a hard prerequisite.
 
 | Field | Requirement |
 | --- | --- |
@@ -425,7 +425,7 @@ The candidate fails if:
 - publish scans unchanged lower trees;
 - equivalent settled cycles show monotonically worsening latency;
 - a background packer or GC pause enters command/PTY critical paths; or
-- an operation exceeds three minutes.
+- an operation exceeds 60 seconds.
 
 ## 5. Bounded-memory requirement
 

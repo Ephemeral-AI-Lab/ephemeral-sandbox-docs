@@ -62,7 +62,7 @@ Read each relevant source completely before deciding.
 
 - `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/index.md`
 - `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/index.md`
-- `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/01-cdc-cas-space-time-materialization-spec.md`
+- `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/prep/01-cdc-cas-space-time-materialization-spec.md`
 
 Use the migration index to judge whether the Phase 1 storage choice forms a
 sound foundation for Phase 2. Do not implement SandboxGraph, rollout
@@ -595,7 +595,7 @@ the current LayerStack or makes Phase 1 harder to deploy.
 
 Create exactly one review document:
 
-`/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/02-storage-solution-examination-review.md`
+`/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/prep/02-storage-solution-examination-review.md`
 
 Do not edit production code, candidate implementations, shared specifications,
 trackers, or this prompt.

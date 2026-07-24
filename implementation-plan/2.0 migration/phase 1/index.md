@@ -10,6 +10,7 @@
 | Product implementation | Rust |
 | Benchmark verification | Python |
 | Initial environment | Pinned Ubuntu 24.04 Docker image |
+| Portability contract | Frozen supported-host release matrix plus versioned Linux-image capability profile |
 | Phase 2 handoff | Stable immutable roots, leases, publication, recovery, and native materialization |
 
 ## 1. Purpose
@@ -148,13 +149,30 @@ Phase 1 is complete only when:
   current LayerStack baseline;
 - total physical storage is measured honestly rather than reporting CAS bytes
   alone;
-- memory, queues, workers, and maintenance operations are bounded;
-- no target-image helper, FUSE path, external database service, SQLite
-  dependency, or required reflink is introduced; and
-- the Ubuntu 24.04 Docker qualification suite passes.
+- live resources are logically reclaimed after repeated success, failure,
+  cancellation, timeout, and shutdown cycles, while settled process memory,
+  queues, workers, and maintenance operations remain within the frozen bounds;
+- the resolved external package/version and enabled-feature sets are unchanged,
+  the direct external manifest-edge multiset does not grow, and no build,
+  test, system-tool, runtime-service, or target-image dependency is added;
+- no target-image helper, shell, libc utility, package manager, network
+  download, FUSE path, external database service, SQLite dependency, or
+  required reflink is introduced;
+- the deterministic scalar SeqCDC path works on every required CPU
+  architecture, optional acceleration is selected safely at runtime, and all
+  available paths produce identical boundaries and object identities;
+- every required row in the frozen host-OS/architecture/Docker release matrix
+  and versioned Linux-image capability profile has execution evidence; and
+- the normative Ubuntu 24.04 Docker performance qualification suite passes.
 
-Passing this gate does not prove Windows, macOS, native Linux, or WASI
-qualification. It proves the pinned initial Docker environment only.
+The pinned Ubuntu environment owns normative performance qualification.
+Portability is a separate contract and execution matrix: an unavailable
+required-release row remains unverified and blocks the portability/production
+gate. The architecture targets any host supported by the declared Docker
+release and any Linux image satisfying the capability profile; it does not
+claim qualification for an unexecuted host or for an image that lacks the
+declared OCI, architecture, mount, namespace, filesystem, or security
+prerequisites.
 
 ## 9. Explicit non-goals
 
@@ -167,9 +185,12 @@ qualification. It proves the pinned initial Docker environment only.
 - FUSE, JuiceFS, or a CAS-backed execution VFS;
 - a required reflink path;
 - production WASI execution; and
-- broad Docker image or host matrices.
+- exhaustive testing of every historical or future host release and image tag
+  beyond the frozen release matrix and capability profile.
 
-These belong to Phase 2 or later portability work.
+Future provider capabilities belong to Phase 2 or later. A newly supported
+host release or image capability outside the frozen Phase 1 matrix must be
+added and qualified before making that support claim.
 
 ## 10. Documents to prepare under Phase 1
 
@@ -178,7 +199,7 @@ for:
 
 1. root and compatibility contract;
 2. [CDC/CAS space, time, and native materialization
-   specification](01-cdc-cas-space-time-materialization-spec.md);
+   specification](prep/01-cdc-cas-space-time-materialization-spec.md);
 3. native storage-lifecycle and on-disk format specification;
 4. publication, OCC, leases, blame, and recovery specification;
 5. benchmark and acceptance contract;
@@ -187,5 +208,24 @@ for:
 
 Implementation should not begin from this index alone.
 
+The current preparation decision set is:
+
+- [CDC/CAS space, time, and native materialization
+  specification](prep/01-cdc-cas-space-time-materialization-spec.md);
+- [StreamCDC versus SeqCDC examination
+  review](prep/02-storage-solution-examination-review.md);
+- [SeqCDC/CAS and identity-preserving squash
+  decision](prep/03-seqcdc-cas-and-squash-decision.md); and
+- [SeqCDC space/time complexity and acceptance
+  criteria](prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md).
+
 The current read-only storage-selection prompt is
 [prompts/storage-solution-examination-review.md](prompts/storage-solution-examination-review.md).
+
+The prompt for generating the evidence-backed, independently testable staged
+implementation plan is
+[prompts/staged-implementation-plan.md](prompts/staged-implementation-plan.md).
+It requires per-stage memory-lifecycle and leak sentinels, an exact
+zero-new-external-dependency delta, deterministic scalar/SIMD equivalence, and
+an explicit host-OS/Linux-image portability matrix without overstating
+unexecuted qualification.
