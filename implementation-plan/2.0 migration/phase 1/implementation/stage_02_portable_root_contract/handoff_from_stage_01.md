@@ -172,7 +172,7 @@ Normal runner qualification passed as run
 - throughput ratio `1.0166244`;
 - all correctness, route, disk, logical quiescence, memory cap, process/cgroup
   trend, deadline, artifact, and cleanup gates passed; and
-- no unsupported p95 or Stage 11 normative claim was made.
+- no unsupported p95 or Stage 07 normative claim was made.
 
 Primary artifacts under the test repository:
 

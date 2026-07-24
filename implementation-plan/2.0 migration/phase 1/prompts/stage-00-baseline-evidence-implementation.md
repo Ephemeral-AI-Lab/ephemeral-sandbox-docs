@@ -151,7 +151,7 @@ Stage 00 must not add or change:
   feature activation, service, helper, download, privilege, or target-image
   requirement; or
 - broad regression, full host/image qualification, normative percentile,
-  full scale/RSS/space campaigns, or a production-go claim. Stage 11 owns
+  full scale/RSS/space campaigns, or a production-go claim. Stage 07 owns
   those.
 
 No field may be labeled by a user path, object ID, chunk ID, or unbounded error
@@ -461,7 +461,7 @@ Do not declare Stage 00 complete unless all of the following are true:
 - no product durable format/path, candidate artifact, branch/worktree,
   external dependency, service, helper, privilege, or target-image
   requirement was added; and
-- every Stage 03–11 metric remains explicitly deferred rather than reported as
+- every Stage 03–07 metric remains explicitly deferred rather than reported as
   passed.
 
 A failing baseline is valid measured evidence but blocks the affected exit

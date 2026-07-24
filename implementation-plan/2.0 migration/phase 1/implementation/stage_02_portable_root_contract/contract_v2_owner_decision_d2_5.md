@@ -16,7 +16,7 @@ specification. Where the earlier required-shape pseudocode is less specific or
 uses a different illustrative spelling, this approved record controls.
 
 Approval freezes a POC/source contract. It does not activate a v2 root, change
-publication authority, authorize durable v2 state, or qualify Stage 11 release
+publication authority, authorize durable v2 state, or qualify Stage 07 release
 behavior.
 
 ## 1. Custody and authority reconciliation
@@ -405,5 +405,5 @@ path absent at every required boundary. Missing, errored, duplicate, or
 disagreeing observations fail; absence is never inferred.
 
 This decision introduces no runtime call from LayerStack to the portable
-module and no `/eos` path. Stage 11 host, release, performance, memory, space,
+module and no `/eos` path. Stage 07 host, release, performance, memory, space,
 soak, migration, and production qualification remain deferred.

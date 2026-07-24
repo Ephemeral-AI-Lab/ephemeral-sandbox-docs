@@ -99,16 +99,16 @@ Outside inspection may record allocated bytes, ownership/permissions, and absenc
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Stage 00 POC rows use only the pinned Ubuntu 24.04 target image. The planned-final row
+uses the Stage 07 target-image/native-backend capability matrix; this does not rewrite
+the completed Stage 00 baseline result.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `layerstack.phase1.baseline.legacy-route` | POC; `run-now-focused` | feature-off legacy | fresh tracked sandbox and explicit legacy config | create, write, publish, read, execute, destroy | exact v1 tree, legacy authority, zero candidate activity, complete cleanup | diagnostic component durations | categorized allocated bytes | owners return to idle | environment and zero-delta dependency inventory | `60000` ms | typed validation, runtime NDJSON, CLI JSON, tree digest |
 | `layerstack.phase1.baseline.restart-cleanup` | POC; `run-now-focused` | legacy recovery | one permitted pre-visibility failpoint | restart through gateway custody and retry | no partial visibility, deterministic reap, legacy route unchanged | recovery and quiescence durations | residue allocation | no retained transaction, FD, or worker | same pinned platform/image evidence | `60000` ms | failpoint record and before/after inventory |
 | `layerstack.phase1.baseline.tiny` | POC; `run-now-tiny-bench` | raw legacy control | fixed tiny corpus and one warmup | public paired lifecycle campaign | exact output digests and clean teardown | at least five alternating raw pairs | logical and allocated subtrees | settled delta and robust slope | complete environment record | `60000` ms | raw observations, report, export |
-| `layerstack.phase1.qualification.all` | integration; `planned-final` | cumulative Phase 1 qualification | frozen Stage 11 required-runner matrix using one pinned Ubuntu 24.04 target image | full affected regression and qualification campaigns | every Phase 1 invariant and required runner row passes | normative Stage 11 metrics | normative complete envelope | normative repeated-lifecycle matrix | required host/release runners, pinned Ubuntu 24.04 target; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `layerstack.phase1.qualification.all` | integration; `planned-final` | cumulative Phase 1 qualification | frozen Stage 07 required-runner, image, architecture, and Linux-backend matrix | full affected regression and qualification campaigns | every Phase 1 invariant and required capability-profile row passes | normative Stage 07 metrics | normative complete envelope | normative repeated-lifecycle matrix | exact image, effective Linux kernel, `/eos` backing filesystem, and architecture evidence | `300000` ms | Stage 07 qualification bundle |
 
 Complete literal declaration metadata for every catalog row:
 
@@ -117,7 +117,7 @@ Complete literal declaration metadata for every catalog row:
 | `layerstack.phase1.baseline.legacy-route` | `Legacy LayerStack route and resource baseline is observable` | `Uses public workspace, command, file, and observability CLIs to freeze the feature-off v1 route and prove run-owned cleanup.` | `("workspace-session","layerstack","observability","phase1-baseline")` | `{"route":"The committed publication and subsequent read report legacy_v1 authority with no fallback, shadow comparison, or mismatch.","content":"Published bytes and metadata match the frozen v1 tree digest.","cleanup":"Session, execution, transaction, staging, lease, and tracked sandbox ownership reach the declared quiescent state."}` | `{"route":("layerstack","observability"),"content":("workspace-session","file"),"cleanup":("resource-efficiency",)}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","config")` |
 | `layerstack.phase1.baseline.restart-cleanup` | `Legacy recovery preserves visibility and cleanup` | `Restarts at the permitted pre-visibility boundary and proves that retry preserves legacy authority while all run-owned staging is deterministically reclaimed.` | `("workspace-session","layerstack","recovery","phase1-baseline")` | `{"visibility":"No partial manifest or publication becomes visible before the legacy commit boundary.","recovery":"Restart and retry select the one complete legacy result without changing authority.","cleanup":"Staging, transactions, file descriptors, workers, and tracked run ownership return to quiescence."}` | `{"visibility":("layerstack","recovery"),"recovery":("layerstack","workspace-session"),"cleanup":("resource-efficiency","observability")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","config")` |
 | `layerstack.phase1.baseline.tiny` | `Legacy tiny benchmark control is reproducible` | `Runs the fixed legacy-only tiny corpus with alternating measured samples and records correctness, time, allocated disk, and memory-lifecycle evidence without a normative percentile claim.` | `("workspace-session","layerstack","benchmark","phase1-baseline")` | `{"correctness":"Every measured operation returns the frozen output and tree digest.","sampling":"The artifact contains the warmup and at least five alternating raw measured pairs.","cleanup":"Every repetition and the final campaign cleanup return owned resources to the declared settled state."}` | `{"correctness":("layerstack","workspace-session"),"sampling":("benchmark",),"cleanup":("benchmark","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","benchmark","config")` |
-| `layerstack.phase1.qualification.all` | `Phase 1 cumulative release qualification` | `Executes the frozen Stage 11 affected regression, correctness, recovery, benchmark, memory, disk, and required host/release-runner qualification using the one pinned Ubuntu 24.04 target image; cross-image qualification is deferred beyond Phase 1.` | `("layerstack","phase1-qualification","portability","ubuntu-24.04","resource-efficiency")` | `{"terminal":"All normative Phase 1 gates and every required host/release-runner row have passing evidence against the pinned Ubuntu 24.04 target image; no required observation is missing or inferred, and no cross-image acceptance is claimed."}` | `{"terminal":("layerstack","phase1-qualification","portability","ubuntu-24.04","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.qualification.all` | `Phase 1 cumulative release qualification` | `Executes the frozen Stage 07 affected regression, correctness, recovery, benchmark, memory, disk, target-image, architecture, and Linux native-backend capability matrix.` | `("layerstack","phase1-qualification","portability","linux-native-backend","resource-efficiency")` | `{"terminal":"All normative Phase 1 gates and every required capability-profile row have passing evidence with exact image, effective Linux kernel, backing filesystem, and architecture; no universal or percentage compatibility is inferred."}` | `{"terminal":("layerstack","phase1-qualification","portability","linux-native-backend","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
 
 Every validation key above is emitted exactly once as a terminal
 `ValidationReporter` result.
@@ -127,16 +127,16 @@ Every validation key above is emitted exactly once as a terminal
 | Case | Expected now | Deferred |
 | --- | --- | --- |
 | Empty/no-op and 1-byte/boundary legacy publication | exact current v1 identity; no new layer for no-op | v2/CDC boundaries Stage 03 |
-| 1 MiB deterministic localized edit, incompressible file, 100–1,000 small files | exact legacy tree/export digest | dedup/space Stage 04/11 |
-| Mode, symlink, hardlink where supported, whiteout, opaque dir, sparse, xattr/owner | freeze current behavior and known export limitations separately | portable round trip Stage 05/11 |
-| Disjoint/conflicting/stale OCC | current behavior frozen | candidate OCC Stage 07 |
-| Failure before layer rename / before manifest commit | no partial active manifest; owned staging recovered | CAS failpoints Stage 07/08 |
-| Daemon restart and retry | feature-off legacy remains readable | mixed root Stage 10 |
+| 1 MiB deterministic localized edit, incompressible file, 100–1,000 small files | exact legacy tree/export digest | dedup/space Stage 03/07 |
+| Mode, symlink, hardlink where supported, whiteout, opaque dir, sparse, xattr/owner | freeze current behavior and known export limitations separately | portable round trip Stage 04/07 |
+| Disjoint/conflicting/stale OCC | current behavior frozen | candidate OCC Stage 03 |
+| Failure before layer rename / before manifest commit | no partial active manifest; owned staging recovered | candidate failpoints Stage 03/05 |
+| Daemon restart and retry | feature-off legacy remains readable | mixed root Stage 06 |
 | Command success/cancel plus workspace teardown | transcript owner releases before workspace removal under current roots | scratch move Stage 01 |
 | PTY resize/arbitrary signal/literal EOF | deterministic unsupported response preserved | no parity work planned |
-| Candidate strict fallback | impossible; candidate absent | Stage 06 requires zero fallback |
+| Candidate strict fallback | impossible; candidate absent | Stage 04 strict gate requires zero fallback |
 | Scalar/accelerated SeqCDC | absent | scalar Stage 03; acceleration excluded unless separately approved |
-| Target-image userland independence | baseline records assumptions only | Stage 05 and Stage 11 required-host rows using the sole pinned Ubuntu target |
+| Target-image userland independence | baseline records assumptions only | Stage 04 and Stage 07 required-host rows using the sole pinned Ubuntu target |
 
 Any difference between frozen expected behavior and actual current behavior is a baseline defect, not silently updated data. The stage owner decides whether the defect blocks migration or receives a versioned, reviewed expectation.
 
@@ -173,7 +173,7 @@ Poll every 100 ms for at most 5 seconds. Quiescence requires zero active operati
 
 Record process RSS (and anonymous/file-backed split if available), cgroup current/peak, Docker stats fallback, fixed owned/high-water bytes, buffers, tasks, workers, queues, permits, mappings, FDs, caches, registries, leases, transactions, quiescence latency, and per-cycle outcome. Bound raw sampling with the existing stream/ring.
 
-Predeclare the physical rule from an equal-warmup raw control before candidate work: first and last five-cycle settled-window medians, their delta, Theil–Sen or benchmark-standard robust slope, sample count, and raw noise band. Stage pass requires all logical counts return and the short physical series remain inside that frozen diagnostic band. It does not claim the final ≤384 MiB, ≤128 MiB idle-adjusted, scale, or 16/8 MiB gates; those remain Stage 11.
+Predeclare the physical rule from an equal-warmup raw control before candidate work: first and last five-cycle settled-window medians, their delta, Theil–Sen or benchmark-standard robust slope, sample count, and raw noise band. Stage pass requires all logical counts return and the short physical series remain inside that frozen diagnostic band. It does not claim the final ≤384 MiB, ≤128 MiB idle-adjusted, scale, or 16/8 MiB gates; those remain Stage 07.
 
 Verdicts use only: `bounded-and-released`, `bounded-retained-by-design`, `allocator-or-page-cache-retained`, `suspected-leak`, `confirmed-leak`, `measurement-unavailable`. Suspected/confirmed leak and unavailable stage-gating data block exit.
 
@@ -295,9 +295,9 @@ cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
   benchmark/backend/tests/compatibility/test_artifacts.py
 ```
 
-### DO NOT RUN in Stage 00 — Stage 11 affected regression
+### DO NOT RUN in Stage 00 — Stage 07 affected regression
 
-Stage 11 owns this cumulative selector.
+Stage 07 owns this cumulative selector.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -316,12 +316,12 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 00 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 00 — Stage 07 qualification matrix
 
-Stage 11 runs this same command once on each required native host and records
-the resolved platform digest. Pinned Ubuntu 24 is the only Phase 1 E2E image;
-cross-image portability is deferred beyond Phase 1 and is not an acceptance
-gate.
+The command below preserves the frozen Ubuntu baseline cell. Stage 07 also runs its
+declared glibc/musl/minimal/distroless/shell-less, architecture, Linux
+Engine/Desktop-VM, and `/eos` backing-filesystem capability cells with exact digests
+and environment records.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -334,7 +334,7 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 00 — Stage 11 full Phase 1 qualification
+### DO NOT RUN in Stage 00 — Stage 07 full Phase 1 qualification
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test/benchmark
@@ -395,4 +395,4 @@ any route ambiguity, silent fallback, corruption/durability error, suspected
 leak, unexpected residue, dependency delta, artifact/schema gap, or cross-run
 cleanup is a blocker.
 
-Rerun only the failing focused case after a documented fix, using reuse mode when binary identity is proven. Roll back all Stage 00 additive fields/fixtures if feature-off behavior or observation boundedness cannot be preserved. Full SeqCDC/CAS correctness, time/space/RSS matrices, portability, soak, and production status remain deferred to Stages 03–11 and are not passed here.
+Rerun only the failing focused case after a documented fix, using reuse mode when binary identity is proven. Roll back all Stage 00 additive fields/fixtures if feature-off behavior or observation boundedness cannot be preserved. Full SeqCDC/CAS correctness, time/space/RSS matrices, portability, soak, and production status remain deferred to Stages 03–07 and are not passed here.

@@ -186,7 +186,7 @@ Do not introduce:
 - a second lifecycle scheduler
 - an unbounded metrics label, map, scan, retry loop, queue, or evidence stream
 - a new external package, crate, feature edge, Python dependency, system helper, runtime helper, or image helper
-- a broad regression run, host matrix, or final Phase 1 qualification; those belong to Stage 11
+- a broad regression run, host matrix, or final Phase 1 qualification; those belong to Stage 07
 
 Keep LayerStack v1 as the sole persistence authority.
 

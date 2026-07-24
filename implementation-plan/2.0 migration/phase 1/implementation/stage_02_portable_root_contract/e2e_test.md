@@ -149,15 +149,15 @@ Forbidden after setup, after the live action, and after teardown: `format-v2.jso
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Stage 02 POC rows use only the pinned Ubuntu 24.04 target image. The planned release
+row uses the Stage 07 target-image/native-backend capability matrix while preserving
+that frozen baseline cell.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.layerstack-phase1.portable-root.feature-off` | POC; `run-now-focused` | legacy authority with dormant portable contract | pinned Ubuntu 24 image, legacy config, deterministic changed/no-op inputs | public workspace write, publish, read | exact v1 bytes/revision, legacy routes, zero candidate work | diagnostic elapsed time | complete before/after allocation, zero candidate bytes | all case owners/tasks/FDs/sessions quiesce | exact external delta zero and pinned Ubuntu 24 record | `60000` ms | typed JSONL and public/route/resource/storage/cleanup snapshots |
 | `PRC-R08` | POC; `run-now-tiny-bench` | canonical encode/decode/hash/drop | one long-lived process and deterministic paired corpus | typed wrapper invokes the bounded primitive campaign | exact canonical goldens on every iteration | raw pairs without normative p95 | encoded-byte series | owners and allocations release after every pair | std-only core and host-independent goldens | `60000` ms | raw JSON samples and summary |
-| `runtime.layerstack-phase1.portable-root.release-matrix` | release; `planned-final` | required-runner portable-root qualification | required Stage 11 host/release runners using one pinned Ubuntu 24.04 target image | public qualification corpus | identical canonical IDs and compatible behavior on every required runner | normative Stage 11 metrics | complete physical envelope | full repeated-lifecycle matrix | required-runner evidence, pinned Ubuntu 24.04 target; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `runtime.layerstack-phase1.portable-root.release-matrix` | release; `planned-final` | portable-root capability qualification | required Stage 07 image, architecture, provider, and Linux-backend cells | public qualification corpus | identical canonical IDs and compatible behavior on every required capability row | normative Stage 07 metrics | complete physical envelope | full repeated-lifecycle matrix | exact image, effective Linux kernel, backing filesystem/provider, and architecture | `300000` ms | Stage 07 qualification bundle |
 
 Complete literal declaration metadata:
 
@@ -165,7 +165,7 @@ Complete literal declaration metadata:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.layerstack-phase1.portable-root.feature-off` | `PRC-01 Portable Root Contract Is Runtime-Dormant` | `A packaged Ubuntu 24.04 sandbox performs one public no-op and one changed workspace publication while legacy v1 remains the only read, write, and publication authority and every candidate resource gauge remains zero.` | `("runtime.workspace_session","runtime.layerstack-phase1.portable-root")` | `{"assert-prc-01-legacy-authority":"Public revision and content remain v1-compatible; configured, read, write, and publication routes are legacy; candidate completion, fallback, mismatch, worker, queue, permit, transaction, root, object, and durable-byte values are zero; case-owned resources are reclaimed."}` | `{"assert-prc-01-legacy-authority":("runtime.workspace_session","runtime.layerstack-phase1.portable-root")}` | `"cli"` | `"e2e-core"` | `60000` | `("smoke","phase1","config")` |
 | `PRC-R08` | `PRC-R08 Portable root tiny canonical loop` | `Runs canonical encode, decode, hash, and drop over the deterministic portable-root corpus in one long-lived process and records bounded raw lifecycle evidence.` | `("runtime.layerstack-phase1.portable-root","benchmark","observability.resource_efficiency")` | `{"terminal":"Every repetition matches the frozen canonical bytes and identifiers, rejects no valid vector, retains no logical owner after drop, and emits schema-valid raw time, byte, and lifecycle samples."}` | `{"terminal":("runtime.layerstack-phase1.portable-root","benchmark","observability.resource_efficiency")}` | `"cli"` | `"e2e-core"` | `60000` | `("benchmark","phase1")` |
-| `runtime.layerstack-phase1.portable-root.release-matrix` | `Portable root release matrix` | `Executes compatibility, memory, storage, and portable-identity qualification on every required host/release runner using the one pinned Ubuntu 24.04 target image; cross-image qualification is deferred beyond Phase 1.` | `("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","ubuntu-24.04")` | `{"terminal":"Every required host/release-runner row produces the frozen canonical root identifiers and compatible public behavior against the pinned Ubuntu 24.04 target image with complete environment and lifecycle evidence; no cross-image acceptance is claimed."}` | `{"terminal":("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","ubuntu-24.04")}` | `"cli"` | `"e2e-core"` | `300000` | `("release","phase1","config")` |
+| `runtime.layerstack-phase1.portable-root.release-matrix` | `Portable root release matrix` | `Executes compatibility, memory, storage, and portable-identity qualification across the required Stage 07 image, architecture, provider, and Linux native-backend capability matrix.` | `("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","linux-native-backend")` | `{"terminal":"Every required capability-profile row produces the frozen canonical root identifiers and compatible public behavior with complete image, effective-kernel, backing-filesystem/provider, architecture, and lifecycle evidence; no universal or percentage compatibility is inferred."}` | `{"terminal":("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","linux-native-backend")}` | `"cli"` | `"e2e-core"` | `300000` | `("release","phase1","config")` |
 
 Supporting execution references below are not additional typed E2E declarations:
 
@@ -178,7 +178,7 @@ Supporting execution references below are not additional typed E2E declarations:
 - Existing `runtime.workspace-session.publish.changed` is a
   `run-now-focused` compatibility reference when the changed-flow fixture is
   required; it proves one legacy revision and exact visible bytes.
-- Cross-host root-ID acceptance executes in Stage 11 on every required runner
+- Cross-host root-ID acceptance executes in Stage 07 on every required runner
   using the pinned Ubuntu 24.04 target image. Cross-image acceptance is deferred
   beyond Phase 1 and is not an executable Phase 1 catalog row.
 
@@ -257,10 +257,10 @@ The probe uses `std::time::Instant` and adds no Criterion, profiler, allocator, 
 | candidate queues/bytes/permits | public bounded observation | 0 | always 0 | nonzero/missing |
 | candidate transactions/roots/objects/bytes | public bounded observation | 0 | always 0 | nonzero/missing |
 | workspace/commands | public snapshot plus tracker | exact case IDs only | bounded poll every 100 ms, ≤5 s, to absent | leak/timeout |
-| process/cgroup RSS | existing outside/public sampler | diagnostic raw baseline band only | report first/last/slope separately from logical release | missing source is `unavailable`; no Stage 11 pass |
+| process/cgroup RSS | existing outside/public sampler | diagnostic raw baseline band only | report first/last/slope separately from logical release | missing source is `unavailable`; no Stage 07 pass |
 | FD/mapping count | sampler when available | current Stage 00 band | settled after exact cleanup | unexplained positive trend |
 
-No restart, `malloc_trim`, allocator swap, manual page-cache purge, or arbitrary settling sleep is allowed. Stage 02’s authoritative logical proof is that it adds no long-lived owner at all. Final RSS ≤384 MiB/≤128 MiB-above-idle and the 64/256/1024 MiB × 1/16/64-root matrix remain deferred to Stage 11.
+No restart, `malloc_trim`, allocator swap, manual page-cache purge, or arbitrary settling sleep is allowed. Stage 02’s authoritative logical proof is that it adds no long-lived owner at all. Final RSS ≤384 MiB/≤128 MiB-above-idle and the 64/256/1024 MiB × 1/16/64-root matrix remain deferred to Stage 07.
 
 ## 8. Dependency and portability proof
 
@@ -277,7 +277,7 @@ The shared standard-library verifier compares canonical identities, not counts a
 | non-Rust manifests/locks | byte-equal unless independently authorized; no Python/npm addition |
 | host/system/image | no installed tool/package/service/helper/sidecar/FUSE/database/network/download/privilege delta |
 | deterministic bytes | fixed raw-byte/endian/width goldens pass on current host |
-| portability claim | `designed-compatible` only; no required-release row is called qualified until executed in Stage 11 |
+| portability claim | `designed-compatible` only; no required-release row is called qualified until executed in Stage 07 |
 
 LayerStack’s existing `sha2` and `serde` edges remain in place and perform outward implementation work. This is zero external edge delta, not a hidden dependency move.
 
@@ -375,9 +375,9 @@ cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
   benchmark/backend/tests/compatibility/test_artifacts.py
 ```
 
-### DO NOT RUN in Stage 02 — Stage 11 affected regression
+### DO NOT RUN in Stage 02 — Stage 07 affected regression
 
-Stage 11 owns this cumulative selector; it is not a Stage 02 exit gate.
+Stage 07 owns this cumulative selector; it is not a Stage 02 exit gate.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -396,12 +396,11 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 02 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 02 — Stage 07 qualification matrix
 
-Stage 11 runs this command once per required native host and records the
-resolved platform digest. Pinned Ubuntu 24 is the only Phase 1 E2E image;
-cross-image portability is deferred beyond Phase 1 and is not an acceptance
-gate.
+The command below preserves the frozen Ubuntu Stage 02 baseline. Stage 07 additionally
+runs the declared target-image, architecture, provider, Linux Engine/Desktop-VM, and
+`/eos` backing-filesystem capability cells.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -414,7 +413,7 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 02 — Stage 11 full Phase 1 qualification
+### DO NOT RUN in Stage 02 — Stage 07 full Phase 1 qualification
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test/benchmark
@@ -476,11 +475,8 @@ Return **POC PASS** only when:
 
 Return **POC FAIL / BLOCKED** for any mismatch, missing authority/resource evidence, v1 regression, candidate artifact, dependency delta, leak, timeout, malformed artifact, execution outside mandated `upgrade-2.0-phase-1` or without its recorded newest approved immutable base, or unavailable mandatory environment. Preserve the first failure and exact cleanup result.
 
-This verdict does **not** authorize Stage 04 shadow writes, candidate reads,
+This verdict does **not** authorize Stage 03 candidate writes, candidate reads,
 migration, broad CI, release qualification, required-host portability claims,
-final performance/memory/space claims, or production enablement. Stage 11 must
-execute every required host/release-runner row using the same pinned Ubuntu OCI
-index and record the resolved platform manifest. Cross-image portability is
-deferred beyond Phase 1 and is neither an acceptance nor a retirement gate.
-This verdict only unblocks the independently gated Stage 03 scalar SeqCDC
-implementation.
+final performance/memory/space claims, or production enablement. It closes
+Stage 02 only. Later-stage documents neither weaken these gates nor count as
+Stage 02 evidence.

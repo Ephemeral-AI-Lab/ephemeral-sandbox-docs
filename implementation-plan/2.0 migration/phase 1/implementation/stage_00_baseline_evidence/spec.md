@@ -14,7 +14,7 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | Owners / affected crates | `sandbox-runtime-layerstack`, the operation modules in `sandbox-runtime`, `sandbox-config`, existing observability CLI projection; external E2E catalog and benchmark laboratory |
 | Objective | Freeze an immutable, reproducible legacy baseline and add bounded structured route/resource evidence that every later candidate stage can use without inventing a test-only product API. |
 | System-visible outcome | Feature-off operation remains byte-for-byte compatible; the existing observability snapshot/layerstack surfaces identify schema version, authority, route, fallback/mismatch counts, resource ownership, dependency fingerprint, and quiescence. |
-| Scope | Git/toolchain/environment manifests, dependency and feature snapshots, current v1 golden data, deterministic tiny corpora, bounded gauges, benchmark result fields, required-host matrix using the sole pinned Ubuntu 24.04 image, baseline noise. |
+| Scope | Git/toolchain/environment manifests, dependency and feature snapshots, current v1 golden data, deterministic tiny corpora, bounded gauges, benchmark result fields, required-host baseline using the pinned Ubuntu 24.04 image, baseline noise. Stage 07 owns the broader image/backend qualification matrix. |
 | Non-goals | No `RootId` v2, SeqCDC, CAS object, candidate write/read, layout migration, scratch relocation, full suite, or production enablement. |
 | Entry | Planning observations remain attributable; the implementer has fetched and verified the newest approved product revision, created exact branch `upgrade-2.0-phase-1` from it, and recorded its immutable base, upstream, clean scoped worktrees, and responsible implementer. The planning-time product/test commits below are evidence anchors, not a substitute for that implementation-base record. |
 | Exit | Focused Rust/E2E baseline proofs pass; two independently generated dependency snapshots compare equal; feature-off routes all report `legacy`; one 30–60 second long-lived sentinel returns logical gauges to baseline and freezes a raw physical-memory noise band; every artifact validates against its schema. |
@@ -185,14 +185,14 @@ Counts are a diagnostic; the pass condition is exact sorted-set and multiset equ
 
 | Boundary | Host/image assumption before | Assumption after | Owner | Evidence now | Later evidence |
 | --- | --- | --- | --- | --- | --- |
-| observation | host path strings may appear in debug output | closed enums and integers; no path/chunk labels | operation adapter | schema/golden | Stage 11 required-host coverage |
-| dependency graph | current host graph only | frozen per target/feature invocation | build evidence | current Darwin snapshot | Stage 11 required-release host rows |
-| target image | Ubuntu usually used by tests | every Phase 1 row uses Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`; storage evidence uses outside observation | Docker adapter | pinned index and resolved platform manifest | Stages 05/11; cross-image portability is after Phase 1 and non-gating |
-| CPU | scalar/current code | no candidate CPU claim | future core | N/A | Stage 03 scalar and Stage 11 matrix |
+| observation | host path strings may appear in debug output | closed enums and integers; no path/chunk labels | operation adapter | schema/golden | Stage 07 required-host coverage |
+| dependency graph | current host graph only | frozen per target/feature invocation | build evidence | current Darwin snapshot | Stage 07 required-release host rows |
+| target image | Ubuntu usually used by tests | Stage 00 baseline rows use Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`; storage evidence uses outside observation | Docker adapter | pinned index and resolved platform manifest | Stage 07 target-image and native-backend capability matrix |
+| CPU | scalar/current code | no candidate CPU claim | future core | N/A | Stage 03 scalar and Stage 07 matrix |
 
 No unexecuted row is qualified. Adding a chunker profile later changes the profile implementation/golden catalog, not observation transport. Adding Firecracker or WASM changes their materialization adapter and capability reporter, not route schema semantics or logical storage. Phase 2 consumes immutable IDs and publications added later; Stage 00 only makes their eventual evidence shape stable.
 
-Transitional ledger: `rollout_mode=legacy` stays as the safe default through Stage 09; legacy route fields remain readable through Stage 11 and are removed only after Stage 11 retirement evidence. No adapter is introduced here.
+Transitional ledger: `rollout_mode=legacy` stays as the safe default through active Stage 05; legacy route fields remain readable through Stage 07 and are removed only after Stage 07 retirement evidence. No adapter is introduced here.
 
 ## 5. Type, class, and field design
 
@@ -297,21 +297,21 @@ There are no new background tasks, buffers, queues, mappings, file descriptors, 
 | v1 golden verify | fixture bytes `F` | `O(F)` | existing streaming behavior; tiny corpus ≤4 MiB | run staging / none | sequential |
 | tiny baseline loop | fixed operations `n` | `O(n)`; each <60 s, loop 30–60 s | existing baseline | run-owned artifacts | existing native path |
 
-The fixed SeqCDC profile, publication/cold/squash/maintenance gates, CAS space envelope, pack bounds, and scale matrix are `deferred-to-stage_11`; the mechanisms do not exist. Stage 00 gates these inherited requirements now:
+The fixed SeqCDC profile, publication/cold/squash/maintenance gates, CAS space envelope, pack bounds, and scale matrix are `deferred-to-stage_07`; the mechanisms do not exist. Stage 00 gates these inherited requirements now:
 
 | Inherited gate | State |
 | --- | --- |
 | No-op exec p50/p95 ≤ baseline +3%+0.5 ms; native command/read/write ≥97%; PTY create ≤+3%+1 ms; drain/stdin/C/D ≤+3%+0.5 ms; unsupported resize/signal/literal EOF preserved | `stage-gating` as raw baseline correctness/timing capture; no candidate pass is claimed |
 | Per-operation ≤60 s; tiny loop 30–60 s | `stage-gating` |
 | Logical quiescence and no unexplained positive settled trend in short sentinel | `stage-gating` diagnostic |
-| Absolute RSS ≤384 MiB and ≤128 MiB above idle raw; scale 64/256 MiB/1 GiB × roots 1/16/64, three reps, ≤16 MiB series and ≤8 MiB per 4× | `deferred-to-stage_11`; Stage 00 freezes sources/noise only |
+| Absolute RSS ≤384 MiB and ≤128 MiB above idle raw; scale 64/256 MiB/1 GiB × roots 1/16/64, three reps, ≤16 MiB series and ≤8 MiB per 4× | `deferred-to-stage_07`; Stage 00 freezes sources/noise only |
 | SeqCDC 8/16/32 KiB, threshold 5/opposing 50/jump 512, 32 KiB window, ≤2 slices, chunk bounds | `deferred-to-stage_03` |
-| incremental publication `O(U+K+C+V_delta)` after a separately labeled `O(R+E)` bootstrap, 32 KiB ring, ≤4 MiB/publication, 4 workers, ≤4 borrowed chunks, zero payload queue, 16/64 KiB metadata queue, 64 MiB semaphore | `deferred-to-stage_04` |
-| warm/mount ≤+5%+2 ms and zero CAS reads; hydration ≥70%; activation bound | `deferred-to-stage_05` |
-| small edit ≤+15%+5 ms; disjoint ≥90%; OCC/durable publication | `deferred-to-stage_07` |
-| pack 64 MiB/100k/80 MiB; fan-in 8×64 KiB; slice 100k or64 MiB; dead/slack thresholds; epoch grace | `deferred-to-stage_08` |
-| squash/remount timing, 48/64 depth, benefit 8/manual 2, identity preservation | `deferred-to-stage_09` |
-| physical `T=L_hot+H_cold+ΣU_active+P_staging+M`, amplification, duplication, metadata, locality, ≤1.14× StreamCDC, ≥10% selection with three matched sets and bootstrap lower CI | `deferred-to-stage_11` |
+| incremental publication `O(U+E_changed+K+P log_B N)` after a separately labeled `O(R+E)` bootstrap, 32 KiB ring, ≤4 MiB/publication, 4 workers, zero payload queue, 16/64 KiB metadata queue, 64 MiB semaphore | `deferred-to-stage_03` |
+| warm/mount ≤+5%+2 ms and zero CAS reads; hydration ≥70%; activation bound | `deferred-to-stage_04` |
+| small edit ≤+15%+5 ms; disjoint ≥90%; OCC/durable publication | `deferred-to-stage_03` |
+| pack 64 MiB/100k/80 MiB; fan-in 8×64 KiB; slice 100k or64 MiB; dead/slack thresholds; epoch grace | `deferred-to-stage_05` |
+| squash/remount timing, 48/64 depth, benefit 8/manual 2, identity preservation | `deferred-to-stage_05` |
+| physical `T=L_hot+H_cold+ΣU_active+P_staging+M`, amplification, duplication, metadata, locality, ≤1.14× StreamCDC, ≥10% selection with three matched sets and bootstrap lower CI | `deferred-to-stage_07` |
 
 Warmed idle may retain only existing bounded caches/terminal records. Everything acquired for a snapshot must be gone at quiescence. Short sentinel ratios are non-normative; no p95 claim is made with fewer than sufficient samples.
 
@@ -399,4 +399,4 @@ quiescence, resource, and custody assertions remain gating.
 - [x] All evidence schemas validate and artifacts are retained under run-owned state.
 - [x] SRP/cycle/forbidden-edge audit passes; no test support entered production `src/`.
 - [x] No product durable format, candidate artifact, external dependency, service, or `/eos` path was added; the mandated implementation branch is the sole Stage 00 branch.
-- [x] Full normative time/space/RSS/portability qualification remains explicitly deferred to Stage 11.
+- [x] Full normative time/space/RSS/portability qualification remains explicitly deferred to Stage 07.

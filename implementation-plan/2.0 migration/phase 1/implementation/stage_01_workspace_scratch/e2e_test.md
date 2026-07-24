@@ -2,7 +2,7 @@
 
 Links: [implementation overview](../index.md) · [stage specification](spec.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
-Tier: **POC proof tier**. Required now: one focused packaged lifecycle case, one primary restart/unsafe-reap case, and the tiny paired benchmark/memory sentinel. Broad regression and normative qualification are Stage 11 work.
+Tier: **POC proof tier**. Required now: one focused packaged lifecycle case, one primary restart/unsafe-reap case, and the tiny paired benchmark/memory sentinel. Broad regression and normative qualification are Stage 07 work.
 
 ## 1. Stage-local test objective
 
@@ -122,16 +122,15 @@ The harness may inspect `/eos` from outside the masked workload for placement, m
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Stage 01 POC rows use only the pinned Ubuntu 24.04 target image. The planned-final row
+uses the Stage 07 target-image/native-backend capability matrix.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `phase1.stage01.workspace-scratch.lifecycle` | POC; `run-now-focused` | legacy storage plus workspace-owned scratch | fresh daemon, two explicit sessions, one implicit session | concurrent public execute, cancel, retain terminal, destroy | containment, isolation, owner ordering, no global writes or cross-delete | lifecycle phase durations | categorized workspace/global allocation | leases, FDs, tasks, terminals return to idle | no target helper and exact graph snapshot | `120000` ms | case JSON and route/tree/resource snapshots |
 | `phase1.stage01.workspace-scratch.restart-reap` | POC; `run-now-focused` | compatibility reaper and restart | safe, recent, and symlink legacy entries plus held tracked session | public command, controlled restart, new command, destroy | bounded safe reap, unsafe skip, ID-reuse isolation, manager recovery | restart, recovery, reap durations | legacy residue before/after | scan tasks, FDs, leases return | containment and helper-independence evidence on pinned Ubuntu 24.04 | `120000` ms | before/failure/restart/cleanup trees |
 | `phase1.stage01.workspace-scratch.tiny` | POC; `run-now-tiny-bench` | legacy adapter versus workspace locator | fixed seed/corpus and identical daemon/image/cache order | benchmark lab invokes public commands and cleanup | identical output/tree digest and explicit route | raw paired latency and ratio | per-subtree allocated bytes | twelve post-warmup cycles including cancellation | dependency snapshots | `60000` ms | raw JSON and summary |
-| `phase1.final.workspace-scratch.qualification` | final; `planned-final` | full candidate-default lifecycle | frozen Stage 11 corpora on required runners using one pinned Ubuntu 24.04 target image | affected regression and required-runner qualification | all transcript modes, rollback, and required runner rows | normative command/PTY metrics | complete storage envelope | sustained final memory matrix | required runners, pinned Ubuntu 24.04 target; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `phase1.final.workspace-scratch.qualification` | final; `planned-final` | full candidate-default lifecycle | frozen Stage 07 corpora on required image, architecture, and Linux-backend cells | affected regression and capability-profile qualification | all transcript modes, rollback, and required capability rows | normative command/PTY metrics | complete storage envelope | sustained final memory matrix | exact image, effective Linux kernel, backing filesystem, and architecture | `300000` ms | Stage 07 qualification bundle |
 
 Complete declarations:
 
@@ -140,7 +139,7 @@ Complete declarations:
 | `phase1.stage01.workspace-scratch.lifecycle` | `Stage 01 workspace execution scratch lifecycle` | `Routes implicit, explicit, concurrent, cancelled, and terminal-retained command transcripts through the owning workspace and proves ordered cleanup.` | `("runtime.workspace_session","runtime.namespace_execution","phase1.workspace_scratch")` | `{"route-contained":"Every execution scratch path is beneath the owning workspace and token.","transcripts-isolated":"Concurrent and reused identifiers cannot read or delete another execution transcript.","owner-release-before-delete":"Execution owners, tasks, file descriptors, and leases release before recursive deletion.","global-root-no-new-writes":"The compatibility namespace-execution root receives no new writes.","cleanup-complete":"Destroyed sessions and run-owned scratch have no undeclared residue."}` | `{"route-contained":("runtime.workspace_session","phase1.workspace_scratch"),"transcripts-isolated":("runtime.namespace_execution","phase1.workspace_scratch"),"owner-release-before-delete":("runtime.workspace_session","observability.resource_efficiency"),"global-root-no-new-writes":("runtime.namespace_execution","phase1.workspace_scratch"),"cleanup-complete":("observability.resource_efficiency","phase1.workspace_scratch")}` | `"cli"` | `"phase1-storage"` | `120000` | `("smoke","phase1","config")` |
 | `phase1.stage01.workspace-scratch.restart-reap` | `Stage 01 restart and legacy scratch reap` | `Proves restart-safe identifier reuse and bounded containment-safe cleanup of legacy namespace-execution residue.` | `("runtime.workspace_session","runtime.daemon_restart","phase1.workspace_scratch_compat")` | `{"restart-isolated":"A restarted manager cannot attach a new execution to stale scratch with the same visible identifier.","safe-entry-reaped":"An old owned regular legacy entry is removed within the bounded reap batch.","unsafe-entry-skipped":"Recent, symlinked, or containment-ambiguous entries are preserved and reported.","batch-bounded":"One compatibility scan never exceeds the declared entry and time budget.","cleanup-complete":"Manager tasks, file descriptors, leases, and run-owned paths quiesce after destroy."}` | `{"restart-isolated":("runtime.workspace_session","runtime.daemon_restart"),"safe-entry-reaped":("phase1.workspace_scratch_compat","observability.resource_efficiency"),"unsafe-entry-skipped":("phase1.workspace_scratch_compat","runtime.workspace_session"),"batch-bounded":("phase1.workspace_scratch_compat","observability.resource_efficiency"),"cleanup-complete":("runtime.daemon_restart","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `120000` | `("medium","phase1","config")` |
 | `phase1.stage01.workspace-scratch.tiny` | `Stage 01 workspace scratch tiny sentinel` | `Alternates control and candidate command lifecycles and records correctness, time, disk, and logical and physical memory evidence.` | `("benchmark.workspace_session","observability.resource_efficiency","phase1.workspace_scratch")` | `{"paired-digest-equal":"Every control and candidate pair returns the same output and tree digest.","all-ops-under-60s":"Every create, execute, cancel, and destroy operation completes within sixty seconds.","logical-release":"Every repetition returns execution and workspace owner gauges to settled values.","memory-cap":"The recorded physical-memory series remains within the declared diagnostic cap or is explicitly unavailable.","artifact-complete":"Raw paired samples, allocation categories, environment, and cleanup evidence validate against the schema."}` | `{"paired-digest-equal":("benchmark.workspace_session","phase1.workspace_scratch"),"all-ops-under-60s":("benchmark.workspace_session",),"logical-release":("phase1.workspace_scratch","observability.resource_efficiency"),"memory-cap":("observability.resource_efficiency","benchmark.workspace_session"),"artifact-complete":("benchmark.workspace_session","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `60000` | `("smoke","benchmark","phase1","config")` |
-| `phase1.final.workspace-scratch.qualification` | `Final workspace scratch qualification` | `Runs the frozen full command, PTY, lifecycle, memory, and required host/release-runner qualification using the one pinned Ubuntu 24.04 target image in Stage 11; cross-image qualification is deferred beyond Phase 1.` | `("phase1.qualification","runtime.workspace_session","runtime.pty","portability","ubuntu-24.04")` | `{"terminal":"All workspace scratch command, PTY, cancellation, restart, rollback, memory, and required-runner rows execute successfully against the pinned Ubuntu 24.04 target image with complete evidence and no global scratch writes; no cross-image acceptance is claimed."}` | `{"terminal":("phase1.qualification","runtime.workspace_session","runtime.pty","observability.resource_efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"phase1-storage"` | `300000` | `("release","phase1","config")` |
+| `phase1.final.workspace-scratch.qualification` | `Final workspace scratch qualification` | `Runs the frozen full command, PTY, lifecycle, memory, target-image, architecture, and Linux native-backend capability matrix in Stage 07.` | `("phase1.qualification","runtime.workspace_session","runtime.pty","portability","linux-native-backend")` | `{"terminal":"All workspace scratch command, PTY, cancellation, restart, rollback, memory, and required capability-profile rows pass with complete environment evidence and no global scratch writes; no universal or percentage compatibility is inferred."}` | `{"terminal":("phase1.qualification","runtime.workspace_session","runtime.pty","observability.resource_efficiency","portability","linux-native-backend")}` | `"cli"` | `"phase1-storage"` | `300000` | `("release","phase1","config")` |
 
 Every declared checkpoint emits exactly one terminal `ValidationReporter`
 record.
@@ -160,9 +159,9 @@ record.
 | Disk full or permission error creating leaf | Rust integration now; packaged diagnostic if deterministic | command process never launches, no partial/foreign leaf |
 | `manager.json` and `.export` | now | neither is recursively removed by command cleanup |
 | Mode/symlink/whiteout/opaque/sparse metadata | planned-final | workspace content regression, not changed storage semantics |
-| Chunking/hash/object/mixed-root/corruption | deferred-to-stage_03 / 05 / 10 | absent from Stage 01 |
-| OCC, leases, publication crash points | deferred-to-stage_07 | absent |
-| Pack/GC and squash/remount | deferred-to-stage_08 / 09 | absent |
+| Chunking/hash/object/mixed-root/corruption | deferred-to-stage_03 / 04 / 06 | absent from Stage 01 |
+| OCC, leases, publication crash points | deferred-to-stage_03 | absent |
+| Pack/GC and squash/remount | deferred-to-stage_05 | absent |
 | Required host/release-runner matrix using the sole pinned Ubuntu target | planned-final | focused now proves no target-image helper; unavailable required hosts remain unverified |
 
 A generic command pass is insufficient: `scratch_route=workspace_scoped`, zero fallback concept, zero global-root new writes, exact tree state, and resource return must accompany it.
@@ -190,7 +189,7 @@ idle baseline -> 2-pair warmed idle -> 12 active peaks
 
 Before candidate data is inspected, freeze the noise band from the six control settled deltas as `max(8 MiB, control median absolute deviation × 4)` and record it in the preset artifact. Poll every 100 ms for at most 5 s; quiescence requires active leases, terminal owners for destroyed sessions, transcript FDs, teardown tasks, reaper task, queue items, and permits at warmed-idle values. No arbitrary sleep, restart, purge, `malloc_trim`, or allocator change is permitted.
 
-Logical verdict: changed live resources are `bounded-and-released`; bounded terminal state is `bounded-retained-by-design` only inside its declared cap and is zero after session destroy. Physical verdict: RSS/cgroup ceilings hold and post-warmup settled slope is not positive beyond the frozen band. Attribute anonymous/file-backed/page-cache effects. `suspected-leak`, `confirmed-leak`, or missing stage-gating data blocks; RSS flatness cannot excuse growing live gauges. The full 64 MiB/256 MiB/1 GiB × 1/16/64 history matrix and sustained lifecycle campaign are deferred to Stage 11.
+Logical verdict: changed live resources are `bounded-and-released`; bounded terminal state is `bounded-retained-by-design` only inside its declared cap and is zero after session destroy. Physical verdict: RSS/cgroup ceilings hold and post-warmup settled slope is not positive beyond the frozen band. Attribute anonymous/file-backed/page-cache effects. `suspected-leak`, `confirmed-leak`, or missing stage-gating data blocks; RSS flatness cannot excuse growing live gauges. The full 64 MiB/256 MiB/1 GiB × 1/16/64 history matrix and sustained lifecycle campaign are deferred to Stage 07.
 
 ## 8. Dependency and portability proof
 
@@ -203,7 +202,7 @@ through public file/command APIs; and prove the runtime invokes no target-image
 shell, libc utility, package manager, or helper for scratch placement.
 Read-only and non-root runtime variants use that same image identity. No
 SIMD/SeqCDC differential applies because no chunker exists; scalar proof is
-deferred to Stage 03. Stage 11 executes every required host/release-runner row
+deferred to Stage 03. Stage 07 executes every required host/release-runner row
 using this same OCI index and records the resolved platform manifest.
 Cross-image portability is deferred beyond Phase 1 and is neither an
 acceptance nor a retirement gate.
@@ -295,7 +294,7 @@ cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
   benchmark/backend/tests/compatibility/test_artifacts.py
 ```
 
-### DO NOT RUN in Stage 01 — Stage 11 affected regression
+### DO NOT RUN in Stage 01 — Stage 07 affected regression
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -314,11 +313,11 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 01 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 01 — Stage 07 qualification matrix
 
-Stage 11 runs this command once per required native host. Pinned Ubuntu 24 is
-the only Phase 1 E2E image; cross-image portability is deferred beyond Phase 1
-and is not an acceptance gate.
+The command below preserves the frozen Ubuntu Stage 01 cell. Stage 07 additionally
+runs the declared target-image, architecture, Linux Engine/Desktop-VM, and `/eos`
+backing-filesystem capability cells.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -331,7 +330,7 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 01 — Stage 11 full Phase 1 qualification
+### DO NOT RUN in Stage 01 — Stage 07 full Phase 1 qualification
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test/benchmark
@@ -383,7 +382,7 @@ Warnings may include attributed allocator/page-cache retention inside the frozen
 The harness must remove only tracked run IDs, restore generated config/gateway
 custody, and show the final tree. Rerun only the failed focused node after
 root-cause correction; rebuild on any product change, reuse only unchanged
-passing binary. Roll back to the legacy locator on a disqualifier. Stage 11
+passing binary. Roll back to the legacy locator on a disqualifier. Stage 07
 still owns the affected regression, required host/release-runner matrix using
 the sole pinned Ubuntu target, sustained memory/history scale, normative
 command/PTY p50/p95, soak, and full Phase 1 qualification; none is claimed

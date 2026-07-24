@@ -9,14 +9,14 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 
 | Field | Contract |
 | --- | --- |
-| Status | Proposed; POC proof tier. Planning creates no branch. Implementation requires the exact branch `upgrade-2.0-phase-1`, created from the newest approved immutable product revision, with immutable product/test/doc bases recorded first. |
-| Depends on | Stage 00 evidence seams only. Stage 01 is an independent parallel branch and does not join the candidate-storage chain until Stage 10. |
+| Status | **POC PASS**; immutable v2 codec, fixture, and source-contract proof tier only. Legacy v1 remains the sole runtime authority, and Stage 02 writes no v2 durable state. |
+| Depends on | Stage 00 evidence seams only. Stage 01 completed independently, is not a Stage 02 prerequisite, and its provider-local workspace transcripts never participate in portable identity. |
 | Owners / affected crates | New internal `sandbox-runtime-layerstack-core`; existing `sandbox-runtime` LayerStack module; workspace manifest/lock; maintainer architecture; focused product and external tests. |
 | Objective | Freeze a deterministic, versioned, backend-neutral root/object/path contract without changing the authoritative v1 LayerStack or writing any v2 artifact. |
 | System-visible outcome | None. Public commands, files, PTY, mount, publication, `root_hash`, and storage layout remain legacy-v1 behavior. Portable v2 values exist only in pure Rust/golden tests. |
 | Scope | Standard-library-only core crate; canonical byte codec; typed identities; raw Linux path-byte validation; capability set; logical tree/root records; narrow ports; existing-crate SHA-256/serde adapters; compatibility and dependency proof. |
 | Non-goals | SeqCDC implementation; payload chunking; CAS files/packs/indexes; candidate publication; candidate read/materialization; authoritative `RootId`; migration mapping; SIMD; GC; squash; full/release qualification. |
-| Entry | Stage 00 focused exit passes; no unexpected `/eos` artifacts exist; exact branch `upgrade-2.0-phase-1`, its newest approved immutable product base, immutable test/doc bases, upstream, and clean scoped worktrees are recorded; dependency baselines exist for every declared target/feature invocation. Stage 01 may be incomplete. |
+| Entry | Stage 00 focused exit passes; no unexpected `/eos` artifacts exist; exact branch `upgrade-2.0-phase-1`, its newest approved immutable product base, immutable test/doc bases, upstreams, complete preserved-dirty inventories, and two agreeing dependency captures for every frozen invocation are recorded under `PRC-STAGE02-OWNER-DECISION-D2.5`. |
 | Exit | Canonical golden bytes and typed SHA-256 IDs are deterministic under insertion/read fragmentation and host-independent path inputs; all malformed-contract cases fail closed; `sandbox-runtime-layerstack-core` has no dependency entries; the exact external package/version set, enabled-feature set, and direct external-edge multiset equal the frozen baseline; legacy remains sole read/write/publication authority. |
 | Rollback | Remove the new internal crate and internal workspace edge plus its tests/adapters. No durable data migration or `/eos` cleanup is needed because this stage writes no v2 artifact. |
 
@@ -203,7 +203,7 @@ a hard failure.
 | existing LayerStack storage/provider | Own host paths, fsync, atomic files, carrier/provider integration | LayerStack + OS/provider crates | later v2 writer/materializer | physical backend changes | logical identity fields |
 | workspace capture | Translate Linux upper state into backend-neutral logical events | workspace/overlay + core-facing DTOs later | publication | capture semantics change | hashing, root storage |
 
-Dependency direction is `workspace/provider adapters → layerstack → layerstack-core`. The core cannot import any outward crate. `DigestPort`, `CanonicalSink`, and `CanonicalSource` are the only initial variation points; do not add repository/factory/manager traits until Stage 04 supplies a second concrete behavior.
+Dependency direction is `workspace/provider adapters → layerstack → layerstack-core`. The core cannot import any outward crate. `DigestPort`, `CanonicalSink`, and `CanonicalSource` are the only initial variation points; do not add repository/factory/manager traits until active Stage 03 supplies a second concrete behavior.
 
 ### Exact dependency delta
 
@@ -223,12 +223,12 @@ Using LayerStack’s existing `sha2` and `serde` edges is intentional responsibi
 
 | Concern | Canonical rule | Backend adapter responsibility | Stage 02 proof | Later execution proof |
 | --- | --- | --- | --- | --- |
-| Paths | Non-empty relative byte components separated by byte `/`; reject leading/trailing `/`, NUL, empty, `.` and `..`; byte `\` is ordinary data; no Unicode or case folding | Convert captured Linux names to bytes and reject unsupported source state | golden raw-byte vectors including invalid UTF-8 and backslash | required hosts use the sole pinned Ubuntu 24.04 image in Stage 11 |
+| Paths | Non-empty relative byte components separated by byte `/`; reject leading/trailing `/`, NUL, empty, `.` and `..`; byte `\` is ordinary data; no Unicode or case folding | Convert captured Linux names to bytes and reject unsupported source state | golden raw-byte vectors including invalid UTF-8 and backslash | required hosts use the sole pinned Ubuntu 24.04 image in Stage 07 |
 | Integers | Explicit-width unsigned/signed fields in big-endian order; checked lengths | none | exact cross-width/endian bytes | cross-architecture build/test |
 | Ordering | Lexicographic unsigned byte order; unique paths/xattr keys | external bounded ordering if capture is unordered | permutation property test | large-tree bounded sort |
 | Object identity | Type/domain/version/length-separated SHA-256 preimage | LayerStack `sha2` adapter | fixed digest vectors | persisted CAS proof |
 | Root identity | Hash canonical `RootRecordV2`; excludes host path, inode, carrier/layer ID, mount/provider locator | persistence and materialization keyed outside identity | mutation/exclusion matrices | migration/materialization |
-| CPU | No CPU-specific code in contract | none | ordinary safe Rust | Stage 03 scalar and Stage 11 matrix |
+| CPU | No CPU-specific code in contract | none | ordinary safe Rust | Stage 03 scalar and Stage 07 matrix |
 | Target image | No in-image helper or userland assumption | Docker/OverlayFS capture/materialization later | dependency/source audit | sole pinned Ubuntu OCI capability proof |
 | Future WASM/Firecracker | Same logical root values | separate `MaterializationKey=(RootId, backend_kind, backend_format_version, target_profile)` | dependency-boundary compile/audit | separate future backend qualification |
 
@@ -313,7 +313,7 @@ pub trait CanonicalSink {
 
 `TreeManifestId` is introduced here as the domain-separated hash of the complete
 canonical tree-manifest byte stream. It is not interchangeable with
-`ObjectId`, and every later stage must retain this representation and meaning
+`ObjectId`, and every reader of a v2 root must retain this representation and meaning
 unchanged. `RootId` covers the exact root record, including that
 tree-manifest ID, root format, chunk-profile ID, parent/base references,
 required capabilities, and publication identity. Content object IDs cover
@@ -322,6 +322,26 @@ native materialization generation, host paths, inode numbers, capture
 timestamps, and compression are excluded.
 
 The complete tree manifest is a reconstruction graph. Tree/object/segment/chunk references are future strong GC edges. Parent/base references are provenance and become marked only when an independent lease, pin, active branch, retention window, frontier, or pending transaction selects them.
+
+### Post-review prerequisite for runtime publication
+
+The Phase 1 architecture review found that v2 cannot be the runtime incremental
+publication identity. SHA-256 of the complete flat manifest requires re-reading and
+rehashing the complete canonical stream after a middle edit. Streaming bounds resident
+memory but does not satisfy the later-publication proportionality gate in Preparation
+04 `:144-167`.
+
+Stage 02 remains a valid immutable v2 codec/fixture contract and still creates no
+durable v2 state. Before Stage 03 implementation, the owner must approve a new
+`RootRecordV3` format whose logical tree identity is the root of canonical
+bounded-fanout Merkle pages. Exact tree/file/segment-page codecs and capability rules
+must be frozen in that amendment. V2 bytes and IDs remain readable and unchanged; a
+v1/v2→v3 import may be `O(R+E)` and produces a distinct v3 `RootId`. A flat v2
+manifest may be a derived import/export view but cannot be the v3 publication identity.
+
+If owner approval requires identical v2 and v3 IDs, the changed-input-only publication
+requirement and the flat-manifest identity are mutually inconsistent and Stage 03 must
+not start.
 
 Canonical records begin with fixed ASCII domain `EOS-LS2\0`, a one-byte record kind, two-byte format version, and explicit field lengths. Decoders reject unknown required capability bits, duplicate/unsorted records, trailing bytes, integer overflow, oversized length prefixes, impossible sparse ranges, dangling segment references, and inconsistent hardlink groups. They do not “repair” bytes before hashing.
 
@@ -343,7 +363,7 @@ Linux whiteout devices and opaque-directory xattrs are not root-tree values. A f
 
 Golden fixtures are append-only by format version. Every fixture includes canonical input, exact binary bytes, object/root ID, required capabilities, expected rejection cases, and a provenance note. A changed expected ID requires a new format/profile and explicit compatibility decision; it must not overwrite the old fixture.
 
-Serialization is streaming. The root record is bounded by the 256 KiB operation encoder budget. Tree entries are encoded record-by-record into a sink and must not require a complete tree map or serialized tree in memory. `Vec` fields above represent bounded per-entry data only; constructors enforce the Stage 04 metadata queue and encoder limits before those paths become runtime-reachable.
+Serialization is streaming. The root record is bounded by the 256 KiB operation encoder budget. Tree entries are encoded record-by-record into a sink and must not require a complete tree map or serialized tree in memory. `Vec` fields above represent bounded per-entry data only; constructors enforce the active Stage 03 metadata queue and encoder limits before those paths become runtime-reachable.
 
 ## 7. Workflow and failure semantics
 
@@ -399,26 +419,26 @@ No thread, worker, task, queue, permit pool, file descriptor, mmap, cache, `Arc`
 | Canonical roots/objects use explicit width/order; portable identity excludes host path, inode, OverlayFS layer ID, mount handle, backend locator | **stage-gating** |
 | Exact external package/version set, enabled-feature set, and direct external-edge multiset unchanged; new crate std/internal only; no system/tool/service/image helper/download | **stage-gating** |
 | Core imports no OverlayFS, namespace, mount, guest-agent, WASM-runtime, provider, runtime-operation, `serde`, or `sha2` types; safe Rust/no `unsafe` | **stage-gating** |
-| Manifest/journal encoder ≤256 KiB per admitted operation; no whole-tree/history/index collection | **stage-gating** for codec/root golden paths; runtime admission remains `deferred-to-stage_04` |
+| Operation encoder ≤256 KiB per admitted operation; no whole-tree/history/index collection | **stage-gating** for codec/root golden paths; runtime admission remains `deferred-to-stage_03` |
 | Every focused operation ≤60 s; POC loop 30–60 s | **stage-gating** |
 | Fixed `seqcdc-scalar-author-v1`: increasing; min 8,192 B; target mean 16,384 B; max/window 32,768 B; threshold 5; opposing slope 50; jump 512; one 32 KiB ring; ≤2 slices; `ceil(U/32KiB)≤K≤ceil(U/8KiB)` | **deferred-to-stage_03** |
 | Scalar SeqCDC core ≤300 physical non-test Rust lines and author-oracle/fragmentation correctness | **deferred-to-stage_03** |
 | SIMD/accelerated boundary path | **not-applicable**; no accelerated path is introduced. Any later optional path requires safe runtime detection and byte-identical output. |
-| Incremental publication `O(U+K+C+V_delta)` after a separately labeled `O(R+E)` bootstrap, bounded changed-event ordering, four workers, 32 KiB ring/worker, ≤4 borrowed chunks, zero downstream payload, queue 16/≤64 KiB, ≤4 MiB/publication, 64 MiB semaphore | **deferred-to-stage_04** |
-| Publication peak `C_capture + staging≤5% C_capture`; preflight ENOSPC; no deletion of authority | **deferred-to-stage_04** |
-| Metadata budgets: chunk ≤96 B, segment ≤64 B, changed path ≤256 B + path | **deferred-to-stage_04** for emitted candidate records; final accounting `deferred-to-stage_11` |
-| Warm resolve/session and mount p50/p95 ≤ baseline +5%+2 ms and zero CAS reads; cold hydration ≥70% native copy; cold activation p95 ≤1.5× native copy + warm allowance | **deferred-to-stage_05** |
-| Concurrent disjoint publication ≥90% baseline with OCC; small-edit p95 ≤ baseline +15%+5 ms | **deferred-to-stage_07** |
-| Pack ≤64 MiB payload/100,000 records/80 MiB allocation; compact ≥20% dead; urgent >5%; settle ≤2%; maintenance slice ≤100,000 or64 MiB; grace ≥1 durable epoch | **deferred-to-stage_08** |
-| Depth async ≥48, compact/reject before >64; routine squash benefit ≥8, manual ≥2; merge fan-in 8×64 KiB; squash timing and identity preservation | **deferred-to-stage_09** |
-| No-op exec p50/p95 ≤ baseline +3%+0.5 ms; native command and sequential I/O ≥97%; PTY create ≤+3%+1 ms; drain/stdin/C/D ≤+3%+0.5 ms; unsupported resize/signal/literal EOF unchanged | **deferred-to-stage_11**; runtime path is unchanged and Stage 02 POC only checks compatibility |
-| SeqCDC selection: localized-source and mixed-tree advantage ≥10%; no-dedup/small-files regression ≤3%; 3 matched sets, ≥5 interleaved samples, counterbalanced, paired-bootstrap 95% LCB≥0.10; equal distribution mean≤5%, p10/p50/p90≤10% | **deferred-to-stage_11** |
-| Unique payload ≤1.14× StreamCDC; for `F≥16MiB`, change≤64KiB locality target `change+2×32KiB+segment`, hard median>4× target or any≥25%F | **deferred-to-stage_11** |
-| `T=L_hot+H_cold+ΣU_active+P_staging+M`; mixed/no-dedup target≤1.08, hard>1.15; small-file target≤1.15, hard>1.25; duplicates≤1%/hard>3%; slack≤2%/hard>5%; unreachable 0 | **deferred-to-stage_11** |
-| RSS ≤384 MiB absolute and ≤128 MiB above idle; 64/256/1024 MiB × roots 1/16/64 ×3 cold-cache matrix; adjusted final/peak range≤16 MiB and each 4× step≤8 MiB | **deferred-to-stage_11** |
-| Long-lived logical release separated from physical RSS; no restart, `malloc_trim`, allocator replacement, manual cache purge, or arbitrary sleep | **deferred-to-stage_11**; Stage 02 has no long-lived owner |
-| Required-release host matrix using Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`, recording the resolved platform manifest, with no target-image userland/network/helper/privilege | Contract/source independence **stage-gating**; executed host rows **deferred-to-stage_11**; cross-image portability is beyond Phase 1 and non-gating |
-| One candidate/baseline pair ≤5 minutes | **not-applicable** to this pure-contract POC; normative selection/scale pairs are `deferred-to-stage_11` |
+| Incremental publication `O(U+E_changed+K+P log_B N)` after a separately labeled `O(R+E)` bootstrap, bounded changed-event ordering, four workers, 32 KiB ring/worker, zero downstream payload, queue 16/≤64 KiB, ≤4 MiB/publication, 64 MiB semaphore | **deferred-to-stage_03** |
+| Publication peak `C_capture + staging≤5% C_capture`; preflight ENOSPC; no deletion of authority | **deferred-to-stage_03** |
+| Metadata budgets: chunk ≤96 B, segment ≤64 B, changed path ≤256 B + path | **deferred-to-stage_03** for emitted candidate records; final accounting `deferred-to-stage_07` |
+| Warm resolve/session and mount p50/p95 ≤ baseline +5%+2 ms and zero CAS reads; cold hydration ≥70% native copy; cold activation p95 ≤1.5× native copy + warm allowance | **deferred-to-stage_04** |
+| Concurrent disjoint publication ≥90% baseline with OCC; small-edit p95 ≤ baseline +15%+5 ms | **deferred-to-stage_03** |
+| Pack ≤64 MiB payload/100,000 records/80 MiB allocation; compact ≥20% dead; urgent >5%; settle ≤2%; maintenance slice ≤100,000 or64 MiB; grace ≥1 durable epoch | **deferred-to-stage_05** |
+| Depth async ≥48, compact/reject before >64; routine squash benefit ≥8, manual ≥2; merge fan-in 8×64 KiB; squash timing and identity preservation | **deferred-to-stage_05** |
+| No-op exec p50/p95 ≤ baseline +3%+0.5 ms; native command and sequential I/O ≥97%; PTY create ≤+3%+1 ms; drain/stdin/C/D ≤+3%+0.5 ms; unsupported resize/signal/literal EOF unchanged | **deferred-to-stage_07**; runtime path is unchanged and Stage 02 POC only checks compatibility |
+| SeqCDC selection: localized-source and mixed-tree advantage ≥10%; no-dedup/small-files regression ≤3%; 3 matched sets, ≥5 interleaved samples, counterbalanced, paired-bootstrap 95% LCB≥0.10; equal distribution mean≤5%, p10/p50/p90≤10% | **deferred-to-stage_07** |
+| Unique payload ≤1.14× StreamCDC; for `F≥16MiB`, change≤64KiB locality target `change+2×32KiB+segment`, hard median>4× target or any≥25%F | **deferred-to-stage_07** |
+| `T=L_hot+H_cold+ΣU_active+P_staging+M`; mixed/no-dedup target≤1.08, hard>1.15; small-file target≤1.15, hard>1.25; duplicates≤1%/hard>3%; slack≤2%/hard>5%; unreachable 0 | **deferred-to-stage_07** |
+| RSS ≤384 MiB absolute and ≤128 MiB above idle; 64/256/1024 MiB × roots 1/16/64 ×3 cold-cache matrix; adjusted final/peak range≤16 MiB and each 4× step≤8 MiB | **deferred-to-stage_07** |
+| Long-lived logical release separated from physical RSS; no restart, `malloc_trim`, allocator replacement, manual cache purge, or arbitrary sleep | **deferred-to-stage_07**; Stage 02 has no long-lived owner |
+| Required-release target-image, architecture, and Linux native-backend capability matrix; retain Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` as the frozen Stage 02 baseline and record every resolved platform manifest, effective kernel, and backing filesystem, with no target-image userland/network/helper/privilege | Contract/source independence **stage-gating**; executed capability rows **deferred-to-stage_07**; unmeasured configurations remain unsupported |
+| One candidate/baseline pair ≤5 minutes | **not-applicable** to this pure-contract POC; normative selection/scale pairs are `deferred-to-stage_07` |
 
 No speed or space pass is claimed from Stage 02 micro-measurements.
 
@@ -529,18 +549,47 @@ amendment changes no implementation or evidence gate; it forbids replacing or
 discarding inherited work and requires complete staged, unstaged, and
 untracked inventories.
 
+Closure evidence is append-only in
+`ephemeral-sandbox-test/e2e/test-report.md`:
+
+| Gate | Passing evidence |
+| --- | --- |
+| PRC-R01 | Iterations 105, 121, and final rerun 140: exact canonical bytes and bounded round-trip. `contract-v2.bin` is 1,289 bytes, SHA-256 `760236a658433c1d385adb7b96db1f1429d74d66b1023e6a6553f8696fb0505f`; `contract-v2.json` is 4,377 bytes, SHA-256 `8e3cee4013021f236630c3c3182a3f40df0b1fc1ca02c210dca28a942a7bfda8`. |
+| PRC-R02 | Iterations 105 and 140: validated raw relative Linux path bytes, including invalid UTF-8 and backslash-as-data behavior. |
+| PRC-R03 | Iterations 105, 107, 121, and 140: read fragmentation, insertion/preparation permutations, bounded spool/fan-in ordering, and conflict determinism. |
+| PRC-R04 | Iterations 106, 121, and 140: identity mutation/inclusion and physical-field exclusion matrix. |
+| PRC-R05 | Iterations 105 and 140: hostile lengths, malformed records, injected source/sink faults, and allocation bounds fail closed without panic. |
+| PRC-R06 | Iterations 56, 115, 121, and 140 plus final source audit 141: v1 bytes, `Manifest::root_hash`, no-op/changed publication, mount, file, command, and PTY behavior remain compatible. |
+| PRC-R07 | Iterations 90–92, 132, 140, and 141. Both entry captures under `.e2e-state/evidence/stage02-entry-20260724T214000+0800-61d7dbc6-f749-4215-b200-bec185c93ae5/` have SHA-256 `3995bdabcc6f732883ee831189e690a60faa0cf58fe9e2a0be95870278a2b945`; the final comparator reports exact zero external delta. |
+| PRC-R08 | Iterations 108 and 128–136. Passing run `019f9583-82ff-717e-8247-c1162b0d536e`; run-manifest SHA-256 `d9366bbefb84658e7a1b052bcf853523b2ab845debb051515a77f148f7b8526f`; measured aggregate 35.609327582 seconds, peak scratch 31,496 bytes, zero errors, and zero retained owners. |
+| PRC-01 | Iterations 114–115. Stable ID `runtime.layerstack-phase1.portable-root.feature-off`; run `20260724T181645.820036Z-96797`; summary SHA-256 `c4646eb0b87f9d876077ebd1b11784c9456b6257cbeaaa44dde4638b2390c81d`. All 15 candidate gauges were present and zero, and all 15 forbidden paths were explicitly absent at all six boundaries. |
+| Final product gates | Iteration 140: formatting and exact all-target/all-feature clippy passed; `canonical_contract` 7/7, `host_independence` 2/2, `portable_root_golden` 2/2, and ignored `portable_root_tiny_loop` 1/1 passed. Every command completed in 0.933–3.716 seconds. |
+| Dependency/source boundary | Iteration 141: 16/16 frozen invocations; 1,143 external packages, 2,179 external feature pairs, and 116 direct external edges before and after. Final result `.e2e-state/evidence/stage02-final-20260725T034500+0800-c996aa535/dependency-delta.json` is 2,740 bytes, SHA-256 `1c77ccb2048f4c7383b0bbe6b45f5c999a88e79bcd2ef86ac2650d503e52be1d`; std-only/safe-core audit passed and generated-helper net delta is zero. |
+| Artifact and cleanup closure | Artifact compatibility passed 11/11. The successful and failed benchmark bundles and PRC-01 observability bundle validate. Both benchmark IDs are absent from `.benchmark-state/{runs,runtime,tmp}`; PRC-01 quiesced with no workspace, command, sandbox, or candidate owner remaining. |
+
 - [x] Exact branch `upgrade-2.0-phase-1` is based on the newest approved immutable product revision; immutable product/test/doc bases and complete preserved-dirty scoped worktree inventories are recorded. Planning itself created no branch, and no inherited work was replaced or discarded.
 - [x] Stage 00 focused gate passes. The deterministic Stage 00 scratch layout is accepted independently; the Stage 01 replacement delta is accepted only when Stage 01's own exit passes and is not required by Stage 02.
-- [ ] New core crate is std-only, safe Rust, cycle-free, and imports no backend/runtime/hash/serde type.
-- [ ] Existing LayerStack retains concrete SHA-256, serde, persistence, and provider responsibilities.
+- [x] New core crate is std-only, safe Rust, cycle-free, and imports no backend/runtime/hash/serde type.
+- [x] Existing LayerStack retains concrete SHA-256, serde, persistence, and provider responsibilities.
 - [x] Canonical path bytes, ordering, fixed widths, byte order, versions, domains, and capability behavior are explicit.
 - [x] Root/object IDs are nominal and exclude every physical/materialization locator.
 - [x] Golden bytes/IDs pass for valid vectors; hostile/malformed vectors fail closed without panic or allocation escape.
-- [ ] V1 manifest bytes, `root_hash`, publication, mount, file, command, and PTY behavior remain compatible.
-- [ ] Exact external package/version set, feature set, and direct external-edge multiset have zero delta for every frozen invocation.
-- [ ] No system tool/package, service, helper, target-image userland, network, database, FUSE, FFI, vendored source, or download was added.
-- [ ] Focused operations remain under 60 seconds; tiny loop is labeled diagnostic, not qualification.
+- [x] V1 manifest bytes, `root_hash`, publication, mount, file, command, and PTY behavior remain compatible.
+- [x] Exact external package/version set, feature set, and direct external-edge multiset have zero delta for every frozen invocation.
+- [x] No system tool/package, service, helper, target-image userland, network, database, FUSE, FFI, vendored source, or download was added.
+- [x] Focused operations remain under 60 seconds; tiny loop is labeled diagnostic, not qualification.
 - [x] `/eos` matches the annotated legacy tree; every explicit candidate path listed in §3 is absent.
-- [ ] Logical resources return immediately to zero; no worker/task/queue/cache/FD/mmap/global registry was added.
-- [ ] At least three Mermaid diagrams and all required design/gate tables are present and consistent.
-- [ ] Stage 02 E2E exit verdict is POC-only and does not claim broad, release, portability-matrix, performance, memory-scale, or production qualification.
+- [x] Logical resources return immediately to zero; no worker/task/queue/cache/FD/mmap/global registry was added.
+- [x] At least three Mermaid diagrams and all required design/gate tables are present and consistent.
+- [x] Stage 02 E2E exit verdict is POC-only and does not claim broad, release, portability-matrix, performance, memory-scale, or production qualification.
+
+Stage 02 verdict: **POC PASS**.
+
+This verdict is limited to the immutable portable-root v2 codec, fixture, and
+source contract. Legacy LayerStack v1, including `Manifest::root_hash`,
+remains the sole runtime read, write, revision, and publication authority.
+Stage 02 writes no durable v2 state, and every forbidden v2 path was explicitly
+absent at every required boundary. It is not a release, host-matrix,
+performance, memory-scale, space, soak, migration, retirement, or production
+qualification claim. Later-stage planning neither weakens nor supplies any
+part of this Stage 02 verdict.

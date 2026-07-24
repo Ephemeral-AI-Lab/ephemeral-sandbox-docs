@@ -57,9 +57,9 @@ Read the following sources completely before editing:
 
 | Source | What it contributes |
 | --- | --- |
-| [`../index.md`](../index.md) | Phase 1 authority, global invariants, dependency direction, stage DAG, physical-state model, pinned image, and the boundary between Stage 02 POC evidence and Stage 11 qualification. |
+| [`../index.md`](../index.md) | Phase 1 authority, global invariants, dependency direction, stage DAG, physical-state model, pinned image, and the boundary between Stage 02 POC evidence and Stage 07 qualification. |
 | [`../stage_00_baseline_evidence/spec.md`](../stage_00_baseline_evidence/spec.md) | The completed legacy behavior, bounded observability, v1 fixture, dependency, environment, compatibility, and logical-release contracts inherited by Stage 02. |
-| [`../stage_00_baseline_evidence/e2e_test.md`](../stage_00_baseline_evidence/e2e_test.md) | The immutable baseline artifacts, exact dependency comparator contract, public legacy-route evidence conventions, run-owned cleanup, and Stage 11 “do not run” boundaries. |
+| [`../stage_00_baseline_evidence/e2e_test.md`](../stage_00_baseline_evidence/e2e_test.md) | The immutable baseline artifacts, exact dependency comparator contract, public legacy-route evidence conventions, run-owned cleanup, and Stage 07 “do not run” boundaries. |
 | [`../stage_01_workspace_scratch/spec.md`](../stage_01_workspace_scratch/spec.md) | Completed workspace-scoped transcript ownership, containment, release-before-delete, bounded legacy reaping, and provider-local behavior that Stage 02 must preserve. |
 | [`../stage_01_workspace_scratch/e2e_test.md`](../stage_01_workspace_scratch/e2e_test.md) | The passed Stage 01 stable IDs, benchmark/catalog additions, public behavior, cleanup contracts, and evidence that must not be renamed or absorbed. |
 | [`handoff_from_stage_01.md`](handoff_from_stage_01.md) | Actual handoff custody, preserved tracked and untracked changes, immutable Stage 00 comparison bases, overlapping dirty files/catalogs, passed Stage 01 evidence, and warnings about prior unrelated failures. |
@@ -94,11 +94,11 @@ Do not rename, absorb, or casually rerun the inherited declarations:
 | 00 | `layerstack.phase1.baseline.legacy-route` | Completed focused legacy-route, content, resource, and cleanup evidence. Reuse its v1 oracle and public observation contract. |
 | 00 | `layerstack.phase1.baseline.restart-cleanup` | Completed focused legacy recovery evidence. Preserve its visibility and deterministic cleanup contract. |
 | 00 | `layerstack.phase1.baseline.tiny` | Completed raw legacy-control baseline. Reuse the frozen control; it is not a candidate benchmark result. |
-| 00 | `layerstack.phase1.qualification.all` | `planned-final`; owned by Stage 11. Do not execute or claim it in Stage 02. |
+| 00 | `layerstack.phase1.qualification.all` | `planned-final`; owned by Stage 07. Do not execute or claim it in Stage 02. |
 | 01 | `phase1.stage01.workspace-scratch.lifecycle` | Completed. Preserve workspace containment, transcript isolation, owner-release-before-delete, no-new-global-write, and cleanup behavior. |
 | 01 | `phase1.stage01.workspace-scratch.restart-reap` | Completed. Preserve restart isolation and the bounded containment-safe legacy reaper. |
 | 01 | `phase1.stage01.workspace-scratch.tiny` | Completed tiny benchmark sentinel. Preserve its catalog operation and strict fixtures. |
-| 01 | `phase1.final.workspace-scratch.qualification` | `planned-final`; owned by Stage 11. Do not execute or claim it in Stage 02. |
+| 01 | `phase1.final.workspace-scratch.qualification` | `planned-final`; owned by Stage 07. Do not execute or claim it in Stage 02. |
 | Existing public compatibility | `runtime.workspace-session.publish.no-op` and `runtime.workspace-session.publish.changed` | Supporting public v1 references only. Do not relabel them as v2 proof or add duplicate declarations. |
 
 Stage 00's exact runtime seam is
@@ -296,7 +296,7 @@ Do not include any of the following:
   target-image utility, network requirement, runtime download, or privilege
   change;
 - production rollout, release enablement, or legacy retirement; and
-- Stage 11 affected regression, required-host qualification, selection
+- Stage 07 affected regression, required-host qualification, selection
   campaigns, RSS-scale matrix, space campaigns, soak, or final go/no-go.
 
 Whiteout devices and opaque-directory xattrs are not complete-tree root values
@@ -669,7 +669,7 @@ unresolved wire-format decision.
 | 10. Freeze immutable goldens | Core/LayerStack tests and `fixtures/cas/v2` | Approved canonical bytes, IDs, provenance, rejections, cross-width/endian/raw-byte vectors. | Accepted v1 fixtures are unchanged; v2 fixtures are append-only by format. | PRC-R01–R06 focused product tests. | Remove only the not-yet-accepted v2 fixtures and associated tests. | Exact bytes/IDs pass and the closed wire table matches every fixture byte. |
 | 11. Add external feature-off proof | `e2e/runtime/layerstack_phase1`, fixture, catalog/markers as needed | One typed PRC-01 case using public APIs and outside run-owned storage accounting. | Legacy v1 is sole authority; Stage 01 declarations/layout remain intact; all candidate gauges are present and zero. | Safe catalog collection, then exact PRC-01 node with fresh-binary request. | Remove Stage 02 E2E declaration/helper/fixture only; no runtime data migration. | Catalog is coherent and no candidate path/gauge appears at setup, action, or teardown. |
 | 12. Add the tiny benchmark adapter | Benchmark `planning.py`, `runner.py`, strict fixtures, preset; ignored Rust probe | Existing laboratory schedules construct/validate/encode/hash/decode/drop pairs over deterministic inputs. | One scheduler, prebuilt binary, run-owned output, ≤256 KiB scratch, no publication/CAS/SeqCDC claim. | Preset validation, then PRC-R08 run; interruption-only recovery only when applicable. | Remove Stage 02 adapter/preset and restore exact catalog count while preserving Stage 01 operation. | Strict benchmark/artifact tests pass and every pair has exact bytes/IDs and zero owners. |
-| 13. Close focused evidence | All Stage 02 product/E2E/benchmark/dependency artifacts | A complete POC record and append-only execution history. | No broad/Stage 11 qualification or runtime authority claim; failed attempts remain visible. | Commands in §11, dependency comparison for every invocation, forbidden-path inspection, artifact compatibility. | Source rollback is core/edge/adapters/tests only; exact run-owned cleanup follows harness custody. | Every mandatory POC item passes; otherwise report FAIL/BLOCKED. |
+| 13. Close focused evidence | All Stage 02 product/E2E/benchmark/dependency artifacts | A complete POC record and append-only execution history. | No broad/Stage 07 qualification or runtime authority claim; failed attempts remain visible. | Commands in §11, dependency comparison for every invocation, forbidden-path inspection, artifact compatibility. | Source rollback is core/edge/adapters/tests only; exact run-owned cleanup follows harness custody. | Every mandatory POC item passes; otherwise report FAIL/BLOCKED. |
 | 14. Documentation and handoff | Maintainer architecture, Stage 02 checklist, append-only test report, final handoff | Accurate ownership/dependency documentation and POC verdict. | Checklist remains unchecked for missing evidence; current Git custody is explicit. | Cross-check artifacts, run IDs, SHA/digests, cleanup, and status against source and report. | Revert only unsupported closure claims, never execution history. | No mandatory evidence is absent and no contradiction is hidden. |
 
 ## 11. Test and evidence instructions
@@ -862,7 +862,7 @@ Do **not** run these as Stage 02 exit evidence:
 - benchmark plans `layerstack-phase1-selection`, `layerstack-phase1-rss`,
   `layerstack-phase1-space`, and `layerstack-phase1-qualification`.
 
-Stage 11 owns those selectors and all required native-host rows. A broad pass
+Stage 07 owns those selectors and all required native-host rows. A broad pass
 cannot replace a missing Stage 02 focused result.
 The corresponding portable-root typed row
 `runtime.layerstack-phase1.portable-root.release-matrix` is also
@@ -970,9 +970,9 @@ evidence does not count. Stage 02 proves only:
 
 The Stage 02 result is at most `designed-compatible`/POC contract evidence.
 It does not qualify the macOS arm64, Ubuntu amd64, or Windows amd64 release
-rows. Stage 11 runs the required-host matrix using the same pinned Ubuntu OCI
+rows. Stage 07 runs the required-host matrix using the same pinned Ubuntu OCI
 index. Cross-image portability is after Phase 1 and is not a Stage 02 or
-Stage 11 acceptance/retirement gate.
+Stage 07 acceptance/retirement gate.
 
 ## 14. Completion criteria
 
@@ -1042,7 +1042,7 @@ Return `POC FAIL / BLOCKED` for any:
 Preserve the first failure and exact cleanup result. Do not relabel a blocker
 as a warning or continue to later-stage work.
 
-### Explicitly deferred to Stage 11
+### Explicitly deferred to Stage 07
 
 Stage 02 does not claim:
 
@@ -1134,11 +1134,11 @@ Current Git custody
 Skipped and deferred
 - Optional unavailable diagnostics:
 - Checks not run and why:
-- Stage 11 deferred work:
+- Stage 07 deferred work:
 - Remaining blockers or unresolved contradictions:
 ```
 
 The handoff must state legacy authority and forbidden-path absence directly;
 do not infer them from a successful CLI response. It must distinguish POC
-evidence from Stage 11 work and must not claim Stage 02 complete while a
+evidence from Stage 07 work and must not claim Stage 02 complete while a
 mandatory row is missing.

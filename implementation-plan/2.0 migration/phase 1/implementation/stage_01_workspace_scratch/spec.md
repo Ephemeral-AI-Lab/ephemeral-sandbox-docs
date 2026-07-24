@@ -84,6 +84,13 @@ No test helper is added to production `src/`. The product exposes bounded struct
 
 Annotations name state, role, owner/lifecycle, identity, bounds/accounting, and exposure. All entries are `0700` directories or owner-only files unless the existing runtime requires stricter permissions; `/eos` remains masked from workloads.
 
+This is the Stage 01 upgrade-time tree while v1 remains sole authority. The complete
+2.0 migration-time and post-retirement ownership model is normative in
+[the canonical full `/eos` tree](../layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree).
+In that model, `workspace/<session>/upper` is the workspace session's unpublished
+writable namespace; LayerStack materializations remain separately owned under
+`layer-stack/materializations` and are mounted read-only beneath that private upper.
+
 ```text
 /eos/
 ├── runtime/daemon/                                                     [existing][unchanged contract]
@@ -108,7 +115,7 @@ Annotations name state, role, owner/lifecycle, identity, bounds/accounting, and 
 │       └── executions/                                                  [add] command-owned children, workspace-contained; count ≤ configured executions
 │           └── <namespace_execution_id>/                               [migrate] validated encoded ID; command owner; restart-safe containment
 │               └── transcript.log                                      [migrate] bounded by existing transcript policy; terminal retention; ephemeral
-├── namespace_execution/                                               [compat][remove-later at Stage 11]
+├── namespace_execution/                                               [compat][remove-later at Stage 07]
 │   └── <legacy_execution_id>/transcript.log                            no new writes; bounded reaper validates containment/age/ownership; residue accounting
 └── storage/                                                           [existing][unchanged contract]
     ├── file_auditability/                                              audit storage owner; not RootId; M
@@ -158,11 +165,11 @@ pub(crate) struct ExecutionScratchLease {
 
 | Boundary | Host/image assumption before | Assumption after | Core/adapter | Evidence now | Later evidence |
 | --- | --- | --- | --- | --- | --- |
-| Scratch paths | Host filesystem and Linux permissions | same; path composition centralized | provider-local workspace adapter | sole pinned Ubuntu 24.04 packaged case | required host triples on that same image at Stage 11 |
-| Target image | workload cannot see `/eos`; no helper needed | unchanged | namespace/OverlayFS adapter | read-only/non-root runtime variants of sole pinned OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | cross-image portability after Phase 1; not an acceptance or retirement gate |
-| CPU/encoding | native path identifiers | validated byte-safe ID encoding, no CPU-specific code | provider-local | unit vectors on current host only | cross-architecture Stage 11; untested rows remain unverified |
+| Scratch paths | Host filesystem and Linux permissions | same; path composition centralized | provider-local workspace adapter | sole pinned Ubuntu 24.04 packaged case | required host triples on that same image at Stage 07 |
+| Target image | workload cannot see `/eos`; no helper needed | unchanged | namespace/OverlayFS adapter | read-only/non-root runtime variants of pinned Stage 01 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | Stage 07 target-image and Linux native-backend capability matrix |
+| CPU/encoding | native path identifiers | validated byte-safe ID encoding, no CPU-specific code | provider-local | unit vectors on current host only | cross-architecture Stage 07; untested rows remain unverified |
 
-Future-change exercises: a new checkpoint branch references a `WorkspaceSessionId` and does not change this path; a different transcript sink replaces `ExecutionScratch` construction without changing command admission; a Firecracker/WASM provider supplies a different locator while portable Phase 2 root/checkpoint/MCTS types remain path-free. No god object is added, no portable core imports this module, and dependency direction remains orchestration → narrow workspace capability. Transitional global-root config and reaper are removed at Stage 11. SOLID review requires one reason to change per row, no unchecked joins outside the locator, no outward core dependency, no strong cycle, and contract tests for every implementation.
+Future-change exercises: a new checkpoint branch references a `WorkspaceSessionId` and does not change this path; a different transcript sink replaces `ExecutionScratch` construction without changing command admission; a Firecracker/WASM provider supplies a different locator while portable Phase 2 root/checkpoint/MCTS types remain path-free. No god object is added, no portable core imports this module, and dependency direction remains orchestration → narrow workspace capability. Transitional global-root config and reaper are removed at Stage 07. SOLID review requires one reason to change per row, no unchecked joins outside the locator, no outward core dependency, no strong cycle, and contract tests for every implementation.
 
 ## 5. Type, class, and field design
 
@@ -173,7 +180,7 @@ Future-change exercises: a new checkpoint branch references a `WorkspaceSessionI
 | `ExecutionScratchCleanup` — new, private | `state: AtomicU8` (`Live/Released/Failed`) | Inline state, no allocation; one transition | Idempotent compare/exchange; failure retained for manager retry, never broadens target |
 | `WorkspaceCommandReleaseProof` — new, `operation::command::teardown`, crate-visible token | `session_id`; `active_count: u32`; `terminal_count: u32`; private constructor | Returned only after reject/cancel/join/evict; transient; counts must be zero | Move-only proof consumed by destroy; deadline error prevents deletion |
 | `LegacyExecutionScratchReaper` — new, operation compat module, private | `root: PathBuf`; `max_entries_per_boot: u32 = 1024`; `max_depth: u8 = 3`; `min_age: Duration`; `active_ids: Weak<...>` | Bounded scan; `Weak` avoids registry cycle; no persistent registry; legacy root only | Synchronous/bounded supervisor job, joined at boot; errors counted/quarantined for retry |
-| `NamespaceExecutionConfig` — modified | retain concurrency/timeout/transcript limits; `scratch_root: Option<PathBuf>` deprecated/compat-only | Existing deserialization accepts old config; new writes ignore it except reaper | validation rejects overlap with workspace/runtime roots; remove Stage 11 |
+| `NamespaceExecutionConfig` — modified | retain concurrency/timeout/transcript limits; `scratch_root: Option<PathBuf>` deprecated/compat-only | Existing deserialization accepts old config; new writes ignore it except reaper | validation rejects overlap with workspace/runtime roots; remove Stage 07 |
 
 Important signatures:
 
@@ -200,7 +207,7 @@ Existing public CLI/API request and result types, `WorkspaceSessionId`, `Namespa
 
 This stage introduces no root/object schema or hash. Legacy manifest-root identity, whole-file descriptors, ordering, path-byte behavior, and fixtures are byte-for-byte unchanged; no new `RootId` exists here. The new path encoding uses the existing canonical textual ID only after rejecting separators, `.`/`..`, NUL, non-canonical spellings, symlink parents, and paths outside the canonical session root. Files are exposed only after directory creation and owner-only permissions; transcripts are ephemeral and never fsynced as durable LayerStack state.
 
-Old configuration remains readable. During upgrade, new commands write only the workspace path; old global residue is read by no command and reaped in bounded batches only after an age check and proof that it is not active. Downgrade can resume legacy new writes without reading workspace transcripts; transcript durability was never promised. Corrupt/symlinked/ambiguous legacy entries are not followed or deleted; they are reported for quarantine/manual inspection. Candidate formats, typed domain-separated hashes, SeqCDC scalar/acceleration, mixed roots, provider materializations, and CAS quarantine are deferred to Stages 02–10.
+Old configuration remains readable. During upgrade, new commands write only the workspace path; old global residue is read by no command and reaped in bounded batches only after an age check and proof that it is not active. Downgrade can resume legacy new writes without reading workspace transcripts; transcript durability was never promised. Corrupt/symlinked/ambiguous legacy entries are not followed or deleted; they are reported for quarantine/manual inspection. Candidate formats, typed domain-separated hashes, SeqCDC scalar/acceleration, mixed roots, provider materializations, and physical-lifecycle work are deferred to Stages 02–07.
 
 ## 7. Workflow and failure semantics
 
@@ -244,13 +251,13 @@ Scratch participates as `ΣU_active` (including active uppers, workdirs, and tra
 | RSS / cgroup ceiling | stage-gating | absolute RSS ≤384 MiB and idle-adjusted ≤128 MiB in sentinel; short slope within frozen control noise |
 | Full input/history memory matrix | deferred-to-final | 64 MiB/256 MiB/1 GiB × 1/16/64 roots, three repetitions, ≤16 MiB adjusted range and ≤8 MiB scaling slope need final route |
 | SeqCDC profile/chunk count, 32 KiB ring, borrowed chunks | deferred-to-stage_03 | no chunker in this stage |
-| Materialization warm/cold and 256 KiB buffers | deferred-to-stage_05 | no materializer |
-| Strict activation and mount gates | deferred-to-stage_06 | no candidate reader |
-| Publication/OCC/small-edit/disjoint publish | deferred-to-stage_07 | publication unaffected |
-| Packs/GC/compaction/space amplification | deferred-to-stage_08 | no CAS pack or GC |
-| Squash/remount gates | deferred-to-stage_09 | no candidate squash |
-| Candidate authority/mixed-root gates | deferred-to-stage_10 | legacy remains sole authority |
-| Full p50/p95, required-host matrix on the sole pinned Ubuntu image, five-minute pairs | deferred-to-final | Stage 11 owns normative qualification; every pair ≤5 min; cross-image coverage is outside Phase 1 |
+| Materialization warm/cold and 256 KiB buffers | deferred-to-stage_04 | no materializer |
+| Strict activation and mount gates | deferred-to-stage_04 | no candidate reader |
+| Publication/OCC/small-edit/disjoint publish | deferred-to-stage_03 | publication unaffected |
+| Packs/GC/compaction/space amplification | deferred-to-stage_05 | no CAS pack or GC |
+| Squash/remount gates | deferred-to-stage_05 | no candidate squash |
+| Candidate authority/mixed-root gates | deferred-to-stage_06 | legacy remains sole authority |
+| Full p50/p95, required target-image/native-backend matrix, five-minute pairs | deferred-to-final | Stage 07 owns normative qualification; every pair ≤5 min and unmeasured capability cells remain unsupported |
 
 The changed per-operation working set is `W_scratch = path_bytes + existing_transcript_stream_buffer`; concurrency multiplies only the existing per-command stream buffer up to configured admission. The legacy reaper adds one path plus one bounded batch iterator, not 1,024 retained paths. Nothing new remains at warmed idle except O(1) locator paths and bounded terminal records already governed by capacity.
 
@@ -325,8 +332,8 @@ The benchmark artifact separately records process RSS, anonymous/file-backed RSS
 - [x] Focused format, clippy, workspace/runtime Rust, configuration, observation, query, CLI, and catalog checks pass without substituting a broad suite for a missing focused filter.
 - [x] Packaged cases `phase1.stage01.workspace-scratch.lifecycle` and `phase1.stage01.workspace-scratch.restart-reap` pass with fresh-binary identity, run-owned cleanup, route/permission/cancel/restart/reap evidence, and no legacy-root write.
 - [x] Tiny case `phase1.stage01.workspace-scratch.tiny` uses `workspace-scratch-tiny.yml`, seed `0x5A01`, the same-revision legacy adapter control, two warmup pairs, six alternating measured pairs, one cancellation, and the declared operation/run deadlines.
-- [x] Tiny benchmark throughput, latency diagnostic, RSS/cgroup, quiescence, logical-owner settlement, allocated-disk, and Theil–Sen trend gates pass; no unsupported p95 or normative Stage 11 claim is made.
+- [x] Tiny benchmark throughput, latency diagnostic, RSS/cgroup, quiescence, logical-owner settlement, allocated-disk, and Theil–Sen trend gates pass; no unsupported p95 or normative Stage 07 claim is made.
 - [x] Exact Stage 00-to-Stage 01 external package, feature, direct-edge, and semantic environment comparisons are empty; no Cargo, Python, system, service, runtime, or image helper dependency is added.
 - [x] Rollback to the legacy locator is demonstrated without data migration, while recovery never broad-deletes either the workspace-scoped or legacy root.
 - [x] Strict machine-readable schemas accept all run-owned artifacts and fail closed on missing, malformed, truncated, wrong-run, or contradictory evidence; the append-only test report records command, timing, binary identity, run ID, artifact links, and cleanup custody.
-- [x] CDC/CAS, materialization, publication, packs/GC, squash, candidate authority, affected regression, host/release-runner matrix, sustained soak, and full Phase 1 qualification remain explicitly assigned to Stages 03, 05, 07, 08, 09, 10, and 11.
+- [x] CDC/CAS, materialization, publication, packs/GC, squash, candidate authority, affected regression, host/release-runner matrix, sustained soak, and full Phase 1 qualification remain explicitly assigned to Stages 03–07.
