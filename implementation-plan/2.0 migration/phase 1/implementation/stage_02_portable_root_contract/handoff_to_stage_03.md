@@ -2,7 +2,7 @@
 
 Prepared: 2026-07-25
 
-Navigation: [implementation index](../index.md) | [Stage 02 specification](spec.md) | [Stage 02 E2E plan](e2e_test.md) | [D2.5 owner decision](contract_v2_owner_decision_d2_5.md) | [Stage 03 specification](../stage_03_incremental_publication/spec.md) | [Stage 03 E2E plan](../stage_03_incremental_publication/e2e_test.md)
+Navigation: [implementation index](../index.md) | [canonical storage contract](../layerstack_storage_contract.md) | [Stage 02 specification](spec.md) | [Stage 02 E2E plan](e2e_test.md) | [D2.5 owner decision](contract_v2_owner_decision_d2_5.md) | [Stage 03 specification](../stage_03_incremental_publication/spec.md) | [Stage 03 E2E plan](../stage_03_incremental_publication/e2e_test.md) | [Stage 03 benchmark note](../stage_03_incremental_publication/benchmark_note.md)
 
 Authoritative repositories:
 
@@ -16,13 +16,21 @@ Stage 02, Portable Root Contract, is **POC PASS**. All 15 mandatory Stage 02 com
 
 Stage 02 established a safe, standard-library-only portable identity and canonical-codec contract. It deliberately did **not** create durable v2 storage, activate a v2 root, or change publication authority. Legacy LayerStack v1 and `Manifest::root_hash` remain the sole runtime read, write, mount, revision, and publication authority.
 
-This note transfers verified facts and reusable implementation assets. It is not an owner amendment and does not authorize Stage 03 to change the accepted v2 wire contract.
+This note transfers verified facts and reusable implementation assets. It is not an owner amendment and does not authorize Stage 03 to change the accepted v2 wire contract. The active architecture has five post-Stage-02 risk gates, Stages 03–07; the former shadow-ingest and durable-publication stages are merged into Stage 03, and the deleted old stage directories are not compatibility contracts.
 
 ## 2. Stage 03 entry status
 
 Stage 03 implementation remains **BLOCKED pending an owner decision**, even though Stage 02 itself is complete.
 
-The required decision must define `RootRecordV3`, bounded `TreePage`, `FileNode`, `SegmentPage`, and `Chunk` records, including wire assignments, digest domains, field ordering, bounds, and compatibility rules. It must also freeze the Preparation 04 gates and benchmark corpus. The Stage 02 owner decision, `PRC-STAGE02-OWNER-DECISION-D2.5`, was approved at `2026-07-25T00:02:23+0800`; it freezes the v2 POC contract and a future two-slice `ChunkPayload` preimage, but it does not define or approve the v3 Merkle/page contract.
+The required decision must define `RootRecordV3`, bounded `TreePage`, `FileNode`,
+`SegmentPage`, `Chunk`, `AttributionRoot`, and `AttributionPage` records plus stable
+logical `ActorId` semantics, including wire assignments, digest domains, field
+ordering, bounds, and compatibility rules. Content and attribution identities must be
+separate. The decision must also freeze the Preparation 04 gates and benchmark
+corpus. The Stage 02 owner decision, `PRC-STAGE02-OWNER-DECISION-D2.5`, was approved at
+`2026-07-25T00:02:23+0800`; it freezes the v2 POC contract and a future two-slice
+`ChunkPayload` preimage, but it does not define or approve the v3 content-Merkle or
+attribution-page contract.
 
 Do not freeze v3 goldens or begin canonical v3 implementation from an inferred schema. In particular, any requirement that v2 and v3 roots have identical IDs would conflict with versioned canonical identity and must return to the owner rather than being implemented silently.
 
@@ -184,7 +192,8 @@ The most useful architectural finding is that canonical identity and physical st
 - filesystem locations, pack offsets, compression, cache and materialization state;
 - daemon/runtime counters and telemetry;
 - mount, namespace, PTY, command, provider, Docker, and OverlayFS observations;
-- leases and source holds unless an owner-approved record explicitly defines identity semantics for them.
+- leases and source-protection state; these are mutable retention machinery, never
+  logical identity.
 
 ## 7. Reusable test and evidence assets
 
@@ -282,10 +291,33 @@ Stage 03 should:
 4. use bounded pages, cursors, spools, and fan-in rather than loading an unbounded tree or file into core memory;
 5. keep new refs and publication state private while v1 remains the public authority;
 6. preserve the raw Linux path contract and keep workspace transcripts outside portable identity;
-7. add exact v3 root/tree/file/segment/chunk goldens, cross-host identity checks, hostile decoder cases, and publication/recovery/OCC/source-hold evidence required by the Stage 03 E2E plan;
+7. add exact v3 root/tree/file/segment/chunk goldens, cross-host identity checks, hostile decoder cases, and publication/recovery/OCC/source-protection-lease evidence required by the Stage 03 E2E plan;
 8. rerun all accepted v2 compatibility tests and the shared dependency/source audit.
 
-Under the current specification, Stage 03 may create only `.storage-writer.lock`, top-level `CONTROL`, deterministic loose logical objects, private heads/checkpoints/pins, publication operations with bounded work, and migration/source leases only when an imported payload location actually requires them. It must not precreate empty future pack, locator-run, materialization, GC, or authority-migration structures.
+Under the current specification, Stage 03 may create only `.storage-writer.lock`, top-level `CONTROL`, deterministic loose logical objects, private heads/checkpoints/pins, publication operations with bounded work, and ordinary locator/source-protection leases only when an imported payload location actually requires them. It must not precreate empty future pack, locator-run, materialization, GC, or authority-migration structures. The complete migration-time `/eos` ownership tree is normative in [§4 of the storage contract](../layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree); the narrower Stage 03 subset below does not redefine it.
+
+```text
+/eos/layer-stack/
+├── .storage-writer.lock
+├── CONTROL
+├── objects/
+│   ├── loose/<kind>/<digest-prefix>/<typed-id>
+│   └── locators/                              only if imported bytes stay in v1
+│       ├── <run-id>.sst
+│       └── CURRENT
+├── refs/
+│   ├── heads/<branch-id>
+│   ├── checkpoints/<checkpoint-id>            only when created
+│   ├── pins/<pin-id>                          only when created
+│   └── leases/<lease-id>                      only while protection is required
+└── operations/<operation-id>/
+    ├── STATE
+    └── work/                                  only while recovery/retention requires it
+```
+
+There is no new legacy directory or `refs/legacy`. Existing v1 `manifest.json`,
+`workspace.json`, `base`, `layers`, `staging`, and `.layer-metadata` stay in their
+current locations while rollback is allowed.
 
 Stage 03 must not:
 
@@ -302,12 +334,20 @@ Stage 03 must not:
 ## 9. Recommended Stage 03 start sequence
 
 1. Freeze product, test, and documentation custody from the exact dirty trees. Preserve this note, the append-only report, and the concurrent documentation rewrite.
-2. Reconcile the current Stage 03 spec with an owner-approved v3 amendment covering record kinds, format/profile versions, field ordering, bounds, identity preimages, decoder compatibility, and private storage/ref names.
+2. Reconcile the current Stage 03 spec with an owner-approved v3 amendment covering
+   content and attribution record kinds, stable logical actor semantics,
+   format/profile versions, field ordering, bounds, identity preimages, decoder
+   compatibility, and private storage/ref names.
 3. Rerun the four focused Stage 02 product suites and verify the three immutable artifact digests before editing shared codecs or adapters.
-4. Add v3 nominal values and bounded codecs beside the v2 code. Do not alter accepted v2 encoders or decoders.
+4. Add v3 nominal values and bounded content/attribution codecs beside the v2 code.
+   Do not alter accepted v2 encoders or decoders.
 5. Implement streaming SeqCDC and the two-slice hash path in LayerStack, using core only for approved portable values and canonical bytes.
-6. Add bounded tree, file, and segment pages and private persistence with exact durability and recovery ordering from the Stage 03 decision.
-7. Add private idempotent publication, OCC/rebase, source holds, and failpoint recovery while retaining v1 public authority.
+6. Add bounded tree, file, segment, and attribution pages and private persistence with
+   exact durability and recovery ordering from the Stage 03 decision.
+7. Add private idempotent publication whose head atomically carries
+   `{RootId,AttributionRootId,generation,PublicationId}`, OCC/rebase, ordinary
+   source-protection leases, and failpoint recovery while retaining v1 public
+   authority.
 8. Run the Stage 03 focused E2E and benchmark gates, then rerun v2 goldens and the dependency/source-boundary comparator.
 9. Record every live command and failed attempt append-only, validate retained artifacts, clean only exact run-owned resources, and hand off the final custody state.
 

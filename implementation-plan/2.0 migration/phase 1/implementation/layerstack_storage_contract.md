@@ -15,6 +15,7 @@ and verification slices; they must not invent another durable layout or identity
 | The current authority is a small native LayerStack tree, not a logical object store. | `stage_00_baseline_evidence/spec.md:112-144`; `stage_02_portable_root_contract/spec.md:89-190` | A reversible migration boundary; do not mutate legacy paths in place. |
 | Stage 02 deliberately writes no candidate state. | `stage_02_portable_root_contract/spec.md:91-97,183-188,386` | The candidate layout can still be redesigned without an on-disk migration. |
 | A portable root must exclude host paths, carrier IDs, inode numbers, timestamps of capture, compression, and locator data. | `stage_02_portable_root_contract/spec.md:314-322` | Canonical logical objects and a typed immutable root identity. |
+| Blame must remain separate from content identity and survive edits, rename, materialization, squash, and GC. | `../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md:198,458-460,561-565,686-689`; Phase 1 `../index.md:213-220` | A bounded persistent attribution tree stored as ordinary immutable objects; every history-bearing ref atomically selects both content and attribution roots. |
 | Later publication may not scan or rewrite the unchanged tree or history. | `../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md:144-167` | A bounded-page persistent Merkle tree and a changed-path update algorithm. |
 | The hot execution route may not perform CDC, object lookup, packing, GC, or materialization. | `../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md:169-186,680-703` | A prebuilt native materialization selected by one bounded activation pointer. |
 | Historical roots must share unchanged payload; clean refs must not copy a native tree. | `../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md:391-460` | Content-addressed immutable objects plus small mutable refs. |
@@ -23,7 +24,7 @@ and verification slices; they must not invent another durable layout or identity
 | Materialization, squash, packing, and GC can fail after producing bytes but before visibility. | Existing atomic file helpers in `ephemeral-sandbox/crates/sandbox-runtime/layerstack/src/storage/fs.rs:113-139,151-179,201-240`; Preparation 04 failure gates | Write-private, verify, fsync, atomically replace one pointer, retain the old generation until safe. |
 | GC must not miss a ref created during marking and cannot retain all live IDs in RAM. | Preparation 04 `:327-366,498-565`; user-required GC safety | Disk-backed mark runs, a ref-creation barrier, trash/grace, and a final recheck. |
 | Candidate authority must roll back to v1 until retirement. | Stages 06–07 migration requirements | One authority fence plus the common migration operation; existing v1 artifacts remain in their current paths until retirement. |
-| Phase 2 needs cheap independent branch, checkpoint, and MCTS roots. | Phase 2 compatibility requirement | All logical visibility is a ref to a `RootId`; writable state remains session-private until publication. |
+| Phase 2 needs cheap independent branch, checkpoint, and MCTS roots. | Phase 2 compatibility requirement | All logical visibility is one atomic ref to a content/attribution root pair; writable state remains session-private until publication. |
 | Phase 3 must change providers without changing logical identity. | Phase 3 compatibility requirement | Physical locators and materializations are outside root/object preimages. |
 
 The current implementation also provides useful boundaries that remain: publication is
@@ -39,6 +40,7 @@ after restart.
 | Concern | Authoritative value | Mutable? | Persisted representation | Must not be mixed with |
 | --- | --- | --- | --- | --- |
 | Logical identity | typed immutable object bytes and `RootRecordV3` | no | objects named by typed digest | host paths, generation, provider, compression, authority |
+| Attribution/provenance | typed immutable attribution pages for one logical snapshot | no | `AttributionRoot`/`AttributionPage` objects, selected beside `RootId` by history-bearing refs | content identity, host uid/gid, timestamps, retention policy |
 | Mutable visibility | branch, checkpoint, pin, lease | yes | one checksummed atomic ref file per independently changed name | object encoding or carrier layout |
 | Physical location | usable locations for a logical object | yes | deterministic loose path or immutable locator run selected by `objects/locators/CURRENT` | logical identity and retention authority |
 | Native materialization | one verified native generation for a root/backend/profile | yes, physically | immutable generation plus atomic `CURRENT` | logical root identity |
@@ -55,7 +57,8 @@ independent consistency domains.
 
 The minimal design has five primitives:
 
-1. typed immutable objects, including root records;
+1. typed immutable objects, including content roots/pages and separate attribution
+   roots/pages;
 2. atomic named refs;
 3. one resumable operation format;
 4. immutable native generations selected by one pointer;
@@ -83,6 +86,8 @@ Before Stage 03:
 - owner-approve `RootRecordV3`, whose `tree_root` is a typed `TreeNodeId`;
 - define canonical, bounded-size tree pages, directory pages, file segment pages, and
   their exact domain-separated codecs;
+- define canonical `AttributionRoot`, bounded `AttributionPage`, and stable logical
+  `ActorId` codecs independently of content `RootId`;
 - make the complete sorted flat manifest a derived export/validation stream, never an
   identity or publication input;
 - import a v2 root to v3 once at `O(R+E)` and assign the resulting v3 `RootId`;
@@ -105,15 +110,20 @@ the kind; callers cannot reinterpret one kind as another.
 | `SegmentPage` | bounded ordered chunk/zero extents | chunk payloads |
 | `SymlinkNode` or special node | final logical metadata and target/device kind | none |
 | `Chunk` | canonical payload bytes | none |
+| `AttributionRoot` | associated `RootId`, attribution format, and bounded-page root | attribution pages only |
+| `AttributionPage` | bounded path/range entries containing stable logical `ActorId` and publication attribution | child attribution pages |
 
 Directory child maps and file segment lists must be paged. An unbounded directory node
 or one complete segment vector would merely move the full-rewrite problem. Exact page
 size/fanout is a format constant proven by golden vectors and hostile decoder tests.
 
 `parent`, `base`, publication ID, generation, branch name, timestamp, author, blame,
-provider, carrier, compression, and physical location are not strong logical edges.
-Provenance may be stored in bounded operation diagnostics, but it must not alter
-portable content identity.
+provider, carrier, compression, and physical location are not edges in the content
+root. `AttributionRootId` is a separate portable side identity selected by a ref; it
+does not alter `RootId`. Attribution uses caller-supplied stable logical `ActorId`
+values, never host uid/gid, environment, or provider identity. Bounded operation
+diagnostics may add non-authoritative provenance, but they are not the durable blame
+source.
 
 ## 4. Complete `/eos` ownership and storage tree
 
@@ -139,9 +149,9 @@ directory.
 │   │       └── CURRENT                               selected locator-run set
 │   ├── refs/
 │   │   ├── heads/<branch-id>                         mutable branch visibility + OCC
-│   │   ├── checkpoints/<checkpoint-id>               named immutable-root retention
+│   │   ├── checkpoints/<checkpoint-id>               named immutable-snapshot retention
 │   │   ├── pins/<pin-id>                             explicit policy retention
-│   │   └── leases/<lease-id>                         active root/location/generation hold
+│   │   └── leases/<lease-id>                         active snapshot/location/generation protection
 │   ├── operations/<operation-id>/
 │   │   ├── STATE                                     sole recovery/idempotency record
 │   │   └── work/                                     bounded private spill/build/mark/trash
@@ -209,14 +219,14 @@ product requirement.
 | --- | --- | --- |
 | `.storage-writer.lock` | Reuses the existing cross-process exclusion primitive for brief linearization; avoids a lock namespace. | Kernel lock only; never deletion authority. |
 | `CONTROL` | One checksummed atomic store-control record: format version, authority mode/epoch, rollback fence, and optional active migration operation. Detailed migration proof remains in that operation. | Replace temp→fsync→rename→parent-fsync under the writer lock. |
-| `objects/loose/...` | Deterministic first durable location for immutable logical bytes. | Publish by no-replace install; delete only through GC. |
+| `objects/loose/...` | Deterministic first durable location for immutable logical content and attribution bytes. | Publish by no-replace install; delete only through GC. |
 | `objects/packs/*.pack` | Optional physical compaction. | Immutable; installed before locator selection; deleted after grace and final recheck. |
 | `objects/locators/*.sst` | Bounded immutable mapping only for locations not derivable from a loose ID: pack range or approved existing v1/external carrier range. | Merged/streamed; selected by `CURRENT`. |
 | `objects/locators/CURRENT` | One atomic physical-location generation. | Old run set remains usable until readers release and GC grace passes. |
 | `refs/heads/*` | Current branch visibility and OCC generation. | Independently atomic; ref creation participates in the GC barrier. |
-| `refs/checkpoints/*` | Optional named retention without payload copying. | Root-only atomic ref; deletion removes a retention edge, not payload. |
-| `refs/pins/*` | Explicit retention of an otherwise unnamed root or native-materialization policy. | Root-only atomic ref. |
-| `refs/leases/*` | Restart-visible protection for an active root/location/materialization with a fence and conservative expiry. | Expiry is evidence for final recheck, never sole deletion authority. |
+| `refs/checkpoints/*` | Optional named retention without payload copying. | One atomic content/attribution ref; deletion removes retention edges, not payload. |
+| `refs/pins/*` | Explicit retention of an otherwise unnamed snapshot or native-materialization policy. | One atomic typed-subject ref. |
+| `refs/leases/*` | Restart-visible protection for an active snapshot/location/materialization with a fence and conservative expiry. | Expiry is evidence for final recheck, never sole deletion authority. |
 | `operations/<id>/STATE` | The single recovery and idempotency record for a workflow that crosses a durable failure boundary. | Bounded terminal retention; later collected only after retry window and referenced results are safe. |
 | `operations/<id>/work` | Private spill runs, build output, migration proof/cursor, GC mark runs/root log, or trash for that operation. | Exact-owner recovery; never scanned as truth. |
 | `materializations/<id>/generations/*` | Verified native carrier generations enable warm native execution and identity-preserving squash. | Immutable after install; only `CURRENT` is selected for new sessions. |
@@ -238,10 +248,10 @@ rename, and parent fsync.
 | Record | Required fields |
 | --- | --- |
 | top-level `CONTROL` | `format_version`; authority `{legacy,candidate,candidate-retired}`; `authority_epoch`; `rollback_allowed`; optional `active_migration_operation_id` |
-| branch head | `root_id`, `generation`, `publication_id` |
-| checkpoint | `root_id` |
-| pin | `root_id` and bounded reason class |
-| lease | protected subject `{root, locator-generation, materialization-generation, operation}`; fence; owner token; conservative expiry/renewal evidence |
+| branch head | `root_id`; `attribution_root_id`; `generation`; `publication_id` |
+| checkpoint | `root_id`; `attribution_root_id` |
+| pin | protected typed subject (`root_id` plus its `attribution_root_id` when history/blame is retained, or materialization policy subject) and bounded reason class |
+| lease | protected subject `{content-attribution snapshot, locator-generation, materialization-generation, operation}`; fence; owner token; conservative expiry/renewal evidence |
 | operation `STATE` | kind; scope and caller operation/publication ID; request digest; phase; input refs/generations; prepared result IDs; terminal outcome/error class; retry-retention fence; migration cursor/coverage proof only when kind is migration |
 | materialization `MANIFEST` | materialization tuple; generation/fence; ordered relative carrier descriptors; reconstructed capability set; logical verification root/digest; entry/allocated-byte counts; build operation ID |
 | materialization `CURRENT` | generation; fence |
@@ -261,7 +271,10 @@ Counts may be diagnostic hints only.
 - reachable roots from refs, active operations, materialization pointers, policy, and
   the active GC root log;
 - changed-path conflict status by comparing base/current leaf IDs;
-- tree entry count, logical bytes, depth, blame, and flat manifest by bounded traversal;
+- tree entry count, logical bytes, depth, and flat manifest by bounded content-tree
+  traversal;
+- blame by bounded lookup in the ref-selected persistent attribution tree; no operation
+  log or full history scan is required;
 - materialization ID from the root/backend/profile tuple;
 - current native path from materialization `CURRENT` and its verified manifest;
 - session mount plan from the leased materialization generation plus that session's
@@ -270,8 +283,10 @@ Counts may be diagnostic hints only.
 - pack liveness from reachability plus current locator selection;
 - v1→v3 correspondence by canonical import; it is retained only as bounded migration
   operation proof while needed, not as a permanent ref class;
-- checkpoint survival across squash from its `RootId` ref;
-- clean fork ancestry from the root a new head initially references;
+- checkpoint content/blame survival across squash from its atomic
+  `{RootId,AttributionRootId}` ref;
+- clean fork ancestry from the content/attribution pair a new head initially
+  references;
 - transaction residue and metadata bytes from directory/accounting scans in benchmark
   tooling, not correctness records;
 - timestamps, host inode/device numbers, target-image tools, environment variables, and
@@ -310,13 +325,15 @@ is no permanent receipt, transaction, or operation-history family.
    derive the operation ID from `(publication-kind, BranchId, PublicationId)`.
    Open/create that operation and return its terminal result if already complete;
    different request bytes under the same scoped ID are rejected.
-2. Snapshot `{base_root, base_generation}` from the branch head. Capture a bounded
-   changed-path stream and build chunks/pages outside the writer lock. Install
-   immutable objects idempotently.
-3. Persist operation phase `prepared` with result root and changed-path spill/run.
+2. Snapshot `{base_root, base_attribution_root, base_generation}` from the branch
+   head. Capture a bounded changed-path stream and build content plus attribution pages
+   outside the writer lock. Install immutable objects idempotently.
+3. Persist operation phase `prepared` with result content/attribution roots and the
+   changed-path spill/run.
 4. Under the writer lock:
-   - if the head is unchanged, append/fsync the result root to the active GC root log
-     when `gc/CURRENT` exists, then atomically install the new head;
+   - if the head is unchanged, append/fsync the result content and attribution roots
+     to the active GC root log when `gc/CURRENT` exists, then atomically install the
+     new head containing both;
    - if it advanced, release the lock, compare only changed paths in base/current;
      same-path differences produce a typed conflict; disjoint changes rebase on the
      new root outside the lock and retry within a fixed retry/time budget.
@@ -338,20 +355,22 @@ and fixed before implementation; indefinite unacknowledged retention is forbidde
 
 ### 6.2 Checkpoint, branch, checkout, revert, reset, and MCTS
 
-- clean checkpoint: atomically write `refs/checkpoints/<id> = RootId`; `O(1)` metadata,
-  zero payload allocation;
-- dirty checkpoint: perform ordinary incremental publication to obtain a root, then
-  install the checkpoint ref;
-- clean branch or MCTS fork: create a head pointing to the parent root with generation
-  zero; `O(1)` metadata, zero parent payload allocation;
+- clean checkpoint: atomically write one ref containing
+  `{RootId,AttributionRootId}`; `O(1)` metadata, zero content/attribution payload
+  allocation;
+- dirty checkpoint: perform ordinary incremental publication to obtain a
+  content/attribution pair, then install the checkpoint ref;
+- clean branch or MCTS fork: create a head pointing to the parent content/attribution
+  pair with generation zero; `O(1)` metadata, zero parent payload allocation;
 - writable MCTS state: allocate only a private workspace upper/work pair for an active
   fork; inactive forks retain refs only;
 - checkout: change which head a session follows; it does not mutate a head;
 - revert: publish a new branch event selecting a historical logical tree; content
-  identity may reuse that historical `RootId`, while head generation and publication
-  outcome advance;
-- reset: atomically move the selected head to an existing root with a new generation
-  and explicit reset operation; it creates no new logical root;
+  identity may reuse that historical `RootId`, while changed paths receive the
+  reverting actor's attribution and head generation/publication outcome advance;
+- reset: atomically move the selected head to an existing historical
+  content/attribution pair with a new generation and explicit reset operation; it
+  creates no new logical or attribution objects;
 - authority rollback: atomically switch top-level `CONTROL` to legacy only after the
   migration cursor proves v1 coverage through the candidate public sequence.
 
@@ -412,9 +431,10 @@ is selected.
 
 1. Create a GC operation with disk-backed mark runs and root log; under the writer
    lock set `gc/CURRENT`.
-2. Snapshot refs, active/prepared operations, active materializations, current
-   locators, and policy roots into the root log. Traverse in bounded batches and
-   external-sort/deduplicate mark runs. No all-live `HashSet` is permitted.
+2. Snapshot content and attribution roots from refs, active/prepared operations,
+   active materializations, current locators, and policy into the root log. Traverse
+   both typed graphs in bounded batches and external-sort/deduplicate mark runs. No
+   all-live `HashSet` is permitted.
 3. Every concurrent ref or materialization visibility commit appends/fsyncs its root
    to the same log before visibility. Drain appended roots to a fixed point.
 4. Under the writer lock, close the barrier only after no undrained root remains.
@@ -442,7 +462,7 @@ or writable session state:
 
 ```mermaid
 flowchart LR
-    I["OCI/root input"] -->|"first import O(R+E)"| O["immutable objects + RootId"]
+    I["OCI/root input"] -->|"first import O(R+E)"| O["immutable objects + content/attribution root pair"]
     O --> H["refs/heads/main"]
     H --> M["build/select materialization generation"]
     M --> L["lease exact generation"]
@@ -455,8 +475,8 @@ rewrite a mounted session or unchanged history:
 
 ```mermaid
 flowchart LR
-    U["session upper changed-path stream"] --> P["incremental chunks/pages"]
-    P --> R["new or reused RootId"]
+    U["session upper changed-path stream"] --> P["incremental content + attribution pages"]
+    P --> R["new/reused RootId + new/reused AttributionRootId"]
     R --> C{"head OCC"}
     C -->|"same base or disjoint rebase"| H["atomic head generation advance"]
     C -->|"same-path conflict"| X["typed conflict"]
@@ -494,7 +514,7 @@ Checkpoint, rollback operations, and MCTS all reuse roots rather than copying pa
 
 ```mermaid
 flowchart TB
-    R["RootId"] --> CP["checkpoint ref O(1)"]
+    R["RootId + AttributionRootId"] --> CP["checkpoint ref O(1)"]
     R --> BH["branch/MCTS head O(1)"]
     BH --> F1["inactive fork: ref only"]
     BH --> F2["active fork: selected materialization + private upper"]
@@ -511,7 +531,7 @@ the concurrent-creation barrier closes:
 
 ```mermaid
 flowchart LR
-    RR["heads + checkpoints + pins + leases"] --> MARK["disk-backed mark"]
+    RR["content/attribution roots from heads + checkpoints + pins + leases"] --> MARK["disk-backed mark"]
     RO["prepared operations + current materializations + locators + migration CONTROL"] --> MARK
     NEW["concurrent ref/materialization commit"] -->|"append + fsync before visibility"| MARK
     MARK --> SWEEP["streamed candidates"]
@@ -530,7 +550,7 @@ flowchart LR
 | publication after `prepared`, before head | old head and prepared result | resume OCC/commit using recorded base |
 | publication after head, before terminal `STATE` | new head names publication ID | repair terminal result and return it |
 | checkpoint before atomic ref rename | no checkpoint | retry |
-| checkpoint after ref rename | one complete root ref | return existing result; never copy payload |
+| checkpoint after ref rename | one complete content/attribution ref | return existing result; never copy payload |
 | ref/barrier append before ref rename | conservative extra GC root | retain; next GC removes if unreachable |
 | materialization before verified generation | old `CURRENT`, private work | resume or reap exact operation |
 | materialization after generation fsync, before `CURRENT` | old active generation plus orphan complete generation | verify and finish or later collect |
@@ -555,6 +575,7 @@ objects, and `B` the configured memory budget.
 | --- | --- | --- |
 | first import | `O(R+E)` | one streamed logical import; bounded staging |
 | later publication | `O(U+E_changed+K+P log_B N)` plus bounded ordering of changed events | unchanged tree pages and chunks are shared; no total-tree/history pass |
+| attribution update/query | changed-path update `O(P log_B N)`; blame lookup `O(Q log_B N)` plus bounded output | unchanged attribution pages are shared; no operation-log/history scan |
 | no-op publication | proportional to captured evidence needed to prove no change; never history size | no new payload |
 | OCC attempt | `O(Q log_B N)`; fixed retry/time budget | changed-path spill only |
 | clean checkpoint/branch/MCTS fork | `O(1)` metadata | zero copied parent payload/native tree |
@@ -597,8 +618,9 @@ artifacts, environment, and pass/fail values.
 
 ### Phase 2
 
-- Branches, checkpoints, pins, and MCTS frontier nodes all retain the same `RootId`
-  object graph; policy chooses the ref class, not a new storage mechanism.
+- Branches, checkpoints, pins, and MCTS frontier nodes retain the same content
+  `RootId` plus its separate `AttributionRootId`; policy chooses the ref class, not a
+  new storage mechanism. This keeps blame independent of content deduplication.
 - A clean fork creates one head and no payload. Only admitted active forks allocate
   bounded workspace upper/work state.
 - Sessions lease an exact native generation. A head update or squash never mutates an
@@ -613,8 +635,8 @@ artifacts, environment, and pass/fail values.
 
 ### Phase 3
 
-- Logical providers implement get/put of typed immutable bytes, atomic/fenced mutable
-  refs, bounded iteration, and physical locator access.
+- Logical providers implement get/put of typed immutable content/attribution bytes,
+  atomic/fenced mutable refs, bounded iteration, and physical locator access.
 - Each execution platform supplies a separate native materializer and activator for a
   qualified backend capability profile. It may change carrier shape and mount
   mechanism but not logical IDs or ref semantics.
@@ -691,3 +713,6 @@ kernel, filesystem, architecture, and backend results.
     retain exclusive lifecycle authority over their `/eos` subtrees.
 13. Logical portability does not imply an unqualified native backend or image
     compatibility percentage.
+14. Durable blame comes only from the ref-selected attribution object graph; it
+    survives squash/GC without changing content `RootId` and never depends on retained
+    operation history.

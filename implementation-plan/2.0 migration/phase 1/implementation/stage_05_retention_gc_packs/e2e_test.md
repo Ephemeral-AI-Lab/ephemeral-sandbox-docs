@@ -4,11 +4,13 @@ Status: `NOT_RUN`.
 
 ## 1. Retention graph
 
-Construct roots retained independently by heads, checkpoints, pins, leases, prepared
-operations, active materializations, the active migration operation, and ordinary
-existing-v1 source holds. Remove each seed in every order and prove objects remain
-until the last real seed plus grace/final recheck. Parent/base provenance and expired
-outcomes do not retain unselected history. Assert no `refs/legacy` class exists.
+Construct content/attribution roots retained independently by heads, checkpoints,
+pins, leases, prepared operations, active materializations, the active migration
+operation, and ordinary existing-v1 source-protection leases. Remove each seed in
+every order and prove objects remain until the last real seed plus grace/final
+recheck. Parent/base ancestry and expired outcomes do not retain unselected history.
+Attribution remains through its selected immutable page graph, not terminal operation
+history. Assert no `refs/legacy` class exists.
 
 ## 2. Concurrent GC barrier
 
@@ -61,6 +63,7 @@ Use a live graph larger than the RSS budget. Assert:
 Run manual, depth, fragmentation, evacuation, and repair squash. Assert:
 
 - same `RootId`, exact logical tree, and checkpoint after restart;
+- exact checkpoint attribution/blame after squash, GC, and restart;
 - old-or-new complete `CURRENT` at every crash point;
 - admitted old sessions remain valid;
 - new sessions use replacement;

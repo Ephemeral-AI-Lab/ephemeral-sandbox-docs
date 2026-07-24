@@ -10,7 +10,7 @@
 | State plane | Reuse the Phase 1 CDC/CAS design without a backend-specific fork |
 | Orchestration plane | Reuse Phase 2 groups, nodes, attempts, leases, evaluation, and promotion |
 | Replace per backend | Workspace projection, isolation, process execution, streams, cancellation, and lifecycle |
-| Preserve | Root identity, manifests, publication, OCC, blame, recovery, retention, and collection |
+| Preserve | Content/attribution identity, refs, publication, OCC, recovery, retention, and collection |
 | Firecracker boundary | Linux/KVM worker with a microVM-local workspace and execution channel |
 | WASI boundary | Capability-scoped workspace and component/command execution |
 
@@ -33,13 +33,13 @@ deduplication index, lease model, blame system, or promotion rules.
 ```mermaid
 flowchart TB
     C["SandboxGroup or rollout controller"] --> N["Immutable SandboxNode"]
-    N --> R["LayerStack RootId"]
+    N --> R["LayerStack RootId + AttributionRootId"]
 
     subgraph STATE["Shared durable LayerStack state plane"]
-        R --> M["Logical tree and file manifests"]
-        M --> CAS["CDC/CAS content and metadata"]
-        R --> TX["OCC · leases · journals · recovery · collection"]
-        R --> B["Blame · provenance · evaluation references"]
+        R --> M["Bounded content + attribution object graphs"]
+        M --> CAS["CDC/CAS chunks and pages"]
+        R --> TX["Atomic refs · OCC · leases · operations · tracing GC"]
+        R --> B["Blame queries · evaluation references"]
     end
 
     R --> A["Backend-neutral activation request"]
@@ -54,7 +54,7 @@ flowchart TB
     OE --> P["Shared checkpoint publisher"]
     FE --> P
     WE --> P
-    P --> R2["New immutable RootId"]
+    P --> R2["New content/attribution snapshot"]
     R2 --> N2["Checkpoint, evaluate, promote, merge, or prune"]
 ```
 
@@ -65,18 +65,20 @@ temporary writable state and process lifecycle.
 
 The following contracts are reused across all backends:
 
-- immutable, deterministic, versioned `RootId`;
+- immutable, deterministic, versioned `RootId` and separate
+  `AttributionRootId`;
 - the selected Phase 1 CDC algorithm and parameters;
 - typed content identity and digest rules;
 - file, directory, sparse-extent, symlink, hardlink, metadata, and xattr
-  manifests;
+  logical objects;
 - native-carrier and packed-object lifecycle;
-- disk-backed locator and index formats;
-- transactional publication and compare-and-swap root advancement;
+- immutable locator runs and their atomic selection;
+- recoverable publication and compare-and-swap snapshot advancement;
 - leases for current, old, branch, frontier, and in-flight roots;
 - OCC conflict detection and deterministic merge, rebase, or rejection;
-- file blame as separate transition metadata;
-- journals, idempotent recovery, quarantine, retention, and bounded collection;
+- file blame in the separate immutable attribution graph selected by each
+  history-bearing ref;
+- common operations, idempotent recovery, retention, and bounded tracing GC;
 - Phase 2 `SandboxGroup`, `SandboxNode`, `ExecutionAttempt`, `Evaluation`, and
   promotion semantics; and
 - logical rollback by activating an earlier immutable node.
@@ -91,7 +93,7 @@ Phase 3 introduces two narrow interfaces around the existing OCI/Linux path:
 
 | Interface | Responsibility |
 | --- | --- |
-| `WorkspaceAdapter` | Prepare one root for one attempt, expose an isolated writable workspace, capture changes, and discard or recover temporary state |
+| `WorkspaceAdapter` | Prepare one content/attribution snapshot for one attempt, expose an isolated writable workspace, capture changes, and discard or recover temporary state |
 | `ExecutionAdapter` | Start and stop the execution environment; run commands/components; connect stdin/stdout/stderr; cancel work; report exit and capability state |
 
 The current OCI/Linux implementation remains one adapter:
@@ -120,7 +122,7 @@ sequenceDiagram
     participant F as Firecracker adapter
     participant V as microVM
 
-    G->>L: lease RootId
+    G->>L: lease content/attribution snapshot
     L->>F: verified backend-local workspace source
     F->>F: create private writable VM workspace
     F->>V: boot or acquire warm microVM
@@ -128,7 +130,7 @@ sequenceDiagram
     G->>V: command · stdin · stdout/stderr · cancel
     V->>F: sealed writable result
     F->>L: stream changed filesystem state
-    L->>L: publish immutable child RootId
+    L->>L: publish immutable child snapshot
     G->>F: recycle or destroy attempt
 ```
 
@@ -175,14 +177,14 @@ sequenceDiagram
     participant W as WASI adapter
     participant C as WASI component
 
-    G->>L: lease RootId
-    L->>W: verified native carriers and logical manifest
+    G->>L: lease content/attribution snapshot
+    L->>W: verified native carriers and logical metadata
     W->>W: create private capability-scoped writable view
     W->>C: preopen workspace capabilities
     G->>C: invoke command or component
     C->>W: filesystem writes and sealed result
     W->>L: stream changed filesystem state
-    L->>L: publish immutable child RootId
+    L->>L: publish immutable child snapshot
     G->>W: discard attempt-local handles and writable state
 ```
 
@@ -210,14 +212,16 @@ It must not silently claim OCI/Linux parity.
 
 Every backend follows the same durable sequence:
 
-1. resolve and lease an immutable `RootId`;
+1. resolve and lease an immutable `{RootId,AttributionRootId}` snapshot and exact
+   backend materialization generation;
 2. prepare a verified backend-local workspace;
 3. create a private writable attempt;
 4. expose execution only after preparation succeeds;
 5. run through the backend's execution adapter;
 6. quiesce or stop writes before capture;
 7. stream the attempt's changed filesystem state into the shared publisher;
-8. publish a new immutable root with the same OCC and recovery contract;
+8. publish a new immutable content/attribution snapshot with the same OCC and
+   recovery contract;
 9. attach evaluation and provenance;
 10. promote, merge, retry, retain, or prune explicitly; and
 11. release attempt and root leases only after durable state transitions.
@@ -226,8 +230,10 @@ Every publish request continues to carry:
 
 ```text
 base_root
+base_attribution_root
 publisher_id
 request_id
+actor_id
 write_set
 expected_current_root_generation
 ```
@@ -237,7 +243,7 @@ silently advance the canonical root.
 
 ## 8. Cross-backend filesystem semantics
 
-The logical manifest remains the authority for:
+The logical content object graph remains the authority for:
 
 - exact regular-file bytes;
 - directory and path identity;
@@ -247,8 +253,11 @@ The logical manifest remains the authority for:
 - symlinks and hardlinks;
 - sparse extents;
 - xattrs under the declared backend capability policy;
-- whiteouts and deletions as logical transitions; and
-- blame and provenance.
+- whiteouts and deletions as logical transitions.
+
+Blame is queried from the separate ref-selected attribution graph. Execution and
+evaluation provenance belongs to bounded Phase 2 records; neither changes content
+`RootId`.
 
 Some Linux metadata has no direct WASI equivalent. Phase 3 must distinguish:
 
@@ -279,17 +288,17 @@ Firecracker and WASI adapter work may proceed in parallel after `3.0` and
 
 Phase 3 is complete only when:
 
-- one immutable root retains the same identity across OCI/Linux, Firecracker,
-  and WASI;
-- every backend consumes the same CDC/CAS, manifest, lease, OCC, blame,
-  publication, recovery, and collection contracts;
+- one immutable content root retains the same identity across OCI/Linux,
+  Firecracker, and WASI, with the same ref-selected attribution snapshot;
+- every backend consumes the same CDC/CAS object, ref, lease, OCC, attribution,
+  publication-operation, recovery, and collection contracts;
 - no backend creates a second durable checkpoint system;
 - sibling attempts have isolated writable state;
 - inactive graph nodes require no resident container, microVM, WASI instance,
   or permanent backend-specific materialization;
 - Firecracker VM snapshots are optional caches and never checkpoint truth;
 - WASI capability limits are explicit and cannot cause silent semantic loss;
-- backend-local failure cannot corrupt or advance a durable root;
+- backend-local failure cannot corrupt an object graph or advance a durable ref;
 - retries and result sealing remain idempotent;
 - checkpoint, rollback, merge, promotion, and pruning remain backend-neutral;
 - ordinary execution never performs per-read CAS reconstruction;
@@ -335,8 +344,9 @@ documentation:
 - [WASI releases](https://wasi.dev/releases) for stable command and filesystem
   capability surfaces.
 
-These sources constrain executor implementation. They do not supersede the
-shared LayerStack root, publication, lease, OCC, blame, or recovery contracts.
+These sources constrain executor implementation. They do not supersede the shared
+LayerStack content/attribution, ref, publication-operation, lease, OCC, or recovery
+contracts.
 
 ## 13. Follow-on specifications
 

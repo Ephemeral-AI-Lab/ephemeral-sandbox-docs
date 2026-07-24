@@ -9,7 +9,7 @@ Normative dependencies:
 - [minimal storage contract](../layerstack_storage_contract.md)
 - [Preparation 04 acceptance criteria](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 - [Stage 02 contract](../stage_02_portable_root_contract/spec.md)
-- [Stage 02→03 implementation handoff](handoff_from_stage_02.md)
+- [Stage 02→03 implementation handoff](../stage_02_portable_root_contract/handoff_to_stage_03.md)
 
 ## 1. Outcome
 
@@ -19,6 +19,8 @@ alter public v1 reads or writes.
 The stage is complete only when one normal publication path provides:
 
 - owner-approved bounded Merkle identity;
+- a separate bounded persistent attribution tree that preserves blame without changing
+  content identity;
 - deterministic streaming SeqCDC and typed chunk installation;
 - persistent changed-path tree updates with unchanged structural sharing;
 - private branch heads, named checkpoints, pins, checkout/revert/reset, and clean
@@ -34,7 +36,8 @@ An algorithm-only CDC result is insufficient.
 
 1. Stages 00–02 pass.
 2. Stage 02 owner approval defines `RootRecordV3`, bounded `TreePage`, `FileNode`,
-   `SegmentPage`, and `Chunk` codecs and preserves v2 read compatibility.
+   `SegmentPage`, `Chunk`, `AttributionRoot`, and `AttributionPage` codecs and
+   preserves v2 read compatibility.
 3. Preparation 04 gates and benchmark corpus are frozen.
 4. Public authority remains v1.
 
@@ -44,7 +47,7 @@ The canonical layout and record fields are defined only in
 `../layerstack_storage_contract.md`. Stage 03 creates only:
 
 - `.storage-writer.lock` and top-level `CONTROL`;
-- deterministic loose logical objects;
+- deterministic loose logical content and attribution objects;
 - private heads/checkpoints/pins;
 - publication operations and bounded work;
 - ordinary locator-generation/source leases only when imported payload remains in an
@@ -52,7 +55,7 @@ The canonical layout and record fields are defined only in
 
 It does not create pack, locator-run, materialization, GC, or migration-authority
 directories unless a real Stage 03 imported carrier needs one physical locator and
-source hold. It never creates empty future directories.
+source-protection lease. It never creates empty future directories.
 
 The full `/eos` tree and ownership boundaries are normative in
 [the storage contract](../layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree).
@@ -62,7 +65,10 @@ transcripts, `/eos/storage`, or daemon runtime files as logical payload.
 
 `RootRecordV3` identity covers logical format/capabilities/chunk profile and the Merkle
 tree root. Publication ID, branch, generation, parent/base, author, timestamp, backend,
-and carrier location are excluded.
+and carrier location are excluded. A separate `AttributionRootId` identifies a
+persistent bounded-page attribution snapshot associated with that content root.
+History-bearing refs atomically carry both IDs. Attribution uses stable logical
+`ActorId`, never host uid/gid or environment identity.
 
 ## 4. Publication input and canonical mutation semantics
 
@@ -116,13 +122,15 @@ publication.
    If the ID was reused with different input, return `IdempotencyMismatch`. If an
    acknowledged/expired outcome is no longer retained, return `OutcomeExpired`; never
    perform a new publication under that ID.
-3. Read the branch `{base_root,base_generation}` and persist preparing state.
-4. Capture, chunk, build pages, and install immutable objects outside the writer lock.
-   Persist prepared result root, input digest, changed-path run, and base.
+3. Read the branch `{base_root,base_attribution_root,base_generation}` and persist
+   preparing state.
+4. Capture, chunk, build content and attribution pages, and install immutable objects
+   outside the writer lock. Persist prepared result content/attribution roots, input
+   digest, changed-path run, and base.
 5. Enter the brief writer-lock commit section.
 6. Before changing a visible ref, participate in any active GC root barrier.
 7. If the head still equals the base, atomically install
-   `{result_root,base_generation+1,PublicationId}`.
+   `{result_root,result_attribution_root,base_generation+1,PublicationId}`.
 8. If it advanced, leave the lock and compare only the spooled conflict keys in base
    and current roots. Return a stable conflict on overlap. For disjoint changes, rebase
    on current, rebuild touched pages, and retry within fixed count/time limits.
@@ -139,13 +147,13 @@ accepted only if the Preparation 04 disjoint-progress throughput gate passes.
 
 | Operation | Logical effect | Required cost |
 | --- | --- | --- |
-| clean checkpoint | create named checkpoint ref to current root | `O(1)` metadata, zero payload |
+| clean checkpoint | create one named ref to the current content/attribution pair | `O(1)` metadata, zero payload |
 | dirty checkpoint | ordinary incremental publication, then checkpoint ref | publication cost plus `O(1)` |
 | checkpoint delete | remove only the ref | `O(1)`; no immediate payload deletion |
-| clean branch/MCTS fork | new head to existing root, generation zero | `O(1)` metadata, zero payload/native tree |
+| clean branch/MCTS fork | new head to existing content/attribution pair, generation zero | `O(1)` metadata, zero payload/native tree |
 | checkout | select a session head/root | no head mutation |
-| revert | publish a new event selecting the historical tree | ordinary publication; generation advances and the historical `RootId` may be reused |
-| reset | move a head to an existing root with new generation | `O(1)` metadata; explicit reset outcome |
+| revert | publish a new event selecting the historical tree and attributing the reverted paths to the reverting actor | ordinary publication; generation advances and the historical `RootId` may be reused |
+| reset | move a head to an existing historical content/attribution pair with new generation | `O(1)` metadata; explicit reset outcome |
 
 Checkpoint and branch names are policy names, not identity inputs. Inactive MCTS nodes
 use a head only when independently writable; otherwise a pin is sufficient. No node
@@ -160,7 +168,8 @@ At boot, inspect bounded nonterminal operation directories:
 - a head naming an operation lacking a terminal outcome repairs that outcome before the
   branch advances;
 - loose orphan objects remain safe and are reclaimed only after Stage 05 GC exists;
-- any root that locates payload in a legacy carrier has a durable fenced source hold
+- any root that locates payload in an existing v1 carrier has a durable fenced
+  source-protection lease
   before its head/ref can become visible;
 - missing or corrupt last locators fail closed; the root is not called durable.
 
@@ -188,10 +197,13 @@ validation off stops new hidden publications; normal ref/GC rules retire its dat
 - first import: `O(R+E)`, bounded resident memory;
 - later publication: `O(U+E_changed+K+P log_B N)` plus bounded changed-event ordering;
 - OCC attempt: `O(Q log_B N)`, fixed retry/time cap;
+- attribution update: `O(P log_B N)` with unchanged attribution-page sharing; blame
+  query: `O(Q log_B N)` plus bounded output;
 - no full-file buffering, total-tree/hash, history scan, or all-path set;
 - clean ref operations: `O(1)` metadata and zero payload;
 - object/tree sharing preserves unchanged history;
-- settled and peak object, operation, source-hold, and metadata bytes are measured.
+- settled and peak content, attribution, operation, source-protection-lease, and
+  metadata bytes are measured.
 
 No statement above is a benchmark result.
 
@@ -205,5 +217,8 @@ No statement above is a benchmark result.
 - clean checkpoint/fork counters show zero payload and native-tree allocation;
 - lost-response retry returns the original result after every commit failpoint;
 - disjoint writers meet the required progress/throughput gate;
-- imported last-locator source holds survive restart and legacy cleanup attempts;
+- attribution survives edit, rename, revert, reset, checkpoint, squash, compaction,
+  GC, and restart without changing content identity;
+- imported last-locator source-protection leases survive restart and v1 cleanup
+  attempts;
 - public v1 behavior and `/eos` exposure remain unchanged.

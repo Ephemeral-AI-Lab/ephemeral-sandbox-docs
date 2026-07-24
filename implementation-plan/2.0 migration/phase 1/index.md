@@ -11,7 +11,7 @@
 | Benchmark verification | Python |
 | Initial environment | Pinned Ubuntu 24.04 Docker image |
 | Portability contract | Frozen supported-host release matrix plus versioned Linux-image capability profile |
-| Phase 2 handoff | Stable immutable roots, leases, publication, recovery, and native materialization |
+| Phase 2 handoff | Stable content/attribution snapshots, refs, operations, leases, and native materialization |
 
 ## 1. Purpose
 
@@ -25,11 +25,11 @@ immutable history is identified, retained, reconstructed, and reclaimed.
 The intended result is:
 
 - native files for active execution;
-- CDC/CAS for portable, reusable historical content;
-- immutable and versioned checkpoint roots;
-- old roots protected by durable leases;
-- transactional publication and recovery;
-- blame and provenance independent of chunk identity; and
+- typed immutable CDC/CAS objects for portable, reusable historical content;
+- immutable content `RootId` plus a separate immutable `AttributionRootId`;
+- small atomic branch, checkpoint, pin, and lease refs;
+- incremental publication through one recoverable, idempotent operation protocol;
+- blame independent of content identity and temporary operation history; and
 - bounded memory and disk-backed maintenance state.
 
 ## 2. Architecture boundary
@@ -37,7 +37,8 @@ The intended result is:
 ```mermaid
 flowchart LR
     W["Native writable workspace"] --> P["Checkpoint publication"]
-    P --> R["Immutable LayerStack root"]
+    P --> R["Immutable content + attribution snapshot"]
+    R --> F["Atomic ref"]
     R --> H["Hot native materialization"]
     R --> C["Portable CDC/CAS history"]
     H --> O["OverlayFS workspace"]
@@ -55,16 +56,14 @@ filesystem.
 
 | Abstraction | Purpose |
 | --- | --- |
-| Immutable root | Stable identity of one published workspace state |
-| Logical manifest | Portable description of the root’s filesystem content |
+| Content `RootId` | Portable identity of one immutable logical filesystem tree |
+| `AttributionRootId` | Separate portable blame snapshot for the content root selected by a ref |
+| Typed object graph | Bounded-page content, attribution, and chunk representation |
+| Ref | Independently atomic branch visibility, checkpoint/pin retention, or active-use lease |
 | Native materialization | Mount-ready representation used by OCI/Linux execution |
-| CDC/CAS history | Compact retained content shared across root versions |
-| Publication transaction | Creates a complete new root or no visible root |
-| Lease | Protects old and active roots from reclamation |
-| OCC generation | Prevents stale publication from overwriting newer work |
-| Blame transition | Records authorship separately from deduplication |
-| Recovery journal | Makes interrupted state changes resumable or safely abortable |
-| Retention and GC | Reclaims only unreachable and unleased state |
+| Operation | Sole bounded recovery/idempotency record for a multi-boundary workflow |
+| Locator | Physical location of non-loose bytes; excluded from logical identity |
+| Retention and tracing GC | Reclaims only unreachable, unleased, rechecked state |
 
 ## 4. What Phase 1 changes
 
@@ -85,23 +84,98 @@ Phase 1 does not change:
 - the private writable upper owned by each active execution; or
 - the requirement that target images need no LayerStack utility.
 
-## 5. Work order
+## 5. Complete `/eos` structure
 
-| Order | Milestone | Outcome |
+This is the complete migration-time ownership tree. It is duplicated here deliberately
+so a reader of the 2.0 migration specification does not have to infer whether
+WorkspaceManager, runtime, or v1 compatibility paths belong to LayerStack. The
+canonical field, durability, and deletion rules remain in the
+[minimal storage contract](implementation/layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree).
+
+Directories are created only when a feature first persists a child. The bracketed v1
+entries are pre-existing compatibility artifacts in their current locations; they are
+not a new `legacy/` namespace.
+
+```text
+/eos/
+├── layer-stack/                                      LayerStack durable owner
+│   ├── .storage-writer.lock                          brief cross-process commit fence
+│   ├── CONTROL                                       format/authority/retirement fence
+│   ├── objects/
+│   │   ├── loose/<kind>/<digest-prefix>/<typed-id>   canonical immutable logical bytes
+│   │   ├── packs/<pack-id>.pack                      optional immutable compaction output
+│   │   └── locators/
+│   │       ├── <run-id>.sst                          immutable non-loose location map
+│   │       └── CURRENT                               selected locator-run set
+│   ├── refs/
+│   │   ├── heads/<branch-id>                         mutable branch visibility + OCC
+│   │   ├── checkpoints/<checkpoint-id>               named immutable-snapshot retention
+│   │   ├── pins/<pin-id>                             explicit policy retention
+│   │   └── leases/<lease-id>                         active snapshot/location/generation protection
+│   ├── operations/<operation-id>/
+│   │   ├── STATE                                     sole recovery/idempotency record
+│   │   └── work/                                     bounded private spill/build/mark/trash
+│   ├── materializations/<materialization-id>/
+│   │   ├── CURRENT                                   selected immutable native generation
+│   │   └── generations/<generation>/
+│   │       ├── MANIFEST                              verified generation description
+│   │       └── carriers/<carrier-id>/...             backend-native immutable tree/carrier
+│   ├── gc/
+│   │   └── CURRENT                                   active GC operation pointer
+│   ├── manifest.json                                 [v1 compatibility window only]
+│   ├── workspace.json                                [v1 compatibility window only]
+│   ├── base/<base-id>/...                            [v1 compatibility window only]
+│   ├── layers/<layer-id>/...                         [v1 compatibility window only]
+│   ├── staging/<layer-id>.staging/...                [v1 compatibility window only]
+│   └── .layer-metadata/<layer-id>.{digest,bytes}     [v1 compatibility window only]
+├── workspace/                                        WorkspaceManager runtime owner
+│   ├── manager.json                                  restart recovery catalog
+│   ├── .export/<spool-id>                            bounded export scratch
+│   └── <workspace-session-id>/
+│       ├── upper/                                    unpublished session writes
+│       ├── work/                                     OverlayFS kernel work directory
+│       └── executions/<execution-id>/
+│           └── transcript.log                        command/PTY session scratch
+├── storage/                                          non-LayerStack service storage
+│   ├── file_auditability/...                         audit service owner
+│   └── workspace_recovery/...                        failed-cleanup recovery artifacts
+└── runtime/                                          daemon runtime owner
+    └── daemon/
+        ├── runtime.sock                              local IPC
+        └── runtime.pid                               daemon lifecycle
+```
+
+There is no durable `/eos/legacy`,
+`/eos/layer-stack/refs/legacy`, or `/eos/namespace_execution`. Existing v1 paths
+remain rollback-capable until exact-path retirement in Stage 07. `/workspace` is the
+per-session mount exposed inside a private mount namespace, not another durable
+directory under `/eos`. LayerStack GC owns only `/eos/layer-stack`; it never scans or
+deletes `/eos/workspace`, `/eos/storage`, or `/eos/runtime`.
+
+## 6. Work order
+
+| Stage | Milestone | Outcome |
 | ---: | --- | --- |
-| 1.0 | Freeze the current baseline | Existing correctness, speed, and total-space behavior are reproducible |
-| 1.1 | Define the portable root contract | New roots are immutable, versioned, deterministic, and migration-safe |
-| 1.2 | Introduce CDC/CAS in shadow mode | New metadata is produced beside the current authoritative LayerStack |
-| 1.3 | Prove materialization and storage lifecycle | Hot roots remain native and cold roots can be reconstructed safely |
-| 1.4 | Make new publication authoritative | OCC, leases, blame, recovery, squash, and GC operate on the new roots |
-| 1.5 | Complete compatibility migration | Existing roots remain readable and rollback remains possible |
-| 1.6 | Hand off to Phase 2 | SandboxGraph can depend on stable root and transaction semantics |
+| 00 | Freeze baseline evidence | Existing correctness, speed, space, and ownership are reproducible |
+| 01 | Isolate workspace scratch | New execution transcripts and writable session state have explicit owners |
+| 02 | Freeze portable-root v2 evidence | Accepted v2 bytes remain readable; no candidate storage is written |
+| 03 | Correct identity and implement private publication | Owner-approved bounded v3 content/attribution graphs, refs, OCC, idempotency, and recovery work end to end while v1 stays public |
+| 04 | Materialize and activate strictly | Cold roots become verified native generations; sessions lease exact generations and use no fallback |
+| 05 | Add retention, compaction, GC, and squash | The common locator/generation/operation mechanisms prove safe physical reclamation |
+| 06 | Make candidate authority reversible | One fenced writer cuts over and can roll back to complete v1 read/write authority |
+| 07 | Qualify, default, and retire | All gates pass before default; v1 removal is a separate destructive approval |
 
-The migration must be additive. Existing roots remain readable while the new
-format is introduced, compared, and qualified. A bulk destructive rewrite is
-not part of the initial migration.
+The former Stage 04 shadow-ingest design is deleted. Optional v1/candidate comparison
+uses the normal private Stage 03 publication protocol and produces bounded evidence,
+not a second storage format or state machine. The
+[implementation index](implementation/index.md#5-old-stage-to-new-stage-mapping)
+contains the complete old-stage-to-new-stage mapping.
 
-## 6. Parallel work
+The compatibility window is additive: existing roots remain readable in their current
+paths while the candidate is introduced and qualified. This does not require a
+permanent dual writer, a new legacy directory, or a bulk destructive rewrite.
+
+## 7. Parallel work
 
 Three lanes can proceed in parallel after the contracts are frozen:
 
@@ -117,7 +191,7 @@ must wait for the Phase 1 exit gate.
 If an implementation finishes before the shared benchmark is ready, its
 evaluation clock begins only after the baseline and verifier are available.
 
-## 7. Evaluation priorities
+## 8. Evaluation priorities
 
 Phase 1 is judged in this order:
 
@@ -134,7 +208,7 @@ No CDC algorithm is selected by this overview. Candidate algorithms and storage
 layouts must use the same contract and baseline. The selected implementation
 must be based on measured evidence rather than research scores alone.
 
-## 8. Phase 1 exit gate
+## 9. Phase 1 exit gate
 
 Phase 1 is complete only when:
 
@@ -174,11 +248,11 @@ claim qualification for an unexecuted host or for an image that lacks the
 declared OCI, architecture, mount, namespace, filesystem, or security
 prerequisites.
 
-## 9. Explicit non-goals
+## 10. Explicit non-goals
 
 - SandboxGraph product APIs;
 - MCTS scheduling, evaluation, or backpropagation;
-- nested workspace sessions;
+- recursively nested native workspace mounts;
 - exact process-memory rollback or CRIU;
 - one sandbox per retained checkpoint;
 - distributed or remote CAS;
@@ -192,21 +266,21 @@ Future provider capabilities belong to Phase 2 or later. A newly supported
 host release or image capability outside the frozen Phase 1 matrix must be
 added and qualified before making that support claim.
 
-## 10. Documents to prepare under Phase 1
+## 11. Normative Phase 1 documents
 
-This index is only the overview. Phase 1 should later add separate documents
-for:
+This index is an overview, not the implementation contract. The current normative
+documents are:
 
-1. root and compatibility contract;
-2. [CDC/CAS space, time, and native materialization
-   specification](prep/01-cdc-cas-space-time-materialization-spec.md);
-3. native storage-lifecycle and on-disk format specification;
-4. publication, OCC, leases, blame, and recovery specification;
-5. benchmark and acceptance contract;
-6. implementation order and work-lane prompts; and
-7. migration, rollout, and rollback plan.
+- [implementation plan and reduced stage sequence](implementation/index.md);
+- [canonical minimal storage contract](implementation/layerstack_storage_contract.md);
+- [Stage 02→03 implementation handoff](implementation/stage_02_portable_root_contract/handoff_to_stage_03.md);
+- [Stage 03–07 benchmark scorecard](implementation/stage_03_07_benchmark_note.md);
+- the five Stage 03–07 specifications, E2E plans, and benchmark notes linked from the
+  implementation index; and
+- the preparation decision set below.
 
-Implementation should not begin from this index alone.
+Stage 03 implementation must not begin until the owner approves the v3 bounded
+content and attribution codecs identified by the storage contract and handoff.
 
 The current preparation decision set is:
 

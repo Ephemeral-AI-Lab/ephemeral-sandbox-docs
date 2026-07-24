@@ -30,6 +30,8 @@ Qualification requires one coherent artifact set proving:
 - OCC conflict semantics and disjoint progress;
 - idempotency/lost-response recovery at every commit boundary;
 - checkpoint/branch/MCTS semantics and zero-payload clean refs;
+- persistent attribution/blame across edit, rename, revert/reset, checkpoint, squash,
+  compaction, GC, and restart without content-identity changes;
 - exact cold reconstruction and strict warm native routing;
 - same-root squash and checkpoint survival;
 - locator replacement, concurrent GC barrier, grace/trash/final recheck, conservative
@@ -117,8 +119,8 @@ Contract suites must show:
 - promotion is an atomic head CAS with normal idempotency/recovery;
 - squash/materialization bounds native depth without altering roots;
 - checkpoint/frontier creation participates in concurrent GC barriers;
-- publication transition/blame, if a retained Phase 2 requirement, is an immutable
-  side record/policy graph and never a `RootId` identity input.
+- publication transition/blame uses the Phase 1 immutable attribution object graph and
+  never becomes a `RootId` identity input or operation-history dependency.
 
 ## 7. Phase 3 qualification
 

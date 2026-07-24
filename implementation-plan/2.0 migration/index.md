@@ -50,7 +50,8 @@ detail, not the durable identity of a branch.
 
 | Abstraction | Role in 2.0 |
 | --- | --- |
-| `RootId` | Stable identity of one immutable LayerStack checkpoint |
+| `RootId` | Portable identity of one immutable logical filesystem tree |
+| `AttributionRootId` | Separate portable blame snapshot selected atomically beside a content root |
 | `SandboxGroup` | Owns one checkpoint graph and its canonical accepted node |
 | `SandboxNode` | Immutable, selectable branch or checkpoint in the graph |
 | `ExecutionAttempt` | Temporary activation of one node in one isolated sandbox |
@@ -80,8 +81,9 @@ experience.
 
 Phase 1 introduces:
 
-- portable, versioned LayerStack root identity;
+- portable, versioned content and attribution identities;
 - CDC/CAS-backed retained history;
+- small atomic refs and one common recoverable-operation protocol;
 - verified native materialization for active OCI/Linux workspaces;
 - immutable publication with OCC and idempotent recovery;
 - durable leases, blame, provenance, retention, and garbage collection;
@@ -107,6 +109,67 @@ I/O.
 recovered, garbage-collected, and materialized correctly; warm native execution
 remains close to the existing LayerStack baseline; and the storage design has
 bounded memory and no correctness dependence on cached state.
+
+#### Complete Phase 1 `/eos` tree
+
+This is the full migration-time ownership structure, not only the LayerStack
+subtree. Directories are created only on first use. Bracketed v1 entries remain in
+their existing locations through the rollback window; they are not a new legacy
+namespace. The canonical field, durability, and deletion rules are in the
+[Phase 1 storage contract](phase%201/implementation/layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree).
+
+```text
+/eos/
+├── layer-stack/                                      LayerStack durable owner
+│   ├── .storage-writer.lock                          brief cross-process commit fence
+│   ├── CONTROL                                       format/authority/retirement fence
+│   ├── objects/
+│   │   ├── loose/<kind>/<digest-prefix>/<typed-id>   canonical immutable logical bytes
+│   │   ├── packs/<pack-id>.pack                      optional immutable compaction output
+│   │   └── locators/
+│   │       ├── <run-id>.sst                          immutable non-loose location map
+│   │       └── CURRENT                               selected locator-run set
+│   ├── refs/
+│   │   ├── heads/<branch-id>                         mutable branch visibility + OCC
+│   │   ├── checkpoints/<checkpoint-id>               named immutable-snapshot retention
+│   │   ├── pins/<pin-id>                             explicit policy retention
+│   │   └── leases/<lease-id>                         active snapshot/location/generation protection
+│   ├── operations/<operation-id>/
+│   │   ├── STATE                                     sole recovery/idempotency record
+│   │   └── work/                                     bounded private spill/build/mark/trash
+│   ├── materializations/<materialization-id>/
+│   │   ├── CURRENT                                   selected immutable native generation
+│   │   └── generations/<generation>/
+│   │       ├── MANIFEST                              verified generation description
+│   │       └── carriers/<carrier-id>/...             backend-native immutable tree/carrier
+│   ├── gc/
+│   │   └── CURRENT                                   active GC operation pointer
+│   ├── manifest.json                                 [v1 compatibility window only]
+│   ├── workspace.json                                [v1 compatibility window only]
+│   ├── base/<base-id>/...                            [v1 compatibility window only]
+│   ├── layers/<layer-id>/...                         [v1 compatibility window only]
+│   ├── staging/<layer-id>.staging/...                [v1 compatibility window only]
+│   └── .layer-metadata/<layer-id>.{digest,bytes}     [v1 compatibility window only]
+├── workspace/                                        WorkspaceManager runtime owner
+│   ├── manager.json                                  restart recovery catalog
+│   ├── .export/<spool-id>                            bounded export scratch
+│   └── <workspace-session-id>/
+│       ├── upper/                                    unpublished session writes
+│       ├── work/                                     OverlayFS kernel work directory
+│       └── executions/<execution-id>/
+│           └── transcript.log                        command/PTY session scratch
+├── storage/                                          non-LayerStack service storage
+│   ├── file_auditability/...                         audit service owner
+│   └── workspace_recovery/...                        failed-cleanup recovery artifacts
+└── runtime/                                          daemon runtime owner
+    └── daemon/
+        ├── runtime.sock                              local IPC
+        └── runtime.pid                               daemon lifecycle
+```
+
+There is no durable `/eos/legacy`, `/eos/layer-stack/refs/legacy`, or
+`/eos/namespace_execution`. `/workspace` is a per-session mount, not durable `/eos`
+storage. LayerStack GC owns only `/eos/layer-stack`.
 
 ### Phase 2 — SandboxGraph, checkpointing, and MCTS
 
@@ -146,9 +209,10 @@ storage or checkpoint truth.
 Phase 3 reuses without modification:
 
 - the selected CDC/CAS design and versioned root identity;
-- manifests, native carriers, packed objects, and indexes;
-- publication, OCC, leases, blame, journals, recovery, and garbage collection;
-  and
+- typed immutable content/attribution objects, refs, native materializations, packs,
+  and physical locators;
+- publication, OCC, leases, attribution, common operations, recovery, and garbage
+  collection; and
 - SandboxGroup, node, attempt, evaluation, promotion, and rollout semantics.
 
 Phase 3 replaces only the execution-facing adapters:
@@ -167,9 +231,9 @@ execution. It preserves unsupported Linux metadata in LayerStack and reports
 backend capability limits explicitly rather than silently claiming Linux,
 signal, or PTY parity.
 
-**Phase 3 exit:** one `RootId` can be activated, changed, checkpointed,
+**Phase 3 exit:** one content/attribution snapshot can be activated, changed, checkpointed,
 recovered, and rolled back through OCI/Linux, Firecracker, or WASI; the same
-durable transaction and retention rules apply; backend-local failure cannot
+durable operation and retention rules apply; backend-local failure cannot
 corrupt or advance a root; and inactive nodes require no resident executor.
 
 See the [Phase 3 overview](phase%203/index.md).
@@ -178,16 +242,16 @@ See the [Phase 3 overview](phase%203/index.md).
 
 | Order | Milestone | Depends on | Main proof |
 | ---: | --- | --- | --- |
-| 0 | Freeze current contracts and baseline | Current runtime | Existing behavior and performance are reproducible |
-| 1 | Define portable roots and checkpoint semantics | 0 | Roots are deterministic, versioned, and backend-neutral |
-| 2 | Build CDC/CAS history beside the current LayerStack | 1 | New metadata matches existing visible filesystem state |
-| 3 | Prove native materialization and storage lifecycle | 2 | Warm execution stays native; old leased roots remain usable |
-| 4 | Make 2.0 publication authoritative | 3 | OCC, blame, recovery, and GC pass hard correctness gates |
-| 5 | Introduce `SandboxGroup` and immutable nodes | 4 | Branches are durable without resident sandboxes |
-| 6 | Activate nodes in separate bounded sandboxes | 5 | Sibling isolation and hot-root reuse hold across containers |
-| 7 | Add checkpoint, rollback, merge, and promotion workflows | 6 | No lost updates or ambiguous branch state |
-| 8 | Add rollout and MCTS coordination | 7 | Retry-safe evaluation and backpropagation survive failure |
-| 9 | Default-on migration and compatibility retirement | 8 | Rollback window and production evidence are complete |
+| 0 | Phase 1 Stages 00–02: baseline, scratch ownership, v2 evidence | Current runtime | Existing behavior is reproducible and accepted v2 bytes remain readable |
+| 1 | Phase 1 Stage 03: corrected identity and private publication | 0 plus owner amendment | Bounded content/attribution graphs, refs, OCC, and recovery work end to end |
+| 2 | Phase 1 Stage 04: materialization and strict activation | 1 | Cold reconstruction and exact-generation session leases are correct |
+| 3 | Phase 1 Stage 05: retention, packs, GC, and squash | 2 | Physical maintenance and deletion are safe under concurrency |
+| 4 | Phase 1 Stage 06: reversible candidate authority | 3 | Exactly one public writer can cut over and roll back |
+| 5 | Phase 1 Stage 07: qualification/default/retirement | 4 | Default and destructive v1 retirement have separate evidence gates |
+| 6 | Introduce `SandboxGroup` and immutable nodes | 5 | Branches are durable without resident sandboxes |
+| 7 | Activate nodes in separate bounded sandboxes | 6 | Sibling isolation and hot-root reuse hold across containers |
+| 8 | Add checkpoint, rollback, merge, and promotion workflows | 7 | No lost updates or ambiguous branch state |
+| 9 | Add rollout and MCTS coordination | 8 | Retry-safe evaluation and backpropagation survive failure |
 | 10 | Freeze backend-neutral workspace and execution contracts | 9 | Existing OCI/Linux behavior fits behind adapters without changing roots |
 | 11 | Add the Firecracker adapter | 10 | The same root executes and checkpoints through a microVM |
 | 12 | Add the WASI adapter | 10 | The same root executes and checkpoints through declared capabilities |
@@ -254,11 +318,14 @@ WASI.
 The migration is additive and evidence-gated:
 
 1. read existing roots through a compatibility path;
-2. generate 2.0 metadata beside current publication;
-3. compare old and new roots before new reads become authoritative;
-4. enable 2.0 publication for opted-in groups;
-5. keep the old reader through a rollback window; and
-6. retire the compatibility path only after usage and recovery evidence show
+2. publish complete private 2.0 content/attribution snapshots through the final
+   operation/ref protocol while v1 remains authoritative;
+3. optionally compare v1 with a hidden candidate head without a shadow-specific
+   storage format;
+4. qualify strict candidate materialization, retention, GC, and rollback;
+5. enable one fenced 2.0 publication authority for opted-in groups;
+6. keep complete v1 read/write rollback through the compatibility window; and
+7. retire exact v1 paths only after usage, evacuation, and recovery evidence show
    it is safe.
 
 The existing workspace-session API becomes a compatibility execution handle.
@@ -308,18 +375,19 @@ storage foundation.
 
 ## 11. Follow-on specifications
 
-This index intentionally stops at the abstraction and migration order. The
-next documents should separately define:
+This index intentionally stops at the abstraction and migration order. Phase 1 is
+defined by its [overview](phase%201/index.md),
+[implementation plan](phase%201/implementation/index.md), and
+[canonical storage contract](phase%201/implementation/layerstack_storage_contract.md).
+The remaining follow-on documents separately define:
 
-1. Phase 1 storage and compatibility specification;
-2. Phase 1 benchmark and acceptance specification;
-3. Phase 2 SandboxGraph and checkpoint specification;
-4. Phase 2 bounded sandbox activation specification;
-5. Phase 2 rollout and MCTS specification;
-6. [Phase 3 portable execution overview](phase%203/index.md);
-7. Phase 3 backend-neutral adapter and filesystem-semantics specification;
-8. Phase 3 Firecracker adapter specification;
-9. Phase 3 WASI adapter specification; and
-10. production migration, rollback, and observability specification.
+1. Phase 2 SandboxGraph and checkpoint specification;
+2. Phase 2 bounded sandbox activation specification;
+3. Phase 2 rollout and MCTS specification;
+4. [Phase 3 portable execution overview](phase%203/index.md);
+5. Phase 3 backend-neutral adapter and filesystem-semantics specification;
+6. Phase 3 Firecracker adapter specification;
+7. Phase 3 WASI adapter specification; and
+8. production migration, rollback, and observability specification.
 
 No Phase 2 or Phase 3 implementation should begin from this overview alone.

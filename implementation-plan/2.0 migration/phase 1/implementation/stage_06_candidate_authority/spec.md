@@ -30,6 +30,8 @@ The complete migration-time path layout is
 Until Stage 07 retirement:
 
 - the v1 reader/writer and required v1 artifacts remain intact;
+- candidate branch/checkpoint refs continue to retain their atomic
+  `{RootId,AttributionRootId}` snapshots even while v1 is public;
 - candidate publication accepts only logical capabilities that can be represented by
   the supported v1 rollback builder, or marks rollback ineligible and therefore cannot
   become/continue public while rollback is a non-negotiable gate;
@@ -46,11 +48,15 @@ Provider/backend location never affects v3 identity.
 1. Enter a migration operation and quiesce/fence new v1 publication admissions.
 2. Let admitted v1 publications reach terminal state.
 3. Import the final v1 state through the ordinary Stage 03 v3 publication pipeline
-   (`O(R+E)` first import is allowed), recording exact v1-manifest↔v3-root correlation
-   in bounded migration operation work.
+   (`O(R+E)` first import is allowed), producing both content and attribution roots.
+   Preserve attribution for paths unchanged from the retained candidate snapshot and
+   apply the caller-supplied stable logical migration/publication `ActorId` to changed
+   paths. Record exact v1-manifest↔candidate-snapshot correlation in bounded migration
+   operation work.
 4. Materialize the candidate root and verify exact logical parity through public APIs.
-5. Prove every retained candidate root has a safe selected locator/source hold and
-   persist the migration cursor/coverage proof in the migration operation `STATE`.
+5. Prove every retained candidate root has a safe selected locator or
+   source-protection lease, and persist the migration cursor/coverage proof in the
+   migration operation `STATE`.
 6. Under the writer/authority lock, participate in the GC barrier and atomically replace
    `CONTROL` with `{format_version,authority=candidate,new_epoch,
    rollback_allowed=true,active_migration_operation_id}`.
@@ -66,9 +72,11 @@ updated.
 
 ## 4. Public candidate publication
 
-The Stage 03 branch-head commit is the only public publication linearization point.
-Response recovery, OCC, checkpoints, reset/revert, and GC barrier rules are unchanged.
-Authority code does not add another receipt, generation, head, or transaction.
+The Stage 03 branch-head commit, which atomically advances content root, attribution
+root, generation, and publication ID, is the only public publication linearization
+point. Response recovery, OCC, checkpoints, reset/revert, and GC barrier rules are
+unchanged. Authority code does not add another receipt, generation, head, or
+transaction.
 
 At admission, a request captures authority epoch. Before head commit it verifies the
 same epoch and candidate authority. Epoch change yields a typed retry; work may remain
@@ -84,7 +92,8 @@ Rollback may be cold `O(R+E)`; it is not required to be `O(1)`.
 
 1. Create/open a stable rollback operation and acquire the authority fence.
 2. Quiesce candidate admissions and drain admitted commits.
-3. Snapshot expected `{candidate_root,candidate_generation,authority_epoch}`.
+3. Snapshot expected
+   `{candidate_root,candidate_attribution_root,candidate_generation,authority_epoch}`.
 4. Verify the root is v1-representable and all logical objects/locators are available.
 5. Reconstruct it into private v1 staging with bounded memory, using internal Rust
    filesystem operations only.
@@ -97,14 +106,19 @@ Rollback may be cold `O(R+E)`; it is not required to be `O(1)`.
 9. Persist the terminal rollback outcome, then atomically clear
    `CONTROL.active_migration_operation_id` if the same authority epoch still names
    that operation. This cleanup does not advance the authority epoch.
-10. Resume v1 publication. Candidate private validation/import may continue only through
-   the normal Stage 03 protocol.
+10. Resume v1 publication. The retained candidate snapshot and attribution graph remain
+    protected; v1 reconstruction does not rewrite or delete them. Candidate private
+    validation/import may continue only through the normal Stage 03 protocol.
 
 A crash before step 8 leaves candidate authority and a recoverable prepared v1 result.
 A crash after step 8 leaves v1 authority. No candidate commit can interleave between
 the selected-root check and switch. Lost response reads `CONTROL` and the operation.
 
 Forward cutover after rollback repeats §3; it never assumes stale candidate/v1 parity.
+Any v1 writes since rollback are imported as changed paths with their caller-supplied
+stable logical `ActorId`; unchanged paths structurally reuse the retained attribution
+pages. V1 storage is not extended with a second attribution database merely to make
+rollback possible.
 
 ## 6. Read rollback and sessions
 
@@ -138,6 +152,8 @@ exists.
 - forward first import or rollback reconstruction: streamed `O(R+E)`;
 - authority switch: bounded atomic metadata under lock;
 - normal candidate publication: unchanged Stage 03 incremental bound;
+- authority rollback reconstructs content into v1 but retains the candidate
+  attribution graph; re-cutover attribution work is included in the streamed import;
 - warm execution: unchanged Stage 04 native route;
 - rollback staging and legacy/candidate overlap count against Preparation 04 peak space;
 - migration operations, correspondence runs, retry outcomes, sessions, workers,
@@ -155,5 +171,7 @@ exists.
 - all public roots remain v1-representable until retirement approval;
 - lost-response retry returns the committed authority epoch/result;
 - legacy artifacts remain complete and protected;
+- attribution remains queryable from retained candidate refs across rollback and is
+  correctly extended on re-cutover after intervening v1 writes;
 - no new legacy directory or legacy ref class exists;
 - no unsupported environment/dependency is introduced.

@@ -9,6 +9,7 @@ sequences:
 
 - publish→checkpoint→branch/MCTS→materialize→squash→compact→GC→restart;
 - dirty checkpoint→reset→revert→checkpoint deletion→concurrent GC;
+- attribution/blame through edit→rename→checkpoint→squash→compact→GC→restart;
 - lost publication response followed by another admission and restart;
 - authority cutover→candidate writes→rollback→v1 writes→re-cutover;
 - retained old checkpoint through carrier evacuation and retirement preparation.

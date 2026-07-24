@@ -5,7 +5,8 @@ Status: `NOT_RUN`.
 ## 1. Forward cutover
 
 - quiesce with in-flight v1 publications at each phase;
-- import final v1 state, correlate exact manifest/root, materialize, and compare;
+- import final v1 state, correlate the exact manifest with the content/attribution
+  snapshot, materialize, and compare;
 - assert correlation/cursor/proof stays inside the bounded migration operation and no
   `refs/legacy` or new legacy directory appears;
 - attempt cutover with missing locator, unsupported capability, mismatch, corrupt state,
@@ -17,8 +18,9 @@ Status: `NOT_RUN`.
 
 Run publication, checkpoint, reset, revert, checkout, branch promotion, command, file,
 PTY, restart, concurrent writer, and GC/materialization cases. Assert the candidate
-head is the only publication linearization point, strict native route has no v1
-fallback, and every request observes one immutable authority epoch.
+head's atomic `{RootId,AttributionRootId,generation,publication_id}` update is the only
+publication linearization point, strict native route has no v1 fallback, and every
+request observes one immutable authority epoch.
 
 Attempt a mutation not v1-representable during the rollback-required window. It must
 fail before public visibility rather than silently invalidate rollback.
@@ -33,8 +35,13 @@ For varied root sizes and all supported logical node types:
 - inject crash before/after each build sync, v1 manifest commit, final head/epoch
   recheck, `CONTROL` switch, and response;
 - assert public authority is complete candidate or complete v1, never two writers;
+- assert rollback retains the selected candidate content/attribution ref and GC keeps
+  both graphs while v1 is public;
 - after rollback, publish through v1 and prove the public result;
-- re-cut over using a fresh import/parity proof.
+- re-cut over using a fresh import/parity proof; unchanged paths reuse retained
+  attribution pages and changed paths receive their stable logical actor attribution;
+- query blame before rollback, during retained-candidate diagnostics, and after
+  re-cutover, proving no temporary operation history is required.
 
 A diagnostic legacy read of stale v1 must never be labeled authority rollback.
 
@@ -63,4 +70,5 @@ universal/image-percentage compatibility claim.
 
 Record authority epochs, expected/actual heads, operation IDs, quiesce duration,
 import/rollback bytes/time, peak overlap, request tails, route counters, failpoint
-outcomes, image digests, commands, revision, and artifact paths.
+outcomes, attribution page reuse/query counters, image digests, commands, revision,
+and artifact paths.

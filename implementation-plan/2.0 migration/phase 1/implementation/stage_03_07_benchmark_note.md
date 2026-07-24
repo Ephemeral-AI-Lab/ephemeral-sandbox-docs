@@ -16,7 +16,7 @@ Normative thresholds:
 | 04 | materialization and strict native activation | `NOT_RUN` | [note](stage_04_candidate_materialization/benchmark_note.md) |
 | 05 | packs/locators, retention, GC, squash | `NOT_RUN` | [note](stage_05_retention_gc_packs/benchmark_note.md) |
 | 06 | candidate authority and v1 authority rollback | `NOT_RUN` | [note](stage_06_candidate_authority/benchmark_note.md) |
-| 07 | qualification/default/retirement | `OPEN` | [note](stage_07_qualification_retirement/benchmark_note.md) |
+| 07 | qualification/default/retirement | `NOT_RUN` | [note](stage_07_qualification_retirement/benchmark_note.md) |
 
 ## 2. Correctness and crash scorecard
 
@@ -25,11 +25,12 @@ Normative thresholds:
 | owner-approved v3 bounded Merkle identity; v2 compatibility | `OPEN` | — |
 | canonical hostile codec/golden suite | `NOT_RUN` | — |
 | incremental publication exactness and structural sharing | `NOT_RUN` | — |
+| persistent attribution/blame correctness and content-ID independence | `NOT_RUN` | — |
 | conflict-key/OCC/disjoint progress | `NOT_RUN` | — |
 | idempotency, lost response, outcome expiry | `NOT_RUN` | — |
 | checkpoint/branch/MCTS/checkout/revert/reset semantics | `NOT_RUN` | — |
 | exact cold reconstruction and strict no-fallback warm route | `NOT_RUN` | — |
-| last-locator/source-hold/restart safety | `NOT_RUN` | — |
+| last-locator/source-protection/restart safety | `NOT_RUN` | — |
 | concurrent GC barrier, grace, trash, final recheck | `NOT_RUN` | — |
 | same-root squash/checkpoint survival | `NOT_RUN` | — |
 | candidate cutover, genuine v1 authority rollback, re-cutover | `NOT_RUN` | — |
@@ -41,6 +42,7 @@ Normative thresholds:
 | --- | --- | --- |
 | first import | `O(R+E)` trend | `NOT_RUN` |
 | later publication | changed input/entries/chunks/touched pages; no total tree/history | `NOT_RUN` |
+| attribution update/query | touched attribution pages/query paths only; no operation-history scan | `NOT_RUN` |
 | no-op publication | bounded proof; zero new payload | `NOT_RUN` |
 | same/disjoint writers | stable conflicts and Preparation 04 progress/throughput | `NOT_RUN` |
 | clean checkpoint/fork | `O(1)` metadata, zero payload/native tree | `NOT_RUN` |
@@ -60,6 +62,7 @@ Normative thresholds:
 | Gate | Status |
 | --- | --- |
 | structural sharing and unique retained history | `NOT_RUN` |
+| attribution-page sharing and measured blame metadata | `NOT_RUN` |
 | no current full payload duplication outside bounded migration/build overlap | `NOT_RUN` |
 | metadata amplification, locator runs, operation outcomes/residue | `NOT_RUN` |
 | pack slack, unreachable bytes, mark-run/trash staging | `NOT_RUN` |

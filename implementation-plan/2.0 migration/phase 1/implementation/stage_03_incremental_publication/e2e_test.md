@@ -9,7 +9,8 @@ for public behavior; dedicated crash harnesses may inspect exact recovery state.
 ## 1. Identity and codec cases
 
 1. Re-run all immutable v2 golden vectors unchanged.
-2. Verify v3 root/tree/file/segment/chunk golden bytes and typed IDs.
+2. Verify v3 root/tree/file/segment/chunk and attribution root/page golden bytes and
+   typed IDs.
 3. Prove identical v3 IDs across amd64/arm64 and supported host filesystems.
 4. Reject wrong object kind, trailing bytes, unsorted/duplicate entries, oversized
    pages/lengths, dangling edges, invalid sparse ranges, and unknown required
@@ -31,15 +32,23 @@ For each:
 - verify only changed paths and ancestors are read/rewritten;
 - restart and repeat the comparison.
 
+For attribution, prove that unchanged paths/ranges share attribution pages, changed
+paths receive the stable logical actor/publication attribution, identical content from
+different actors keeps the same content IDs but different attribution IDs, and blame
+lookup never scans retained operation history.
+
 ## 3. Ref semantics
 
-- clean checkpoint and clean branch/MCTS fork allocate one ref/head, zero payload, and
-  no complete native tree;
+- clean checkpoint and clean branch/MCTS fork allocate one content/attribution
+  ref/head, zero payload, and no complete native tree;
 - dirty checkpoint has the same object/page delta as ordinary publication plus one ref;
 - checkout changes session selection but no head;
-- revert advances generation through a publication event;
-- reset moves the head to an existing root with no new logical objects;
-- checkpoint survives later reset, compaction, squash, and restart;
+- revert advances generation through a publication event, may reuse the historical
+  content root, and attributes reverted paths to the reverting actor;
+- reset moves the head to an existing historical content/attribution pair with no new
+  logical or attribution objects;
+- checkpoint content and attribution survive later reset, compaction, squash, GC, and
+  restart;
 - deleting a checkpoint does not synchronously delete payload.
 
 ## 4. OCC and progress
@@ -102,6 +111,6 @@ rejected. A branch cannot advance past a missing terminal outcome for its curren
 ## 8. Exit evidence
 
 Record commands, git revision, host/target matrix, fixture hashes, failpoint IDs,
-observed object/page reads/writes, lock wait/retry counts, memory/FD/task peaks, source
-hold evidence, and artifact paths in `benchmark_note.md`. Architecture inspection alone
-cannot pass a case.
+observed content/attribution object and page reads/writes, lock wait/retry counts,
+memory/FD/task peaks, source-protection-lease evidence, and artifact paths in
+`benchmark_note.md`. Architecture inspection alone cannot pass a case.

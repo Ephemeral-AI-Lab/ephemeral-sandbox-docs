@@ -15,7 +15,7 @@ Preparation 04 remains the normative performance, space, memory, and environment
 
 The prior simplified design was still over-engineered. The durable core is:
 
-1. bounded-page immutable Merkle objects;
+1. bounded-page immutable content and attribution objects;
 2. small atomic refs;
 3. one recoverable operation protocol;
 4. immutable native generations selected by one pointer;
@@ -43,50 +43,51 @@ orientation map:
 
 ```text
 /eos/
-├── layer-stack/
-│   ├── .storage-writer.lock
-│   ├── CONTROL
+├── layer-stack/                                      LayerStack durable owner
+│   ├── .storage-writer.lock                          brief cross-process commit fence
+│   ├── CONTROL                                       format/authority/retirement fence
 │   ├── objects/
-│   │   ├── loose/<kind>/<digest-prefix>/<typed-id>
-│   │   ├── packs/<pack-id>.pack
+│   │   ├── loose/<kind>/<digest-prefix>/<typed-id>   canonical immutable logical bytes
+│   │   ├── packs/<pack-id>.pack                      optional immutable compaction output
 │   │   └── locators/
-│   │       ├── <run-id>.sst
-│   │       └── CURRENT
+│   │       ├── <run-id>.sst                          immutable non-loose location map
+│   │       └── CURRENT                               selected locator-run set
 │   ├── refs/
-│   │   ├── heads/<branch-id>
-│   │   ├── checkpoints/<checkpoint-id>
-│   │   ├── pins/<pin-id>
-│   │   └── leases/<lease-id>
+│   │   ├── heads/<branch-id>                         mutable branch visibility + OCC
+│   │   ├── checkpoints/<checkpoint-id>               named immutable-snapshot retention
+│   │   ├── pins/<pin-id>                             explicit policy retention
+│   │   └── leases/<lease-id>                         active snapshot/location/generation protection
 │   ├── operations/<operation-id>/
-│   │   ├── STATE
-│   │   └── work/...
+│   │   ├── STATE                                     sole recovery/idempotency record
+│   │   └── work/                                     bounded private spill/build/mark/trash
 │   ├── materializations/<materialization-id>/
-│   │   ├── CURRENT
+│   │   ├── CURRENT                                   selected immutable native generation
 │   │   └── generations/<generation>/
-│   │       ├── MANIFEST
-│   │       └── carriers/<carrier-id>/...
-│   ├── gc/CURRENT
-│   ├── manifest.json
-│   ├── workspace.json
-│   ├── base/<base-id>/...
-│   ├── layers/<layer-id>/...
-│   ├── staging/<layer-id>.staging/...
-│   └── .layer-metadata/<layer-id>.{digest,bytes}
-├── workspace/
-│   ├── manager.json
-│   ├── .export/<spool-id>
+│   │       ├── MANIFEST                              verified generation description
+│   │       └── carriers/<carrier-id>/...             backend-native immutable tree/carrier
+│   ├── gc/
+│   │   └── CURRENT                                   active GC operation pointer
+│   ├── manifest.json                                 [v1 compatibility window only]
+│   ├── workspace.json                                [v1 compatibility window only]
+│   ├── base/<base-id>/...                            [v1 compatibility window only]
+│   ├── layers/<layer-id>/...                         [v1 compatibility window only]
+│   ├── staging/<layer-id>.staging/...                [v1 compatibility window only]
+│   └── .layer-metadata/<layer-id>.{digest,bytes}     [v1 compatibility window only]
+├── workspace/                                        WorkspaceManager runtime owner
+│   ├── manager.json                                  restart recovery catalog
+│   ├── .export/<spool-id>                            bounded export scratch
 │   └── <workspace-session-id>/
-│       ├── upper/
-│       ├── work/
+│       ├── upper/                                    unpublished session writes
+│       ├── work/                                     OverlayFS kernel work directory
 │       └── executions/<execution-id>/
-│           └── transcript.log
-├── storage/
-│   ├── file_auditability/...
-│   └── workspace_recovery/...
-└── runtime/
+│           └── transcript.log                        command/PTY session scratch
+├── storage/                                          non-LayerStack service storage
+│   ├── file_auditability/...                         audit service owner
+│   └── workspace_recovery/...                        failed-cleanup recovery artifacts
+└── runtime/                                          daemon runtime owner
     └── daemon/
-        ├── runtime.sock
-        └── runtime.pid
+        ├── runtime.sock                              local IPC
+        └── runtime.pid                               daemon lifecycle
 ```
 
 The v1 entries directly under `layer-stack/` exist only during the rollback window;
@@ -109,6 +110,8 @@ Before Stage 03 implementation, an owner amendment must:
 - preserve v2 fixture bytes/IDs as immutable and readable;
 - define `RootRecordV3` over a typed bounded-page Merkle `TreeNodeId`;
 - freeze exact directory, file, segment-page, and chunk codecs;
+- freeze exact `AttributionRoot`, `AttributionPage`, and stable logical `ActorId`
+  codecs independently of content `RootId`;
 - treat flat manifests as derived export/validation only;
 - permit one `O(R+E)` v1/v2→v3 import with a new v3 `RootId`.
 
@@ -122,10 +125,11 @@ safe point to correct the format.
 | Required capability | Mechanism | Delivered / proved |
 | --- | --- | --- |
 | portable immutable `RootId` | typed v3 root and bounded Merkle objects | Stage 03 / Stage 07 |
+| blame independent of content identity | ref-selected bounded attribution root/pages | Stage 03 / Stage 07 |
 | incremental publication | changed-path capture, persistent-page rewrite, shared objects | Stage 03 / Stage 07 |
-| branch heads and OCC | atomic head `{root,generation,publication}` and changed-path three-way compare | Stage 03 / Stage 07 |
+| branch heads and OCC | atomic head `{content root,attribution root,generation,publication}` and changed-path three-way compare | Stage 03 / Stage 07 |
 | automatic recovery/idempotency | publication-keyed common operation plus head commit witness | Stage 03 / Stage 07 |
-| named checkpoint, clean fork | one root ref/head; no payload copy | Stage 03 / Stage 07 |
+| named checkpoint, clean fork | one content/attribution ref/head; no payload copy | Stage 03 / Stage 07 |
 | dirty checkpoint | ordinary publication then one checkpoint ref | Stage 03 / Stage 07 |
 | checkout/revert/reset | session selection / new publication / head move | Stage 03 / Stage 07 |
 | warm native execution | preverified materialization `CURRENT`; native-only route | Stage 04 / Stage 07 |
@@ -147,11 +151,11 @@ Documents:
 - [spec](stage_03_incremental_publication/spec.md)
 - [E2E plan](stage_03_incremental_publication/e2e_test.md)
 - [benchmark note](stage_03_incremental_publication/benchmark_note.md)
-- [Stage 02→03 implementation handoff](stage_03_incremental_publication/handoff_from_stage_02.md)
+- [Stage 02→03 implementation handoff](stage_02_portable_root_contract/handoff_to_stage_03.md)
 
 This is a vertical slice, not an algorithm-only experiment. It includes:
 
-- the owner-approved v3 codecs and bounded Merkle pages;
+- the owner-approved v3 content and attribution codecs and bounded Merkle pages;
 - streaming SeqCDC and deterministic typed chunks;
 - changed-path incremental tree updates;
 - loose immutable object installation;
@@ -314,12 +318,12 @@ review result changes `NOT_RUN` to `PASS`.
 
 ## 10. Phase 2/3 and environment audit
 
-Phase 2 uses heads/checkpoints/pins over the same roots. Active MCTS forks allocate
-private writable state; inactive nodes retain refs only. Merge/promotion must define
-base/left/right roots, ancestor/descendant/rename/hardlink conflict keys, promotion
-CAS, retry identity, and retention. Blame/transition metadata, if retained as a Phase
-2 requirement, is a separate immutable publication transition and never a `RootId`
-input.
+Phase 2 uses heads/checkpoints/pins over the same atomic
+`{RootId,AttributionRootId}` snapshots. Active MCTS forks allocate private writable
+state; inactive nodes retain refs only. Merge/promotion must define base/left/right
+snapshot pairs, ancestor/descendant/rename/hardlink conflict keys, promotion CAS,
+retry identity, attribution merge rules, and retention. Attribution remains a
+separate immutable object graph and never changes content `RootId`.
 
 Phase 3 logical providers supply typed immutable get/put-if-absent, atomic/fenced ref
 update, bounded iteration, and physical locator lookup. Native materialization and
@@ -340,7 +344,8 @@ measured.
 
 ## 11. Unresolved gates
 
-1. **Correctness:** the v3 Merkle identity amendment is unapproved.
+1. **Correctness:** the v3 content-Merkle and attribution-codec amendment is
+   unapproved.
 2. **Correctness:** exact conflict-key semantics for ancestor/descendant, rename,
    opaque-directory, and hardlink mutations need frozen vectors.
 3. **Correctness:** idempotency needs an API retention/ack contract. Outcomes are
@@ -350,7 +355,8 @@ measured.
    participate in the same GC barrier before visibility.
 5. **Performance:** bounded-page fanout, write amplification, global metadata-lock
    contention, locator-run caps, and GC external-run costs are unmeasured.
-6. **Space:** imported v1 payload needs a durable source hold until evacuation; no
+6. **Space:** imported v1 payload needs a durable source-protection lease until
+   evacuation; no
    candidate root may be called durable before its last locator is protected.
 7. **Performance/space:** same-key single-flight behavior, materialization disk quotas,
    and shared-generation/private-upper scaling are not measured.

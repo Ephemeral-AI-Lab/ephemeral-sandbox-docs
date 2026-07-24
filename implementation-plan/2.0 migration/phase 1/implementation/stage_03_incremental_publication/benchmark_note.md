@@ -13,14 +13,15 @@ Normative thresholds are in
 | 4 KiB middle edit in growing tree | changed bytes/chunks/pages, unchanged-tree reads, elapsed scaling | `NOT_RUN` |
 | append/truncate/metadata/delete/rename | per-operation input and touched-page counters | `NOT_RUN` |
 | no-op | capture evidence and zero new payload | `NOT_RUN` |
+| attribution update/query | changed attribution pages, stable content IDs, blame query work, no operation-history scan | `NOT_RUN` |
 | clean checkpoint/fork | metadata bytes; exactly zero copied payload/native tree | `NOT_RUN` |
 | dirty checkpoint | delta equal to publication plus one ref | `NOT_RUN` |
 | same-path conflict | stable conflict and bounded work | `NOT_RUN` |
 | 2/3+ disjoint writers | throughput, lock wait, retries, progress ratio | `NOT_RUN` |
 | lost response/failpoint matrix | exact retry result after restart | `NOT_RUN` |
-| v1 source hold | restart/delete attempt and last-locator survival | `NOT_RUN` |
+| v1 source-protection lease | restart/delete attempt and last-locator survival | `NOT_RUN` |
 | memory/FD/tasks | every Preparation 04 cap and zero detached tasks | `NOT_RUN` |
-| settled/peak space | objects, metadata, operations, source holds, unreachable residue | `NOT_RUN` |
+| settled/peak space | content/attribution objects, metadata, operations, source-protection leases, unreachable residue | `NOT_RUN` |
 | host/architecture determinism | identical chunk/page/root IDs | `NOT_RUN` |
 
 ## Required report fields

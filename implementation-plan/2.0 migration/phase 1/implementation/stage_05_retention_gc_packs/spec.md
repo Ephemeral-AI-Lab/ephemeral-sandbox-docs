@@ -28,17 +28,23 @@ No reference count is deletion authority. No resident all-live set is allowed.
 
 The mark seed stream is typed:
 
-- `Root(RootId)` from branch/checkpoint/pin/lease/policy refs;
-- `Root(RootId)` and direct `Object(ObjectId)` from prepared/committing operations;
-- `Root(RootId)` plus `MaterializationGeneration` from active/pinned materializations;
-- physical locator generations and source holds required by active readers/builds;
+- `ContentRoot(RootId)` and `AttributionRoot(AttributionRootId)` from
+  branch/checkpoint/pin/lease/policy refs;
+- content/attribution roots and direct `Object(ObjectId)` from prepared/committing
+  operations;
+- `ContentRoot(RootId)` plus `MaterializationGeneration` from active/pinned
+  materializations; attribution is retained by history-bearing refs rather than the
+  native carrier;
+- physical locator generations and source-protection leases required by active
+  readers/builds;
 - roots/proof named by the active migration operation and ordinary fenced holds on
   existing v1 sources until evacuation/retirement.
 
-Strong logical edges are only the canonical v3 root/tree/file/segment/chunk graph.
-Parent/base/publication provenance does not retain history. Terminal outcomes retain
-their result only for the explicit retry/ack window and do not become an unbounded
-history policy.
+Strong object edges are the canonical v3 root/tree/file/segment/chunk graph and the
+separate attribution-root/page graph. Parent/base/publication ancestry does not retain
+history. Attribution pages persist the current blame snapshot directly; they do not
+depend on retaining publication operations. Terminal outcomes retain their result
+only for the explicit retry/ack window and do not become an unbounded history policy.
 
 Checkpoint deletion removes one seed; it never synchronously deletes payload.
 
@@ -68,7 +74,8 @@ wholesale while any live object lacks another selected locator.
 Only one GC operation is active, named by `gc/CURRENT`.
 
 1. Under the writer lock install the active GC operation and durable root-log state.
-2. Snapshot typed seeds to disk and traverse object edges in bounded pages.
+2. Snapshot typed content/attribution seeds to disk and traverse object edges in
+   bounded pages.
 3. External-sort/deduplicate mark runs with Preparation 04 fan-in/buffer limits.
 4. Every head/checkpoint/pin/lease/materialization/authority visibility mutation takes
    the same closure lock, observes `gc/CURRENT`, appends/fsyncs its root/subject to the
@@ -91,7 +98,7 @@ After at least one complete later durable GC boundary:
 1. take the mutation closure lock;
 2. final-recheck every ref class, prepared/committing operation, lease/fence, active
    materialization generation, locator `CURRENT`, active migration operation/ordinary
-   v1 source hold, and policy root;
+   v1 source-protection lease, and policy root;
 3. verify a candidate is not a last locator and its graph cannot be selected by a
    newly admitted validated ref;
 4. rename only one bounded exact batch into this GC operation's private `work/trash`,
@@ -147,7 +154,8 @@ or delete WorkspaceManager-owned `upper`, `work`, or `executions` paths.
 
 - pack/compaction: proportional to selected bytes/records, bounded streaming memory;
 - locator lookup/startup: bounded by fixed current-run count/bytes, not history;
-- GC mark: `O(V+strong_edges)` time, `O(V)` temporary disk, `O(B)` RAM;
+- GC mark: `O(V_content+V_attribution+strong_edges)` time, proportional temporary
+  disk, `O(B)` RAM;
 - sweep: streamed/sliced `O(A)` with fixed candidate/delete batch;
 - squash: streamed `O(S+E_s)` outside the short pointer section;
 - no task-owned 100k-record `Vec`, replacement slice, full locator map, or all-live set;
@@ -168,6 +176,8 @@ Preparation 04. Nothing here claims a passing result.
 - last-locator, reader lease, restart uncertainty, trash restoration, and mixed-pack
   cases pass;
 - squash preserves exact logical `RootId` and checkpoint accessibility;
+- checkpoint blame/attribution remains queryable after squash, compaction, GC, and
+  restart;
 - [benchmark note](benchmark_note.md) records all Preparation 04 maintenance/space
   results;
 - safe-Rust/bounded ownership audit passes;
