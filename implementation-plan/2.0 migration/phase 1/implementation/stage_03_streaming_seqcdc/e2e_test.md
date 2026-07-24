@@ -1,6 +1,6 @@
 # Stage 03 E2E — Bounded scalar streaming SeqCDC
 
-[Implementation overview](../index.md) · [Stage 03 specification](spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Stage 03 specification](spec.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -142,15 +142,16 @@ Forbidden candidate paths are `/eos/layer-stack/format-v2.json`, `roots/v2`, `ma
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Run-now rows below use the stage-local pinned Ubuntu 24.04 target image and do
+not qualify portability. Stage 11 must run required hosts/release runners and
+the full Prep 04 Phase-1 image matrix: pinned Ubuntu/Debian glibc, Alpine
+musl, minimal/distroless, shell-less, read-only, and non-root.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.layerstack-phase1.seqcdc.runtime-dormant` | POC; `run-now-focused` | dormant scalar SeqCDC with legacy authority | pinned Ubuntu 24 image, legacy config, deterministic boundary payload | public write, publish, read | exact v1 bytes/revision and zero runtime SeqCDC/candidate work | diagnostic elapsed time | complete legacy allocation and zero candidate bytes | case owners/tasks/FDs/sessions quiesce | exact external delta zero and pinned Ubuntu 24 record | `60000` ms | typed JSONL and public/route/resource/storage/cleanup snapshots |
 | `SCDC-R08` | POC; `run-now-tiny-bench` | scalar streaming primitive | one long-lived process and authors' oracle corpus | typed wrapper invokes the bounded primitive campaign | exact cuts and IDs for every feed schedule | raw paired diagnostic distribution | no durable artifact | ring, borrow, descriptor owners return every pair | std-only safe code and scalar golden proof | `60000` ms | raw JSON samples and summary |
-| `runtime.layerstack-phase1.seqcdc.selection` | release; `planned-final` | selection and required-runner qualification | frozen Stage 11 corpus and release runners using one pinned Ubuntu 24.04 target image | packaged matched workload | full selection, locality, storage, lifecycle, and required-runner gates | normative matched metrics | complete physical envelope | full scale and repeated-lifecycle matrix | required-runner proof, pinned Ubuntu 24.04 target; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `runtime.layerstack-phase1.seqcdc.selection` | release; `planned-final` | selection, required-runner, and image-matrix qualification | frozen Stage 11 corpus, release runners, and full Prep 04 Phase-1 image matrix | packaged matched workload | full selection, locality, storage, lifecycle, image, and required-runner gates | normative matched metrics | complete physical envelope | full scale and repeated-lifecycle matrix | required-runner proof plus pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root | `300000` ms | Stage 11 qualification bundle |
 
 Complete literal declaration metadata:
 
@@ -158,7 +159,7 @@ Complete literal declaration metadata:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.layerstack-phase1.seqcdc.runtime-dormant` | `SCDC-01 Scalar SeqCDC Is Deterministic And Runtime-Dormant` | `A packaged Ubuntu 24.04 sandbox publishes and reads a deterministic multi-boundary payload through public CLI operations while legacy v1 remains authoritative and runtime SeqCDC and candidate resource counters remain zero.` | `("runtime.workspace_session","runtime.layerstack-phase1.seqcdc")` | `{"assert-scdc-01-dormant-legacy-route":"Published bytes and the legacy revision are correct; read, write, and publication authorities remain legacy; runtime SeqCDC scans, bytes, chunks, candidate completions, mismatches, fallbacks, workers, queues, permits, transactions, roots, objects, packs, and durable bytes are zero; case-owned resources are reclaimed."}` | `{"assert-scdc-01-dormant-legacy-route":("runtime.workspace_session","runtime.layerstack-phase1.seqcdc")}` | `"cli"` | `"e2e-core"` | `60000` | `("smoke","phase1","config")` |
 | `SCDC-R08` | `SCDC-R08 Scalar SeqCDC tiny diagnostic` | `Runs the frozen authors' oracle corpus through every fragmentation schedule in one long-lived scalar process and records bounded raw lifecycle evidence.` | `("runtime.layerstack-phase1.seqcdc","benchmark","observability.resource_efficiency")` | `{"terminal":"Every feed schedule produces the frozen cut offsets and object identifiers; terminal visitor failure stops reads; ring, borrow, descriptor, and logical owners release; raw samples validate."}` | `{"terminal":("runtime.layerstack-phase1.seqcdc","benchmark","observability.resource_efficiency")}` | `"cli"` | `"e2e-core"` | `60000` | `("benchmark","phase1")` |
-| `runtime.layerstack-phase1.seqcdc.selection` | `SeqCDC final selection qualification` | `Executes the frozen Stage 11 Raw, StreamCDC, and SeqCDC matched campaigns plus required host/release-runner rows using the one pinned Ubuntu 24.04 target image; cross-image qualification is deferred beyond Phase 1.` | `("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability","ubuntu-24.04")` | `{"terminal":"All final selection, distribution, locality, physical-space, lifecycle-memory, and required-runner gates execute from matched evidence against the pinned Ubuntu 24.04 target image and the selected algorithm is recorded; no cross-image acceptance is claimed."}` | `{"terminal":("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability","ubuntu-24.04")}` | `"cli"` | `"e2e-core"` | `300000` | `("release","benchmark","phase1","config")` |
+| `runtime.layerstack-phase1.seqcdc.selection` | `SeqCDC final selection qualification` | `Executes the frozen Stage 11 Raw, StreamCDC, and SeqCDC matched campaigns plus required host/release-runner and Prep 04 Phase-1 image rows.` | `("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability")` | `{"terminal":"All final selection, distribution, locality, physical-space, lifecycle-memory, required-runner, and pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root gates execute from matched evidence and the selected algorithm is recorded."}` | `{"terminal":("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability")}` | `"cli"` | `"e2e-core"` | `300000` | `("release","benchmark","phase1","config")` |
 
 Supporting checks below are not additional typed E2E declarations:
 
@@ -213,12 +214,12 @@ The existing benchmark laboratory owns the `layerstack-phase1-tiny-seqcdc` sched
 | Dimension | Required setup |
 | --- | --- |
 | Wall duration | aggregate target 30–60 seconds; each operation hard-capped below 60 seconds |
-| Corpora | pre-generated empty/no-op; pinned boundary literals; 1 KiB localized edit in a deterministic 1 MiB file; deterministic 1 MiB incompressible bytes; 256 small files totaling about 1 MiB; source-like/mixed/repeated bytes; fragmentation schedules; overwrite histories 1, 8, and 32 |
+| Corpora | pre-generated empty/no-op; pinned boundary literals; exact 9,000-byte `S03-OPPOSING-JUMP` generator from the benchmark note; 1 KiB localized edit in a deterministic 1 MiB file; deterministic 1 MiB incompressible bytes; 256 small files totaling about 1 MiB; source-like/mixed/repeated bytes; fragmentation schedules; overwrite histories 1, 8, and 32 |
 | Pair | control feeds each byte string contiguously through the frozen author oracle; candidate feeds the same bytes through counterbalanced fragmented `Read` schedules and the streaming scalar scanner |
 | Sampling | one warmup and at least five alternating control/candidate pairs; prefer three warmups and ten pairs only when the sub-minute cap holds |
 | Fixed context | identical host, filesystem/cache treatment, seed, corpus, profile/configuration, one thread, prebuilt binary, and operation order |
 | Iteration | scan → synchronous typed hash visitor → compare ordered-cut digest/chunk IDs → drop |
-| Output | raw per-pair JSON; input/scanned bytes; chunks; absolute elapsed/throughput; candidate/control ratios; comparisons/jumps/wrapped chunks; ring/slice/descriptor high-water; errors |
+| Output | raw per-pair JSON; literal algorithm/mode/digest/domain/kind/format; oracle revision and source/config/fixture SHA-256 values; input/scanned bytes; chunks; absolute elapsed/throughput; candidate/control ratios; comparisons/jumps/wrapped chunks; ring/slice/descriptor high-water; errors |
 | Hard POC gate | every output equals the oracle; each operation <60 s; aggregate cap holds; ring≤32 KiB; slices≤2; descriptor current≤1; payload queue bytes=0; no retained owner |
 | Explicit non-claim | insufficient samples make p95 unavailable; no integrated capture, fsync, manifest/index, publication, StreamCDC advantage, final space/RSS/performance, or portability qualification |
 
@@ -256,11 +257,11 @@ Do not restart the daemon/test loop, call `malloc_trim`, swap allocator, manuall
 
 `usize`, native endian, filesystem enumeration, host paths, target CPU
 features, and target-image userland do not affect boundaries or IDs. The Stage
-11 matrix executes x86_64/AArch64 and every required Docker host/release-runner
-row using the same pinned Ubuntu OCI index, recording the resolved platform
-manifest for each run. Cross-image portability is deferred beyond Phase 1 and
-is neither an acceptance nor a retirement gate. Stage 03 does not overstate
-that qualification.
+11 matrix executes x86_64/AArch64, every required Docker
+host/release-runner, and pinned Ubuntu/Debian glibc, Alpine musl,
+minimal/distroless, shell-less, read-only, and non-root rows, recording each
+resolved platform manifest. Stage 03's stage-local pinned Ubuntu evidence
+does not overstate that qualification.
 
 ## 9. Focused and final-stage commands
 
@@ -374,11 +375,12 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 03 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 03 — Stage 11 host/image matrix
 
-Stage 11 runs this command once per required native host. Pinned Ubuntu 24 is
-the only Phase 1 E2E image; cross-image portability is deferred beyond Phase 1
-and is not an acceptance gate.
+The command below is the pinned-Ubuntu representative and runs once per
+required native host. The Stage 11 scheduler must additionally cover pinned
+Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and
+non-root rows; this Stage 03 command alone cannot qualify the matrix.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -425,8 +427,12 @@ The immutable Stage 03 evidence bundle contains:
   command/node/timeout, and run/case IDs;
 - host/arch, Rust target, Docker versions, guest kernel/filesystem, image tag and available pinned OCI index/platform digests;
 - oracle source revision/digest/license/extraction method and fixture manifest digest;
-- algorithm/profile/version and every fixed parameter;
+- algorithm `seqcdc-scalar-author-v1`, mode `increasing`, typed SHA-256 domain
+  `EOS-LS2\0`, object kind `3`, two-byte format version `2`, profile version,
+  and every fixed parameter;
 - input fixture/generator/seed/digest/bytes; fragmentation schedule ID;
+- `S03-OPPOSING-JUMP` expected/actual 50-opposing trace, jump
+  `8,242→8,754`, first cutpoint `8,758`, and typed-ID digest;
 - ordered cut digest, expected/actual count and first bounded mismatch; min/mean/p10/p50/p90/max; final-short flag;
 - bytes read/scanned/hashed, comparisons, jumps, wrap count, visitor calls, typed object-ID aggregate;
 - ring allocation/high-water, max slices, payload queue bytes, current/high-water descriptors, worker/task/thread/channel/permit counts;
@@ -438,6 +444,28 @@ The immutable Stage 03 evidence bundle contains:
 - explicit reason for every unavailable metric, miss, timeout, or hard failure.
 
 Artifacts are bounded and content-addressed through the existing run mechanism. Never retain raw unbounded payload, arbitrary path/chunk IDs, secrets, or full per-cut logs. Missing required fields fail schema validation; they do not become zero.
+
+### Performance arrival checkpoint
+
+The tiny run must materialize
+`.benchmark-state/results/<run_id>/stage-03-perf-report.json` and
+`stage-03-perf-report.md` according to
+[the Stage 03 benchmark note](benchmark_note.md). The JSON schema version is
+`phase1.stage03.perf-report.v1`; Markdown is a human-readable rendering of the
+same values. Required groups are provenance; immutable run/raw artifact links;
+raw oracle/control and candidate samples; frozen baseline actual; required
+pass target/cap; separately predeclared optimization target; candidate actual;
+delta, ratio, and headroom; complexity/work counters; logical memory and
+sampled RSS; allocated physical-space and payload-zero fields; cleanup; and
+`DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes those
+comparison fields per stage-owned metric. Missing required values produce
+`OPEN` or `FAIL`, never an inferred pass.
+
+Before the live command, append Plan/Run to `e2e/test-report.md`. After report
+validation, append Good/Defect there and append a new row to
+`benchmark_note.md`; never rewrite an earlier result. The stage-exit check must
+resolve both report links and verify that their run ID and provenance match the
+raw bundle. Stage 03 reports remain **DIAGNOSTIC**, never final qualification.
 
 ## 11. Stage exit verdict
 
@@ -451,6 +479,7 @@ Return **POC PASS** only if:
 - core remains safe/std-only and exact external dependency delta is zero;
 - packaged public behavior is legacy-correct, runtime SeqCDC/candidate values are present and zero, forbidden candidate paths are absent, and case resources quiesce;
 - each operation is <60 seconds and the 30–60 second loop is labeled diagnostic;
+- both versioned performance-arrival reports validate, resolve their immutable raw/run links, and have matching append-only benchmark and E2E ledger entries;
 - evidence schemas/report entries/cleanup records are complete and durable.
 
 Planning creates no branch. Execution requires the exact implementation branch `upgrade-2.0-phase-1`, created from the newest approved immutable product revision, with immutable product/test/doc bases recorded before work begins. Return **POC FAIL / BLOCKED** for an oracle mismatch, hidden rescan, fragmentation difference, invalid borrow/ownership, over-bound memory, unsafe/external dependency, v1 regression, candidate artifact, missing observation, leak, timeout, branch/base noncompliance, or mandatory environment failure.

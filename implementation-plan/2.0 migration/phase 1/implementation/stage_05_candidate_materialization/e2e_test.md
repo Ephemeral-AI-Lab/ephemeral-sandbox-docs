@@ -1,6 +1,6 @@
 # Stage 05 E2E — Private candidate materialization
 
-Links: [implementation overview](../index.md) · [stage specification](spec.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+Links: [implementation overview](../index.md) · [stage specification](spec.md) · [benchmark note](benchmark_note.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Tier: **POC proof tier**. Run only the smallest packaged `dual_read_verify` case, one corruption/restart case, and one sub-minute tiny benchmark/memory sentinel. Candidate activation and normative qualification do not belong here.
 
@@ -159,9 +159,10 @@ ephemeral-sandbox-test/
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Run-now rows below use the stage-local pinned Ubuntu 24.04 target image and do
+not qualify portability. Stage 11 must run required hosts/release runners and
+the full Prep 04 Phase-1 image matrix: pinned Ubuntu/Debian glibc, Alpine
+musl, minimal/distroless, shell-less, read-only, and non-root.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -169,7 +170,7 @@ listed disposition, while cross-image acceptance is deferred beyond Phase 1.
 | `phase1.stage05.materialization.corruption-restart` | POC; `run-now-focused` | cold integrity failure and recovery | copy-on-write object locator and post-rename failpoint | public publish/read and controlled restart | typed corruption, quarantine, no partial catalog, deterministic recovery, legacy unaffected | failure and recovery phases | staging/orphan allocation before/after | cancellation, joins, recovery owners release | helper-independent proof on the pinned Ubuntu 24.04 target | `120000` ms | failpoint state snapshots |
 | `phase1.stage05.materialization.tiny` | POC; `run-now-tiny-bench` | legacy projection versus private candidate | frozen tiny corpus, seed, and order | benchmark lab public publish and compare | exact digests and authority with no silent mismatch | two warmups and six raw pairs | carrier/staging/index/journal bytes | twelve cycles including cancellation | graph before/after | `60000` ms | raw and summary JSON |
 | `phase1.stage06.strict.activation` | later; `deferred-to-stage_06` | strict packaged candidate read | Stage 06 explicit opt-in | create and execute on candidate carrier | actual candidate source and zero fallback | diagnostic select/hydrate/mount phases | active carrier allocation | activation owners quiesce | same provider adapter and no target helper | `120000` ms | Stage 06 typed bundle |
-| `phase1.final.materialization.qualification` | final; `planned-final` | full materialization matrix | frozen scale/corpus and required runners using one pinned Ubuntu 24.04 target image | Stage 11 qualification scheduler | normative exactness, performance, space, memory, and required-runner gates | final matched metrics | complete physical envelope | full scaling and sustained memory | required runners, pinned Ubuntu 24.04 target; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `phase1.final.materialization.qualification` | final; `planned-final` | full materialization matrix | frozen scale/corpus, required runners, and full Prep 04 Phase-1 image matrix | Stage 11 qualification scheduler | normative exactness, performance, space, memory, image, and required-runner gates | final matched metrics | complete physical envelope | full scaling and sustained memory | required runners plus pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root | `300000` ms | Stage 11 qualification bundle |
 
 Complete declaration metadata:
 
@@ -179,7 +180,7 @@ Complete declaration metadata:
 | `phase1.stage05.materialization.corruption-restart` | `Stage 05 materialization corruption and restart recovery` | `Injects hash corruption and the post-rename and pre-catalog crash boundary and proves quarantine and deterministic recovery without public impact.` | `("storage.materialization","storage.integrity","runtime.daemon_restart")` | `{"corruption-detected":"A wrong object hash fails with the declared typed integrity error before visibility.","quarantine-recorded":"The corrupt source and reason are recorded under run-owned quarantine without replacing a good locator.","partial-not-cataloged":"A renamed but uncommitted carrier is never selectable from the materialization catalog.","restart-idempotent":"Restart recovery either installs the one durable complete generation or reaps the orphan, and retry is exact.","legacy-unaffected":"Public legacy publication, read bytes, and authority are unchanged by candidate failure.","logical-release":"Cancellation and restart join all materialization owners and return gauges to settled values."}` | `{"corruption-detected":("storage.integrity","storage.materialization"),"quarantine-recorded":("storage.integrity","storage.materialization"),"partial-not-cataloged":("storage.materialization","runtime.daemon_restart"),"restart-idempotent":("storage.materialization","runtime.daemon_restart"),"legacy-unaffected":("migration.dual_read_verify","storage.layerstack_v2"),"logical-release":("runtime.daemon_restart","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `120000` | `("medium","phase1","config")` |
 | `phase1.stage05.materialization.tiny` | `Stage 05 materialization tiny sentinel` | `Alternates the legacy control and private candidate materialization over the frozen tiny corpus and records correctness, time, disk, and memory.` | `("benchmark.materialization","observability.resource_efficiency","migration.dual_read_verify")` | `{"paired-tree-equal":"Every paired control and candidate tree and metadata digest is identical.","all-ops-under-60s":"Every publication, hydration, comparison, and cleanup operation finishes within sixty seconds.","physical-peak-bounded":"Categorized peak allocation satisfies the declared diagnostic carrier and staging bound.","logical-release":"Every repetition releases materialization workers, buffers, permits, transactions, and file descriptors.","memory-cap":"Physical memory remains within the declared diagnostic cap or is explicitly unavailable.","artifact-complete":"Raw pairs, environment, disk, memory, correctness, and cleanup evidence validate against the artifact schema."}` | `{"paired-tree-equal":("benchmark.materialization","migration.dual_read_verify"),"all-ops-under-60s":("benchmark.materialization",),"physical-peak-bounded":("benchmark.materialization","observability.resource_efficiency"),"logical-release":("storage.materialization","observability.resource_efficiency"),"memory-cap":("benchmark.materialization","observability.resource_efficiency"),"artifact-complete":("benchmark.materialization","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `60000` | `("smoke","benchmark","phase1","config")` |
 | `phase1.stage06.strict.activation` | `Stage 06 strict cold and warm candidate activation` | `Activates the paired v2 root through public workspace APIs, proves actual candidate bytes and generation, and confirms warm zero-read behavior with unchanged legacy default and publication.` | `("storage.candidate_activation","migration.candidate_read_strict","runtime.workspace_session")` | `{"strict-route":"The opted-in session selects candidate_v2 strict read authority.","candidate-tree-visible":"Public file and command operations observe the exact candidate materialization tree.","fallback-zero":"The strict route never calls or selects a legacy resolver.","warm-zero-payload":"A warm activation reuses the durable carrier without candidate payload reads.","legacy-default-preserved":"Unselected sessions and public publication remain legacy-authoritative.","guard-order":"Carrier and mount guards outlive every dependent session operation.","cleanup-complete":"Sessions, guards, mounts, workers, permits, and file descriptors quiesce."}` | `{"strict-route":("storage.candidate_activation","migration.candidate_read_strict"),"candidate-tree-visible":("storage.candidate_activation","runtime.workspace_session"),"fallback-zero":("migration.candidate_read_strict",),"warm-zero-payload":("storage.candidate_activation","observability.resource_efficiency"),"legacy-default-preserved":("migration.candidate_read_strict","runtime.workspace_session"),"guard-order":("storage.candidate_activation","runtime.workspace_session"),"cleanup-complete":("storage.candidate_activation","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `120000` | `("smoke","phase1","config")` |
-| `phase1.final.materialization.qualification` | `Final materialization qualification` | `Executes the frozen Stage 11 correctness, failure, performance, storage, memory, soak, rollback, and required host/release-runner matrix using the one pinned Ubuntu 24.04 target image; cross-image qualification is deferred beyond Phase 1.` | `("phase1.qualification","storage.materialization","portability","ubuntu-24.04")` | `{"terminal":"All final materialization exactness, atomicity, warm-reuse, corruption, recovery, time, physical-space, memory, and required-runner gates execute successfully against the pinned Ubuntu 24.04 target image with complete evidence; no cross-image acceptance is claimed."}` | `{"terminal":("phase1.qualification","storage.materialization","observability.resource_efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"phase1-storage"` | `300000` | `("release","phase1","config")` |
+| `phase1.final.materialization.qualification` | `Final materialization qualification` | `Executes the frozen Stage 11 correctness, failure, performance, storage, memory, soak, rollback, required host/release-runner, and Prep 04 Phase-1 image matrix.` | `("phase1.qualification","storage.materialization","portability")` | `{"terminal":"All final materialization exactness, atomicity, warm-reuse, corruption, recovery, time, physical-space, memory, required-runner, and pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root gates execute with complete evidence."}` | `{"terminal":("phase1.qualification","storage.materialization","observability.resource_efficiency","portability")}` | `"cli"` | `"phase1-storage"` | `300000` | `("release","phase1","config")` |
 
 Every declared checkpoint emits exactly one terminal `ValidationReporter`
 record.
@@ -203,7 +204,7 @@ record.
 | Lease during GC/compaction; pack faults | deferred-to-stage_08 | absent |
 | Squash identity/remount | deferred-to-stage_09 | absent |
 | Mixed-root candidate authority/rollback | deferred-to-stage_10 | public v1 only |
-| Full scale and required host/release-runner matrix using the sole pinned Ubuntu target | planned-final | Stage 11; missing required host or platform stays unverified |
+| Full scale, required host/release-runner, and Prep 04 Phase-1 image matrix | planned-final | Stage 11: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root; missing rows stay unverified |
 
 The packaged success must show `candidate_served=false`, exact paired root/generation, `comparison_count=1`, `mismatch_count=0`, and no silent error. A command that merely succeeds through legacy proves only the public oracle, not candidate materialization.
 
@@ -243,16 +244,16 @@ Capture canonical locked/all-feature Cargo metadata immediately before and after
 
 Run the frozen scalar SeqCDC/root/object golden once to prove Stage 05 did not
 change identity. Acceleration is absent, so scalar/accelerated differential is
-not applicable (not silently deferred). Focused adapter proof uses the sole
-pinned Ubuntu OCI index through public file APIs; process evidence must show no
+not applicable (not silently deferred). Focused adapter proof uses the
+stage-local pinned Ubuntu OCI index through public file APIs; process evidence must show no
 target-image shell, tar, cp, libc utility, package manager, or helper.
 Read-only and non-root runtime variants use that same target identity.
 Deterministic host/CPU vectors on the available host are evidence only for that
 host. Stage 11 executes the complete amd64/arm64 and required
-host/release-runner matrix using the same OCI index and records the resolved
-platform manifest. Unavailable required rows remain unverified and cannot
-support claims. Cross-image portability is deferred beyond Phase 1 and is
-neither an acceptance nor a retirement gate.
+host/release-runner matrix plus pinned Ubuntu/Debian glibc, Alpine musl,
+minimal/distroless, shell-less, read-only, and non-root, recording every
+resolved platform manifest. Unavailable required rows remain unverified and
+cannot support claims.
 
 ## 9. Focused and final-stage commands
 
@@ -352,11 +353,12 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 05 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 05 — Stage 11 host/image matrix
 
-Stage 11 runs this command once per applicable required host. Pinned Ubuntu
-24.04 is the only Phase 1 target image; cross-image portability is deferred
-beyond Phase 1 and is not an acceptance gate.
+The command below is the pinned-Ubuntu representative and runs once per
+applicable required host. The Stage 11 scheduler must additionally cover
+pinned Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only,
+and non-root rows; this Stage 05 command alone cannot qualify the matrix.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -411,9 +413,41 @@ done
 
 Metrics label `measured`, `derived`, `estimated`, or `unknown`, preserve numerator/denominator and units, and never mix daemon/cgroup/runner scopes. High-frequency evidence streams to bounded artifacts rather than an in-process unbounded list.
 
+### Performance arrival checkpoint
+
+The tiny runner must write
+`.benchmark-state/results/<run_id>/stage-05-perf-report.json` and
+`stage-05-perf-report.md` according to
+[benchmark_note.md](benchmark_note.md). The JSON schema version is
+`phase1.stage05.perf-report.v1`; Markdown is generated from the same values.
+Required groups are provenance and immutable run/raw links; raw native-copy/
+legacy controls and candidate cold/warm samples; frozen baseline actual;
+required pass target/cap; separately predeclared optimization target;
+candidate actual; delta, ratio, and headroom; `R/E/K` and phase work;
+memory/RSS; allocated carrier/staging/journal and full physical-space
+categories; field-by-field mode/uid/gid/mtime/raw-xattr/hardlink/symlink/
+sparse equality; every benchmark-note cancellation/crash/corruption/ENOSPC and
+16-position verify/fsync/rename/catalog outcome; canonical external
+package/version/source/checksum, feature, and direct-edge before/after arrays
+with empty symmetric differences plus zero system/runtime/image-helper deltas;
+integrity/recovery/cleanup; and a
+`DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes those
+comparison fields per stage-owned metric. Missing required evidence yields
+`OPEN|FAIL`, never zero or pass.
+
+Append Plan/Run to `e2e/test-report.md` before execution. After validation,
+append Good/Defect there and append a new benchmark-note tracker row. Stage
+exit resolves both report links and checks matching run ID, provenance, and
+raw artifacts. Stage 05 reports are **DIAGNOSTIC**; Stage 11 alone can qualify
+the normative Prep performance, scale, space, memory, and platform gates.
+
 ## 11. Stage exit verdict
 
 Mandatory pass: two focused cases, tiny case, focused Rust/goldens, artifact/schema validation, exact graph equality, current-host no-helper proof, cleanup, and append-only report completion. Candidate tree/content/metadata must equal legacy; warm reads zero payload; every visibility/failure assertion must hold. Logical resources must return; physical memory and carrier peak must stay inside stage caps with no unexplained short-run trend.
+
+The two versioned Stage 05 performance-arrival reports, their immutable
+run/raw links, and matching append-only benchmark/E2E ledger rows are also
+mandatory; without them the stage remains not reached.
 
 Allowed warnings are attributed allocator/page-cache retention inside the frozen band and explicitly unavailable optional platform counters. Blockers include public candidate serving, wrong authority/root pair, fallback-like behavior, partial visibility, silent mismatch, corruption accepted, recovery ambiguity, operation ≥60 s, cap breach, suspected/confirmed leak, missing stage-gating evidence, new external/system/runtime dependency, target helper, or incomplete cleanup/artifacts.
 

@@ -1,6 +1,15 @@
 # Stage 04 — Shadow CAS ingest
 
-[Implementation overview](../index.md) · [Stage 04 E2E plan](e2e_test.md) · [Preparation 01](../../prep/01-cdc-cas-space-time-materialization-spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [Stage 04 E2E plan](e2e_test.md) · [Benchmark note](benchmark_note.md) · [Preparation 01](../../prep/01-cdc-cas-space-time-materialization-spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Stage 04 implements the minimal shadow subset
+> in the [simplified storage contract](../layerstack_storage_contract.md):
+> `format-v2.json`, immutable roots, loose persistent-tree/file/segment
+> metadata objects, immutable v1-carrier locator SSTs plus `CURRENT`, receipts,
+> and `transactions/<id>/{intent,ready,work/}`. It creates no duplicate chunk
+> payload and no branch, materialization, lease, pack, GC, authority, or
+> reserved-empty directory. This statement supersedes the older
+> catalog/journal/staging path inventory later in this document.
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -11,17 +20,38 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | --- | --- |
 | Status | Proposed; first candidate-artifact writer; POC proof tier only. Planning creates no branch. Implementation requires exact branch `upgrade-2.0-phase-1`, created from the newest approved immutable product revision, with immutable product/test/doc bases recorded first. |
 | Depends on | Stage 02 portable root contract and Stage 03 scalar SeqCDC POC exits, transitively using Stage 00 bounded observations. Stage 01 remains an independent parallel branch until Stage 10. |
-| Owners / affected crates | `sandbox-runtime-layerstack-core` values/SeqCDC; existing `sandbox-runtime` LayerStack hashing, persistence, catalogs, recovery, and physical locators; workspace capture stream; operation orchestration/observability; `sandbox-config`; focused external E2E. |
-| Objective | After a successful authoritative v1 publication, synchronously ingest the committed immutable native carrier into a transactionally durable **shadow** v2 root/manifest/index/catalog observation using bounded scalar SeqCDC and native-carrier locators. |
+| Owners / affected crates | `sandbox-runtime-layerstack-core` values/SeqCDC/persistent object graph; existing `sandbox-runtime` LayerStack hashing, object/locator/transaction persistence, recovery, and physical locators; workspace capture stream; operation orchestration/observability; `sandbox-config`; focused external E2E. |
+| Objective | After a successful authoritative v1 publication, synchronously ingest the committed immutable native carrier into a transactionally durable **shadow** v2 root backed by a persistent tree/segment DAG and verified native-carrier locators. |
 | Authority invariant | Legacy v1 `manifest.json` is the only read, write, OCC, revision, and publication authority. Shadow artifacts have no `HEAD`, no public resolver, no mount route, no response authority, and no right to delay/undo/delete a committed v1 root. |
 | Payload strategy | Candidate chunks are identified and indexed to verified immutable v1 carrier byte ranges. Stage 04 writes no duplicate chunk payload to loose objects or packs; the native carrier remains the sole authoritative payload location. |
-| Scope | `legacy`/`shadow_write` rollout mode; streaming/disk-spooled capture metadata; post-v1-commit shadow transaction; canonical roots/manifests; typed chunk IDs; locator/index/root catalogs; journals/recovery/quarantine; bounded worker/queue/cache/permit ownership; structured comparison observations. |
+| Scope | `legacy`/`shadow_write` rollout mode; streaming/disk-spooled capture metadata; post-v1-commit common transaction; canonical roots and persistent tree/file/segment objects; typed chunk IDs; locator SST/`CURRENT`; receipts/recovery/quarantine; bounded worker/queue/cache/permit ownership; structured comparison observations. |
 | Non-goals | Candidate public read/materialization; authoritative v2 publication; hydration; pack writing/compaction/GC; retention/lease authority; legacy deletion; migration; squash; StreamCDC fallback/selection; SIMD; broad/release/final performance, RSS, space, or portability qualification. |
-| Entry | Stages 02–03 pass; exact dependency baseline is unchanged; legacy route is healthy; candidate subtree absent or valid empty initialized format; case has enough accounted space for metadata/journal staging; rollout defaults remain `legacy`. |
+| Entry | Stages 02–03 pass; exact dependency baseline is unchanged; legacy route is healthy; candidate subtree is absent or has a valid format marker; case has enough accounted space for metadata and one bounded transaction; rollout defaults remain `legacy`. |
 | Exit | In `shadow_write`, one changed public publish first commits exactly one v1 revision, then produces one matching durable candidate observation keyed to that immutable v1 checkpoint; injected failures never change the public v1 result; recovery is idempotent; candidate resources quiesce; configured bounds and zero external dependency delta pass. In `legacy`, no candidate path or work occurs. |
-| Rollback | Set rollout to `legacy`, stop admitting shadow work, finish/quarantine exact candidate transactions, and remove only the versioned candidate subtree after evidence retention. Never change or delete legacy manifest/base/layers. |
+| Rollback | Set rollout to `legacy`, stop admitting shadow work, finish/quarantine exact candidate transactions, and remove only unreferenced shadow metadata after evidence retention. Never change or delete legacy manifest/base/layers. |
 
 “Shadow complete” means “candidate bytes and locators passed internal comparison for this v1 checkpoint.” It does not mean the v2 root is published or readable. A candidate mismatch is retained as a defect and cannot be masked by the successful legacy response.
+
+### Incremental root construction
+
+The first explicit bootstrap may stream the complete legacy view in
+`O(R+E)`. After that bootstrap, a normal shadow publication must not externally
+merge or rewrite all prior tree records. It:
+
+1. freezes the committed v1 change events;
+2. chunks only new/changed file bytes from the immutable committed carrier;
+3. reuses unchanged `FileNode`, `SegmentPage`, `Chunk`, and `TreeNode` IDs;
+4. rewrites only segment pages and persistent radix paths affected by the
+   changed raw-byte paths; and
+5. commits the new `RootRecord` through
+   `transactions/<id>/{intent,ready,work/}`.
+
+Normal work is `O(U+K+C+V_delta)` plus bounded changed-event ordering, rather
+than work proportional to all `E` entries in the prior tree. Segment pages use deterministic,
+content-defined descriptor-stream boundaries so a local file edit does not
+re-page the unchanged suffix. Stage 04 loose objects contain metadata DAG
+nodes; chunk payload is not duplicated and is resolved through the newly
+installed v1-carrier locator SST.
 
 ## 2. Current evidence
 
@@ -35,10 +65,10 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | observed | product `crates/sandbox-runtime/workspace/src/service/impls/capture_changes.rs:67-106` | Service also materializes `changed_paths` and a path-kind map. | Replace them in shadow mode with counts, bounded samples, and the disk-backed canonical event stream. |
 | observed | product `crates/sandbox-config/src/configs/runtime.rs:130-190` | LayerStack config has no candidate writer mode. | Add closed `shadow_write`; default/production configs remain `legacy`; unknown values fail validation. |
 | observed | product `config/prd.yml`, `config/bench.yml` | Existing roots point to `/eos/layer-stack`, `/eos/workspace`, and old compatibility root. | Add explicit `rollout_mode: legacy`; E2E owns a run-scoped `shadow_write` config. No new root mount is required. |
-| observed | Stage 02 | Core provides canonical root/object/path values and narrow sink/digest contracts; LayerStack retains `sha2`/`serde`. | LayerStack implements all filesystem/catalog/journal/provider adapters. Core remains std-only. |
+| observed | Stage 02 | Core provides canonical root/object/path values and narrow sink/digest contracts; LayerStack retains `sha2`/`serde`. | LayerStack implements filesystem object/ref/transaction/locator/provider adapters. Core remains std-only. |
 | observed | Stage 03 | Scalar SeqCDC is bounded by one 32 KiB ring/≤2 slices and validated against the oracle. | Invoke this exact implementation synchronously inside bounded storage workers. |
 | observed | [Preparation 03 §5](../../prep/03-seqcdc-cas-and-squash-decision.md#5-cdccas-and-native-materialization-decision) | A native immutable carrier may be an authoritative chunk location; duplicating current payload merely for “CAS coverage” is forbidden. | Stage 04 locator records point at carrier ID + canonical relative bytes + offset/length; locator is outside object/root identity. |
-| observed | [Preparation 04 §4.2](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md#42-publication) | Normal publication is `O(U+E+K)` plus bounded external ordering; memory is `O(B)`. | Incremental shadow ingest must meet this. One explicitly labeled bootstrap may scan current state once and is not a normal publication sample. |
+| observed | [Preparation 04 §4.2](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md#42-publication) | Normal publication is bounded by new bytes, changed entries, chunks, bounded ordering, and `O(B)` memory. | The persistent-DAG implementation makes this `O(U+K+C+V_delta)` and forbids work proportional to unchanged `E`; one explicit `O(R+E)` bootstrap is not a normal sample. |
 | observed | [Preparation 04 §6](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md#6-application-memory-complexity-and-limits) | Worker, ring, queue, encoder, cache, publication, and global semaphore limits are fixed. | Every admitted allocation is charged; exhaustion backpressures until deadline then returns shadow `ResourceExhausted` without affecting v1. |
 | open | candidate read correctness | No v2 materializer/resolver exists. | Do not add one here. Comparison uses canonical tree/export evidence, not mounting candidate state. |
 
@@ -79,8 +109,8 @@ ephemeral-sandbox/
         │   ├── shadow/
         │   │   ├── mod.rs                    [add] — construction and public internal API
         │   │   ├── ingest.rs                 [add] — incremental stream/SeqCDC/locator flow
-        │   │   ├── transaction.rs            [add] — journal state and fsync ordering
-        │   │   ├── store.rs                  [add] — canonical layout/catalog/index adapter
+        │   │   ├── transaction.rs            [add] — common intent/ready/commit ordering
+        │   │   ├── store.rs                  [add] — object/root/receipt/locator-SST adapter
         │   │   ├── recovery.rs               [add] — idempotent exact-txn recovery
         │   │   └── observe.rs                [add] — bounded counters/gauges
         │   └── stack/ops/publish.rs          [modify] — invoke shadow only after v1 commit
@@ -90,7 +120,15 @@ ephemeral-sandbox/
 
 Tests and failpoint adapters stay under test modules/integration tests. No diagnostic daemon, sidecar, database, target-image helper, or second scheduler is added.
 
-### Complete `/eos` tree after Stage 04
+### Superseded pre-simplification `/eos` inventory
+
+This inventory is retained only to trace requirements from the earlier design.
+It is not an implementation target: Stage 04 creates only the paths assigned to
+Stage 04 by the
+[simplified storage contract](../layerstack_storage_contract.md#stage-ownership).
+In particular, it does not pre-create catalogs, operation-specific journals,
+operation-specific staging trees, leases, retention, packs, materializations,
+quarantine, or trash.
 
 Annotation tags:
 
@@ -239,17 +277,20 @@ Only `V0–V2`, `I1–I2`, `C1–C3`, `J1`, `T1`, and failure-only `Q1` may cont
 
 | Component | One responsibility | Dependencies | Dependents | Change trigger | Must not own |
 | --- | --- | --- | --- | --- | --- |
-| `CaptureEventStream` | Yield freeze-consistent backend-neutral changes and source handles | workspace/overlay capture | legacy planner, spool | capture semantics | hashing, catalogs, publication lock |
-| `CaptureRunSpool` | Bound and canonically order metadata using disk runs | `std`, candidate txn staging | shadow ingestor | ordering/budget changes | payload copies, root authority |
+| `CaptureEventStream` | Yield freeze-consistent backend-neutral changes and source handles | workspace/overlay capture | legacy planner, spool | capture semantics | hashing, refs, publication lock |
+| `CaptureRunSpool` | Bound and canonically order metadata using disk runs | `std`, transaction `work/` | shadow ingestor | ordering/budget changes | payload copies, root authority |
 | legacy publisher | Commit v1 carrier/manifest with current OCC | existing LayerStack | public response, shadow trigger | legacy publication semantics | candidate root authority |
 | `ShadowIngestor` | Transform committed carrier changes into canonical objects, locators, and root candidate | core SeqCDC/types, bounded store APIs | shadow transaction | v2 ingest schema/profile | v1 commit/rollback, mount/read |
-| `ShadowTransaction` | Enforce journal/fsync/promotion/recovery state machine | LayerStack filesystem adapter | recovery/ingest | durability protocol | logical codec/cut loop |
-| `ShadowStore` | Concrete candidate layout, index, catalog, and native-carrier locator persistence | existing OS/fs/serde/sha edges + core | transaction/observability | physical format | workspace capture, public policy |
-| `ShadowRecovery` | Resolve exact incomplete candidate transactions without changing legacy | journal/store + current v1 checkpoint | LayerStack boot | journal states | broad sweep/delete, legacy repair |
+| `ShadowTransaction` | Specialize the common `intent`/`ready`/commit protocol for shadow ingest | LayerStack filesystem adapter | recovery/ingest | durability protocol | logical codec/cut loop |
+| `ShadowStore` | Persist immutable roots/objects, locator SSTs, receipts, and native-carrier locators | existing OS/fs/serde/sha edges + core | transaction/observability | physical format | workspace capture, public policy |
+| `ShadowRecovery` | Resolve exact incomplete candidate transactions without changing legacy | transaction store + current v1 checkpoint | LayerStack boot | common transaction facts | broad sweep/delete, legacy repair |
 | bounded observation | Report scalar status/resources and correlation IDs | atomics/capped state | operation/E2E | schema version | per-path/chunk telemetry |
 | core | Portable canonical values/SeqCDC only | std | LayerStack | portable schema/algorithm | OS, serde, sha implementation, config |
 
-LayerStack implements hashing, persistence, index/catalog, recovery, and physical provider/locator ports using existing dependencies. The std-only core owns no filesystem repository. Dependency direction remains acyclic:
+LayerStack implements hashing, object/locator/ref/transaction persistence,
+recovery, and physical provider ports using existing dependencies. The
+std-only core owns no filesystem repository. Dependency direction remains
+acyclic:
 
 ```text
 workspace/operation/provider → LayerStack adapters → portable core
@@ -314,20 +355,15 @@ pub struct NativeCarrierLocator {
 pub struct ShadowCheckpoint {
     pub source: LegacyCheckpoint,
     pub root_id: RootId,
-    pub tree_manifest: TreeManifestId,
+    pub tree_id: ObjectId,
     pub legacy_projection_digest: Digest32,
     pub profile: ChunkProfileId,
 }
 
-pub enum ShadowTransactionState {
-    Prepared,
-    ManifestObjectsDurable,
-    LocatorIndexDurable,
-    RootDurable,
-    CatalogIntentDurable,
-    CatalogsInstalled,
-    Compared,
-    Complete,
+pub enum ShadowRecoveryDisposition {
+    AbortWork,
+    RetryReceiptInstall,
+    Committed,
     Quarantined,
 }
 
@@ -340,18 +376,31 @@ pub enum ShadowStatus {
 }
 ```
 
-`FrozenSourceHandle` and `LayerId` are LayerStack/workspace adapter values and never cross into core canonical records. Root records contain the exact Stage 02 `RootRecordV2` fields: format, required capabilities, chunk profile, `TreeManifestId`, parent/base candidate IDs when available, and `PublicationIdentity { generation, id: PublicationId }`. For a shadow checkpoint, the publication ID is deterministically derived from the correlated immutable v1 checkpoint and a collision-safe transaction value. The root record does not contain the v1 hash string or layer locator.
+`FrozenSourceHandle` and `LayerId` are LayerStack/workspace adapter values and
+never cross into core canonical records. Root records contain format, required
+capabilities, chunk profile, the persistent tree root ID, optional weak
+parent/base provenance, and
+`PublicationIdentity { generation, id: PublicationId }`. For a shadow
+checkpoint, the publication ID is deterministically derived from the
+correlated immutable v1 checkpoint and a collision-safe transaction value. The
+root record does not contain the v1 hash string or layer locator.
 
-The roots catalog record is:
+The immutable publication receipt is:
 
 ```text
 (legacy_manifest_version, legacy_root_hash)
-    → (shadow_status=complete, RootId, TreeManifestId, transaction_id, evidence_digest)
+    → (shadow_status=complete, RootId, tree_id, transaction_id, evidence_digest)
 ```
 
-It is a comparison index, not `HEAD`. There is no API to resolve a workspace by this mapping.
+It is comparison evidence, not a head ref. There is no API to resolve a
+workspace by this mapping.
 
-`ShadowStore` uses generation catalogs and immutable pages. Index probes have format-bounded fan-out. Capture metadata is sorted by canonical raw path bytes using runs with merge fan-in eight and 64 KiB per-run buffers. Duplicate path events within one frozen publication coalesce to the final state before root encoding; already durable v1 checkpoints are never coalesced.
+`ShadowStore` uses deterministic loose-object paths and immutable locator SSTs
+selected by `objects/locators/CURRENT`. Locator probes have format-bounded
+fan-out. Capture metadata is sorted by canonical raw path bytes using runs
+with merge fan-in eight and 64 KiB per-run buffers. Duplicate path events
+within one frozen publication coalesce to the final state before root encoding;
+already durable v1 checkpoints are never coalesced.
 
 ## 6. Data and compatibility design
 
@@ -361,15 +410,17 @@ It is a comparison index, not `HEAD`. There is no API to resolve a workspace by 
 | Rollout default | Missing config remains backward-compatible `legacy`; `prd.yml`/`bench.yml` explicitly say `legacy`; `shadow_write` is opt-in POC. |
 | V1→v2 correlation | Exact immutable v1 manifest version/hash captured after commit; never infer from staging or pre-OCC snapshot. |
 | Candidate bootstrap | If no predecessor candidate exists, one explicitly labeled bootstrap may stream the current merged native tree. Its `O(C_current+E_current)` work is excluded from normal incremental publication timing. |
-| Incremental root | External-merge prior disk-backed tree records with current canonical events; no full tree/path/chunk list in memory. |
+| Incremental root | Apply current canonical events to the prior persistent tree and rewrite only touched radix/segment nodes; never scan/rewrite all prior entries and never retain a full tree/path/chunk list in memory. |
 | Payload | Read committed immutable carrier sequentially; scalar SeqCDC; typed SHA-256; locator points to verified range. No loose/pack payload written. |
 | Canonical metadata | Stage 02 path/mode/uid/gid/mtime/xattr/sparse/hardlink/symlink schema; unsupported required state rejects shadow and leaves v1 successful. |
-| Root publication | None. Root file/catalog entry is candidate evidence only; no current-root symlink/file/catalog field exists. |
+| Root publication | None. Root and receipt are candidate evidence only; no branch-head ref exists. |
 | No-op v1 publish | Produces no new candidate checkpoint because there is no new authoritative v1 checkpoint. Counters report skipped-no-op. |
-| Corruption | Invalid candidate file/page/catalog/journal is quarantined or ignored by shadow recovery; it cannot poison v1 open/mount/public operations. |
+| Corruption | Invalid candidate object/SST/transaction/receipt is quarantined or ignored by shadow recovery; it cannot poison v1 open/mount/public operations. |
 | Rollback | Disable mode, drain/recover exact candidate txns, retain/export evidence, delete only candidate namespace; v1 files untouched. |
 
-Canonical objects are immutable and content addressed. Physical locator records, compression, filesystem block placement, catalog page IDs, journal IDs, and native carrier identities are not hashed into them.
+Canonical objects are immutable and content addressed. Physical locator
+records, compression, filesystem block placement, SST/table IDs, transaction
+IDs, and native carrier identities are not hashed into them.
 
 ## 7. Workflow and failure semantics
 
@@ -379,11 +430,17 @@ Canonical objects are immutable and content addressed. Physical locator records,
 2. Stream capture events into bounded sorted metadata runs; never queue payload bytes.
 3. Invoke the existing legacy publisher. It performs its current staging/fsync/rename/OCC/manifest commit.
 4. Record the committed `LegacyCheckpoint`. From this point, v1 is authoritative even if the client disconnects or shadow fails.
-5. Create/fsync `J1` at `Prepared`; ingest only the new immutable carrier plus the prior candidate tree/index (or labeled bootstrap).
+5. Create and `fsync` the common transaction `intent`; ingest only the new
+   immutable carrier plus touched nodes from the prior persistent tree (or the
+   labeled bootstrap).
 6. For each file, run scalar SeqCDC over committed carrier bytes; hash borrowed slices; emit bounded segment and native-carrier locator metadata.
-7. Stream/fsync candidate manifests, index pages, and root in `T1`; verify typed IDs and the canonical logical-tree comparison against the bounded legacy projection digest.
-8. Promote immutable files, fsync their parents, record each monotonic journal state, then atomically install locator/index/root catalog generations; validate that the materialization catalog remains its empty generation.
-9. Mark `Compared`, emit one bounded observation, mark `Complete`, fsync, and remove the journal/staging directory after parent fsync.
+7. Write metadata objects and the locator SST in transaction `work/`, promote
+   them to immutable paths, write/fsync the root, and verify the canonical
+   logical-tree comparison against the bounded legacy projection digest.
+8. Atomically install locator `CURRENT`, then write and `fsync` transaction
+   `ready` naming the verified outputs and proposed receipt.
+9. Atomically install the receipt as the commit pointer, emit one bounded
+   observation, and reap the transaction directory after parent `fsync`.
 10. Return the unchanged legacy public result. The operation observation separately reports shadow status.
 
 ### Authority-preserving failure rules
@@ -391,37 +448,44 @@ Canonical objects are immutable and content addressed. Physical locator records,
 | Failure point | Candidate action | Legacy/public action |
 | --- | --- | --- |
 | before v1 commit | discard/reap candidate metadata spool under existing operation failure | existing legacy error/OCC semantics |
-| v1 commit succeeds, client cancels | journal owns candidate continuation or recovery; fence original request callbacks | committed v1 remains; response-loss semantics remain legacy |
+| v1 commit succeeds, client cancels | durable transaction owns candidate continuation or recovery; fence original request callbacks | committed v1 remains; response-loss semantics remain legacy |
 | candidate admission/space unavailable | record bounded `shadow_failed(ResourceExhausted)`; delete exact unpromoted staging | v1 success unchanged; no authority deletion |
-| reader/SeqCDC/hash/metadata error | stop, journal, quarantine exact candidate txn if diagnostic bytes needed | v1 success unchanged |
+| reader/SeqCDC/hash/metadata error | stop, preserve bounded transaction evidence, quarantine exact candidate txn if diagnostic bytes are needed | v1 success unchanged |
 | typed-ID/index/root comparison mismatch | never install complete root mapping; quarantine and increment mismatch | v1 success unchanged |
-| fsync/rename/catalog error | leave monotonic journal; boot recovery resumes or quarantines idempotently | v1 remains sole boot/read authority |
-| crash after root but before catalogs | recovery sees root durable but no catalog intent/install; validate and resume or reap exact orphan | no v1 change |
-| crash after catalog intent/install | compare catalog generation/idempotently finish; never double-add | no v1 change |
-| corrupt journal | move exact candidate txn to quarantine if safely attributable; otherwise fail shadow initialization closed | v1 service still opens; candidate route disabled |
+| fsync/rename/ref error | leave common transaction facts; boot recovery resumes or quarantines idempotently | v1 remains sole boot/read authority |
+| crash before `ready` | recovery validates any promoted immutable outputs but aborts/reaps uncommitted work | no v1 change |
+| crash after `ready`, before receipt | retry receipt install idempotently or abort on an expectation conflict | no v1 change |
+| corrupt transaction | move the exact candidate txn to quarantine if safely attributable; otherwise fail shadow initialization closed | v1 service still opens; candidate route disabled |
 | `ENOSPC` | preflight before visibility; never delete v1 source; candidate cleanup only | v1 remains authoritative |
-| daemon shutdown | stop admission, cancel/fence tasks, drain/journal within deadline, join all four workers | normal legacy shutdown |
+| daemon shutdown | stop admission, cancel/fence tasks, persist recoverable facts within deadline, join all four workers | normal legacy shutdown |
 
-Candidate recovery is linear in pending journals and bounded cursor work, never all history. It checks whether the referenced v1 checkpoint/carrier still exists. If it cannot complete because the legacy carrier was legitimately removed, it records `missed_source`, quarantines/reaps candidate-only data, and does not resurrect or alter legacy.
+Candidate recovery is linear in pending common transactions and bounded locator
+work, never all history. It checks whether the referenced v1
+checkpoint/carrier still exists. If it cannot complete because the legacy
+carrier was legitimately removed, it records `missed_source`,
+quarantines/reaps candidate-only data, and does not resurrect or alter legacy.
 
 ### Memory/resource lifecycle
 
 | Resource | Owner | Acquire | Hard limit / permit charge | Backpressure/exhaustion | Normal release | Error/cancel/panic | Shutdown/restart |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | storage worker pool | LayerStack shadow service | service start | 4 globally | no fifth worker | idle after task | task guard returns state; panic marks txn failed | stop admission, join all 4; boot rebuilds |
-| SeqCDC ring/borrow | one active worker | file scan | 32 KiB; one borrowed chunk/worker, ≤4 global | worker synchronous | callback/file end | RAII | no retained payload |
 | downstream payload | none | never | 0 bytes | synchronous visitor | N/A | N/A | 0 |
 | descriptor queue | shadow publication | admission | ≤16 items and ≤64 KiB serialized | wait until deadline, then shadow `ResourceExhausted` | drained to zero | guard drains/fences | recovered txn owns only disk cursor |
-| capture/sort metadata | transaction | event stream | ≤4 MiB managed/publication excluding shared cache; each changed path≤256 B+path | spill run; never grow tree map | run merge/delete | journaled exact staging | boot exact-txn reap/resume |
-| manifest/journal encoder | transaction | record encode | ≤256 KiB/admitted operation | stream/spill or fail | after fsync | drop, journal remains | resume from durable state |
-| merge readers | transaction | merge phase | fan-in 8 ×64 KiB | multipass runs | close each pass | close + exact run cleanup | journal cursor |
+| capture/sort metadata | transaction | event stream | ≤4 MiB managed/publication excluding shared cache; each changed path≤256 B+path | spill run; never grow tree map | run merge/delete | transaction-owned exact work | boot exact-txn reap/resume |
+| object/transaction encoder | transaction | record encode | ≤256 KiB/admitted operation | stream/spill or fail | after fsync | drop; durable facts remain | resume from `intent`/`ready` |
+| merge readers | transaction | merge phase | fan-in 8 ×64 KiB | multipass runs | close each pass | close + exact run cleanup | transaction work cursor |
 | shared index cache | shadow store | first lookup | 4,096 ×4 KiB=16 MiB | bounded eviction | warmed idle retained | poisoned page evicted/fails txn | service drop/rebuild |
 | global storage byte permits | LayerStack | admission/allocation | 64 MiB | wait to deadline → failure | exact RAII return | unwind/cancel returns | gauge must be zero before shutdown |
-| transaction FDs/mappings | transaction | file/page operations | bounded by workers + merge fan-in + current journal/catalog; no mmap required | close before next phase | close after fsync | RAII/cleanup | boot does not inherit FDs |
-| task/transaction registry | LayerStack | admission | bounded by four workers/admitted publications | reject/backpressure | terminal entry removed | fenced terminal state | reconstructed only from journals |
+| transaction FDs/mappings | transaction | file/SST operations | bounded by workers + merge fan-in + current transaction/SST; no mmap required | close before next phase | close after fsync | RAII/cleanup | boot does not inherit FDs |
+| task/transaction registry | LayerStack | admission | bounded by four workers/admitted publications | reject/backpressure | terminal entry removed | fenced terminal state | reconstructed only from transaction directories |
 | observer counters | service | construction | fixed scalars/capped last error | saturate with explicit flag | owner drop | no path/payload retention | epoch changes on restart |
 
-Quiescence is: admitted shadow tasks zero; descriptor queue/bytes zero; byte permits zero; open shadow transactions zero or durably recovery-owned; worker pool at configured idle four; no borrowed chunk; staging/journal absent for completed transactions; cache ≤4,096 pages. Poll every 100 ms for ≤5 seconds in POC. Logical release is distinct from physical RSS.
+Quiescence is: admitted shadow tasks zero; descriptor queue/bytes zero; byte
+permits zero; open shadow transactions zero or durably recovery-owned; worker
+pool at configured idle four; no borrowed chunk; completed transaction
+directories absent; cache ≤4,096 pages. Poll every 100 ms for ≤5 seconds in
+POC. Logical release is distinct from physical RSS.
 
 ## 8. Complexity and performance contract
 
@@ -429,12 +493,43 @@ Quiescence is: admitted shadow tasks zero; descriptor queue/bytes zero; byte per
 
 | Operation | Expected/worst time | Application memory | Payload/space |
 | --- | --- | --- | --- |
-| normal incremental capture + shadow ingest | `O(U+E+K)` plus bounded external-sort comparison/I/O | `O(B)` | reads `U`; writes metadata only |
+| normal incremental capture + shadow ingest | `O(U+K+C+V_delta)` plus bounded changed-event ordering | `O(B)` | reads `U` plus touched metadata nodes; writes metadata only |
 | first labeled bootstrap | `O(C_current+E_current+K_current)` | `O(B)` | reads current native tree; excluded from normal latency sample |
 | SeqCDC + typed hash | `O(U+K)=O(U)` | one 32 KiB ring/worker | no payload copy |
-| index/catalog update | format-bounded `O(K)` probes plus external merge | cache 16 MiB shared, bounded run readers | immutable pages + catalog metadata |
-| candidate recovery | `O(pending journals + bounded cursor work)` | `O(B)` | exact candidate transaction only |
+| locator-SST update | format-bounded `O(K)` records plus bounded merge/compaction | cache 16 MiB shared, bounded run readers | immutable SST plus `CURRENT` metadata |
+| candidate recovery | `O(pending transactions + bounded locator work)` | `O(B)` | exact candidate transaction only |
 | legacy publication | existing behavior | existing + bounded shadow admission | sole public authority |
+
+### Downstream branch/MCTS CoW consequence
+
+Stage 04 establishes the publication and chunk-reuse half of the later
+branch/MCTS storage contract. It does not implement graph scheduling,
+evaluation, trajectory retention, or backpropagation.
+
+| Later action | Required storage behavior | Cost that remains |
+| --- | --- | --- |
+| clean `branch(parent)` | Reference and pin the sealed parent `RootId`; add bounded graph/policy metadata; never clone the parent tree or native materialization. | `O(1)` work and zero newly allocated filesystem payload bytes in the size of the parent state. Metadata is not zero, and the pin may extend the lifetime of already allocated parent bytes. |
+| activate one rollout | Resolve the selected `RootId` to leased native lowers and create one fresh, private OverlayFS upper/work pair. | Warm activation remains `O(D)`; the private upper is charged to `ΣU_active`. An inactive node owns no upper, mount, or process. |
+| expand an already-expanded node | Resolve that same immutable parent root for each newly admitted child attempt. | Each attempt is an independent flat mount. It must not mount over the parent's live merged workspace or turn graph depth into nested OverlayFS depth. |
+| publish one rollout | Scan new payload only from its private upper, apply canonical events to the prior persistent tree, reuse unchanged object identities and immutable carrier ranges, and create an immutable child root. | `O(U+K+C+V_delta)` work plus bounded changed-event ordering. Stage 04 itself writes exactly zero duplicate candidate payload. |
+| settle inactive history | Retain roots/pins and shared cold objects; after Stage 08 lease-safe evacuation, do not require one permanent native materialization per inactive graph node. | New unique history, roots/manifests/indexes, search metadata, and retained evaluation artifacts remain real costs. |
+
+The CoW guarantee is therefore about parent-payload reuse, not zero-cost
+rollouts:
+
+```text
+new_payload_bytes(clean branch(parent)) = 0
+```
+
+Native OverlayFS CoW is file-granular. A first write to a lower-only file of
+size `F` may copy the complete file into the private upper, so a one-byte edit
+can produce `O(F)` active-upper and freshly published native-carrier bytes and
+`O(F)` scan/hash work. CDC/CAS can reuse unchanged chunks when history is
+evacuated into shared cold storage; it does not make live copy-up,
+publication I/O, or a required hot materialization proportional only to the
+edited byte count. Rollout, reward, trajectory, evaluation, and exactly-once
+backpropagation records are separate from storage manifests and must be
+bounded and accounted by Phase 2.
 
 ### Exact Preparation 04 gate disposition
 
@@ -443,21 +538,21 @@ Quiescence is: admitted shadow tasks zero; descriptor queue/bytes zero; byte per
 | Portable canonical IDs/paths/metadata; physical locator excluded; safe/std-only core | **stage-gating** |
 | Exact scalar author-v1 profile, oracle cuts, 8,192/16,384/32,768 B, threshold5/opposing50/jump512, 32 KiB ring,≤2 slices, chunk-count bounds | **stage-gating** inherited and integrated |
 | Scalar cut core≤300 non-test lines; no unsafe/SIMD | **stage-gating** |
-| Incremental publication `O(U+E+K)` plus bounded external ordering; no whole tree/history/chunk list | **stage-gating**; labeled first bootstrap is separately `O(C_current+E_current)` and cannot be scored as normal |
+| Incremental publication `O(U+K+C+V_delta)` plus bounded changed-event ordering; no unchanged-tree scan/rewrite or whole tree/history/chunk list | **stage-gating**; labeled first bootstrap is separately `O(C_current+E_current)` and cannot be scored as normal |
 | 4 global workers; per-worker 32 KiB ring; ≤4 borrowed chunks; downstream payload 0; metadata queue16/≤64KiB; encoder≤256KiB; cache4096×4KiB;≤4MiB/publication excl cache; global semaphore64MiB | **stage-gating** |
 | External merge fan-in 8 with 64 KiB/run | **stage-gating** for capture/tree/index ordering |
 | 256 KiB pack-read and hydration-output buffers | **not-applicable**; no pack read or hydration exists |
 | Publication payload peak `C_capture` plus staging≤5% of `C_capture`; metadata visible in `M` | **stage-gating**: candidate payload staging is exactly 0; legacy `C_capture` unchanged; all candidate metadata/staging separately measured. Final total envelope remains Stage 11. |
 | ENOSPC preflight; never delete authority to make room | **stage-gating** |
 | Metadata budgets chunk≤96 B, segment≤64 B, changed path≤256 B+path | **stage-gating** on encoded/amortized candidate records; total-corpus accounting `deferred-to-stage_11` |
-| Journal residue ≤`1MiB + min(1% retained,64MiB)` and no pending transaction at clean settle | **stage-gating** for Stage 04 candidate journals/staging |
+| Transaction residue ≤`1MiB + min(1% retained,64MiB)` and no pending transaction at clean settle | **stage-gating** for Stage 04 common transactions |
 | Warm resolve/session + mount p50/p95≤baseline+5%+2ms and zero CAS reads | zero candidate/CAS reads **stage-gating**; normative p50/p95 `deferred-to-stage_11` |
 | No-op exec p50/p95≤+3%+0.5ms; command/native sequential I/O≥97%; PTY create≤+3%+1ms; drain/stdin/C/D≤+3%+0.5ms; unsupported unchanged | behavior compatibility **stage-gating**; normative performance `deferred-to-stage_11` |
 | Small-edit publish p95≤baseline+15%+5ms; report scanned/new bytes | Stage 04 reports diagnostic paired values; normative gate **deferred-to-stage_11** |
 | Concurrent disjoint publication≥90% baseline and OCC | **deferred-to-stage_07** |
 | Cold hydration≥70% copy; activation p95≤1.5× copy+warm | **deferred-to-stage_05** |
 | Packs≤64MiB payload/100k records/80MiB allocation; compact≥20% dead, urgent>5%, settle≤2%; slice≤100k or64MiB; grace≥1 epoch | **not-applicable** to reserved-empty pack/maintenance paths; implementation **deferred-to-stage_08** |
-| Depth async≥48/hard≤64; routine squash benefit≥8/manual≥2; squash timing/identity | **deferred-to-stage_09** |
+| Depth async≥48/hard≤64; routine squash benefit≥8; manual selected run≥2 lowers; squash timing/identity | **deferred-to-stage_09** |
 | Candidate hard fails on warm byte growth/CAS read, maintenance hot path, superlinear hydration, monotonic settled latency, operation>60s | no read/maintenance/hydration path **not-applicable**; every Stage 04 operation<60s **stage-gating** |
 | SeqCDC selection≥10% for localized source/mixed tree; no-dedup/small-files≤3% regression; 3 matched sets,≥5 interleaved, counterbalanced, bootstrap 95% LCB≥.10; equal mean≤5%, p10/p50/p90≤10% | **deferred-to-stage_11** |
 | Unique payload≤1.14× StreamCDC; locality target change+2×32KiB+segment for `F≥16MiB`, change≤64KiB; hard median>4× or any≥25%F | Stage 04 reports candidate logical unique/locality diagnostics; normative corpus gate **deferred-to-stage_11** |
@@ -465,7 +560,7 @@ Quiescence is: admitted shadow tasks zero; descriptor queue/bytes zero; byte per
 | avoidable duplicate≤1%/hard>3%; pack slack≤2%/hard>5%; unexplained unreachable=0/any; depth<64/hard>64 | duplicate candidate payload=0 and unexplained candidate residue=0 **stage-gating**; full thresholds `deferred-to-stage_11`; pack slack N/A |
 | RSS≤384MiB absolute/≤128MiB above idle; 64/256/1024MiB×roots1/16/64×3 cold; final/peak variation≤16MiB and each4×≤8MiB | **deferred-to-stage_11**; Stage 04 runs a short logical-release/RSS diagnostic |
 | Long-lived release without restart, `malloc_trim`, allocator change, cache purge, arbitrary sleep | logical resource release **stage-gating**; final physical slope/noise qualification **deferred-to-stage_11** |
-| Required-release host matrix on sole pinned Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`, resolved platform manifest recorded, no target-image userland/network/helper/new privilege | source/dependency/no-userland contract **stage-gating**; executed host rows **deferred-to-stage_11**; cross-image portability is beyond Phase 1 and non-gating |
+| Required-release host and Prep 04 Phase-1 image matrix: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root; resolved platform manifest recorded; no target-image userland/network/helper/new privilege | source/dependency/no-userland contract **stage-gating**; executed host/image rows **deferred-to-stage_11**; Stage 04's pinned Ubuntu row alone makes no qualification claim |
 | candidate/baseline pair≤5min | **not-applicable** to this POC; final benchmark pairs `deferred-to-stage_11` |
 
 Stage 04 does not implement StreamCDC fallback. A SeqCDC shadow failure produces an explicit shadow failure while v1 remains authority; it must not silently run another chunker and call the comparison complete.
@@ -495,12 +590,12 @@ flowchart TB
   FILE --> CDC["32 KiB scalar SeqCDC"]
   CDC --> ID["typed chunk ObjectId"]
   FILE --> LOC["carrier + path + offset + length"]
-  ID --> SEG["canonical file segments"]
-  SEG --> TREE["TreeManifestId"]
+  ID --> SEG["persistent segment pages"]
+  SEG --> TREE["persistent TreeNode root"]
   TREE --> ROOT["candidate RootId"]
-  LOC --> CAT["locator catalog/index"]
-  CAT -. excluded from identity .-> ROOT
-  ROOT --> OBS["mapping to committed v1 checkpoint<br/>not HEAD"]
+  LOC --> SST["locator SST + CURRENT"]
+  SST -. excluded from identity .-> ROOT
+  ROOT --> OBS["receipt for committed v1 checkpoint<br/>not a branch head"]
 ```
 
 ### Successful publication sequence
@@ -518,11 +613,11 @@ sequenceDiagram
   V1->>Disk: atomic manifest.json commit
   V1-->>Op: committed v1 checkpoint
   Op->>S: ingest committed carrier
-  S->>Disk: journal PREPARED (fsync)
-  S->>Disk: manifests/index/root (verify + fsync)
-  S->>Disk: catalog intent/install (atomic + fsync)
+  S->>Disk: intent (fsync)
+  S->>Disk: objects/SST/root (verify + fsync)
+  S->>Disk: locator CURRENT + ready (atomic + fsync)
   S->>S: compare canonical logical tree
-  S->>Disk: COMPLETE; reap journal/staging
+  S->>Disk: receipt commit; reap transaction
   Op-->>Client: unchanged legacy result
   Note over V1,S: candidate never becomes public authority
 ```
@@ -533,19 +628,18 @@ sequenceDiagram
 stateDiagram-v2
   [*] --> LegacyPending
   LegacyPending --> NoCandidate: legacy fails
-  LegacyPending --> Prepared: legacy commits
-  Prepared --> ObjectsDurable
-  ObjectsDurable --> IndexDurable
-  IndexDurable --> RootDurable
-  RootDurable --> CatalogIntent
-  CatalogIntent --> CatalogsInstalled
-  CatalogsInstalled --> Compared
-  Compared --> Complete
-  Prepared --> Quarantined: read/hash/resource/corruption failure
+  LegacyPending --> Intent: legacy commits
+  Intent --> ObjectsDurable
+  ObjectsDurable --> LocatorDurable
+  LocatorDurable --> RootDurable
+  RootDurable --> Ready
+  Ready --> Compared
+  Compared --> ReceiptCommitted
+  Intent --> Quarantined: read/hash/resource/corruption failure
   ObjectsDurable --> Quarantined: ID/fsync failure
-  IndexDurable --> Quarantined: index validation failure
-  CatalogsInstalled --> Quarantined: logical mismatch
-  Complete --> [*]: journal/staging reaped
+  LocatorDurable --> Quarantined: locator validation failure
+  Ready --> Quarantined: logical mismatch
+  ReceiptCommitted --> [*]: transaction reaped
   Quarantined --> [*]: evidence retained under quota
   NoCandidate --> [*]
 ```
@@ -554,18 +648,28 @@ stateDiagram-v2
 
 1. Create/use exact `upgrade-2.0-phase-1` from the newest approved immutable product revision; record immutable product/test/doc bases; verify Stage 02–03 exits and exact dependency snapshots. Planning itself creates no branch.
 2. Add `ShadowWrite` config parsing/validation with compatible default `Legacy`; keep checked-in production/benchmark configs explicitly legacy.
-3. Add canonical candidate layout initialization/validation. Initialize reserved namespaces empty; reject wrong versions/unknown populated Stage 04 namespaces.
+3. Add only the Stage 04 paths assigned by the simplified storage contract;
+   reject wrong format versions and unknown populated namespaces.
 4. Refactor capture behind `CaptureEventStream` with freeze ownership and bounded metadata run spool. First prove byte-for-byte v1 behavior under `legacy`.
 5. Add bounded external ordering/coalescing with eight 64 KiB readers, encoder≤256 KiB, per-publication≤4 MiB, and no payload queue.
-6. Implement `ShadowStore` immutable files/pages, atomic generation catalogs, native-carrier locators, and format validation using existing LayerStack filesystem/serde/sha responsibilities.
-7. Implement monotonic `ShadowTransaction` journal states and failpoints around every write/fsync/rename/catalog intent/install/comparison/cleanup boundary.
+6. Implement `ShadowStore` immutable metadata objects, roots, locator SSTs,
+   receipts, and native-carrier locators using existing
+   LayerStack filesystem/serde/sha responsibilities.
+7. Implement the common `intent`/`ready`/receipt-commit transaction protocol
+   and failpoints around every write/fsync/rename/commit/cleanup boundary.
 8. Invoke shadow only from the committed v1 result. Fence cancellation/late callbacks; ensure every shadow error maps to observation only and never rewrites public result.
 9. Integrate the exact Stage 03 scalar SeqCDC/typed hash visitor over committed carrier files; emit bounded segment/locator records and no payload object.
-10. Build incremental root by disk merge with the prior completed candidate. Implement separately labeled one-time bootstrap without using it for normal timing.
-11. Add logical comparison, root/locator/index catalogs, idempotent recovery, quarantine, and exact-txn cleanup. Initialize but keep materialization state empty; prohibit any candidate resolver/mount route.
+10. Build incremental roots by path-copying only touched persistent
+    tree/segment nodes. Implement the separately labeled one-time bootstrap
+    without using it for normal timing.
+11. Add logical comparison, locator SST installation, receipts, idempotent
+    recovery, quarantine, and exact-transaction cleanup. Prohibit any candidate
+    resolver/mount route.
 12. Add bounded route/status/resource/accounting observations and saturation tests; no path/chunk labels.
 13. Run focused legacy-off, shadow happy/no-op/failure/restart/corruption/resource/long-lived tests plus the external POC and tiny diagnostic in [e2e_test.md](e2e_test.md).
-14. Compare exact dependencies/source/system/image inventories and inspect the annotated `/eos` tree. Any unexpected child or pending clean-settle journal blocks.
+14. Compare exact dependencies/source/system/image inventories and inspect the
+    canonical `/eos` tree. Any unexpected child or pending clean-settle
+    transaction blocks.
 15. Preserve all defects/evidence. Stage 05 is unblocked only for candidate read/materialization work; authority remains v1.
 
 ## 11. Observability
@@ -585,11 +689,42 @@ The existing authenticated observation gains a versioned bounded shadow record:
 | `payload_bytes_written` | must be `0` |
 | `active_tasks`, `idle_workers`, `queue_items`, `queue_bytes`, `permits_in_use`, `open_transactions`, `open_fds`, `mapped_bytes` | current and high-water where meaningful; unavailable explicit |
 | `index_cache_pages`, `managed_publication_bytes`, `encoder_bytes`, `sort_fan_in` | current/high-water and configured cap |
-| `L_hot`, `H_cold`, `U_active`, `P_staging`, `M`, `quarantine_bytes`, `journal_bytes`, `unreachable_candidate_bytes` | physical accounting; `H_cold=0` and candidate payload duplicate=0 |
-| `last_failure_kind`, `last_journal_state`, `counter_saturated` | closed/bounded diagnostic |
+| `L_hot`, `H_cold`, `U_active`, `P_staging`, `M`, `quarantine_bytes`, `transaction_bytes`, `unreachable_candidate_bytes` | physical accounting; `H_cold=0` and candidate payload duplicate=0 |
+| `last_failure_kind`, `last_transaction_fact`, `counter_saturated` | closed/bounded diagnostic |
 | `quiescence_epoch` | changes only after completed drain; restart gets a new process epoch |
 
 Public publish responses do not expose `RootId` or shadow status and retain their existing schema. Logs never carry arbitrary paths, object IDs per chunk, payload bytes, xattrs, or unbounded failure text. Evidence stores a bounded transaction/root correlation and aggregate digest; missing accounting is a failure, not zero.
+
+### Performance arrival checkpoint
+
+Stage 04 is not reached until the tiny and unchanged-prior-tree experiments in
+[benchmark_note.md](benchmark_note.md) produce and validate:
+
+```text
+.benchmark-state/results/<run_id>/stage-04-perf-report.json
+.benchmark-state/results/<run_id>/stage-04-perf-report.md
+```
+
+The JSON machine truth uses
+`schema_version=phase1.stage04.perf-report.v1`; Markdown renders the same
+record. Both include provenance and immutable run/raw links; raw legacy and
+shadow samples; frozen baseline actual; required pass target/cap; separately
+predeclared optimization target; candidate actual; delta/ratio/headroom;
+`U/C/K/V_delta`, prior-tree records/pages/bytes and changed-event work; all queue/worker/
+cache/permit memory and RSS values; every physical-space category; explicit
+zero payload copy/write/staging values; allocated-byte
+`C_capture+P_staging<=1.05*C_capture` numerator/denominator/headroom; the
+benchmark note's cancellation, crash-state, ENOSPC, backpressure-deadline,
+same-key retry/idempotency, and all 18 transaction-boundary outcomes; canonical
+before/after external package/version/source/checksum, feature, and direct-edge
+arrays with empty symmetric differences plus zero system/runtime/image-helper
+deltas; cleanup; and
+`DIAGNOSTIC_PASS|FAIL|OPEN`. The first Markdown table exposes those comparison
+fields per stage-owned metric. Raw-relative caps name the raw baseline;
+absolute “minus N ms” targets are unsupported. Report schemas, artifact links,
+the append-only benchmark tracker, and matching Plan/Run plus Good/Defect
+entries in `e2e/test-report.md` must all validate before arrival. This is
+diagnostic, not Stage 11 qualification.
 
 ## 12. Completion checklist
 
@@ -599,14 +734,16 @@ Public publish responses do not expose `RootId` or shadow status and retain thei
 - [ ] V1 manifest remains the sole read/write/OCC/revision/publication authority and public response.
 - [ ] Shadow begins only after a committed immutable v1 checkpoint; no candidate `HEAD`, reader, mount, or resolver exists.
 - [ ] Candidate payload is not duplicated: loose/packs remain empty and locators point to verified immutable v1 carrier ranges outside identity.
-- [ ] Capture/tree/index paths are streaming/disk-backed and meet all worker/ring/queue/encoder/cache/publication/semaphore/fan-in bounds.
-- [ ] Incremental normal work is `O(U+E+K)` plus bounded external ordering; bootstrap is explicit and excluded from normal samples.
-- [ ] Journal/fsync/rename/catalog ordering and every failpoint recover idempotently without altering v1.
+- [ ] Capture/tree/locator paths are streaming/disk-backed and meet all worker/ring/queue/encoder/cache/publication/semaphore/fan-in bounds.
+- [ ] Incremental normal work is `O(U+K+C+V_delta)` plus bounded changed-event ordering with no unchanged-tree scan/rewrite; bootstrap is explicit and excluded from normal samples.
+- [ ] `intent`/`ready`/receipt-commit and fsync/rename ordering recover idempotently at every failpoint without altering v1.
 - [ ] ENOSPC, corruption, cancellation, panic, mismatch, restart, and cleanup preserve v1 and leave only bounded explained candidate residue.
-- [ ] Clean settle has no pending transaction and journal residue is within the strict bound.
+- [ ] Clean settle has no pending transaction and transaction residue is within the strict bound.
 - [ ] Candidate record metadata meets 96/64/256+path budgets; payload staging/writes are zero.
+- [ ] Peak allocated `C_capture+P_staging<=1.05*C_capture`; `C_capture`, `P_staging`, ratio, and headroom are directly reported and metadata remains separately visible in `M`.
 - [ ] Logical resources quiesce with four idle workers, zero tasks/queue/permits/transactions/borrows, and bounded cache.
 - [ ] Exact external package/version/feature/direct-edge delta is zero; no system/image/runtime helper/dependency exists.
 - [ ] Legacy mode creates no candidate namespace/work; shadow mode creates only the explicitly active canonical paths.
 - [ ] Full annotated `/eos` layout, at least three diagrams, metrics, failure semantics, and exact gate dispositions agree.
+- [ ] Versioned Stage 04 JSON and Markdown performance-arrival reports validate, include the prior-tree and zero-payload evidence, and are linked from both append-only ledgers.
 - [ ] E2E verdict is POC-only and claims no candidate authority, final selection, final performance/RSS/space, portability matrix, broad CI, release, or production readiness.

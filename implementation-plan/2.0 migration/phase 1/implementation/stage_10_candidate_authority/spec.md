@@ -1,9 +1,37 @@
 # Stage 10 — Candidate authority with legacy shadow and read rollback
 
-[Implementation overview](../index.md) · [Stage 10 E2E plan](e2e_test.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [Stage 10 E2E plan](e2e_test.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Candidate authority and legacy-shadow progress
+> are the two bounded atomic files `control/authority` and
+> `control/legacy-shadow`. Migration uses the common transaction shape.
+> Separate authority, legacy-shadow, and migration catalogs/journals are
+> superseded.
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+## Performance arrival checkpoint
+
+Stage 10 has not reached its exit until the authority tiny/sentinel run emits
+versioned `.benchmark-state/results/<run-id>/stage-10-perf-report.json` and
+`stage-10-perf-report.md` with
+`schema_version="phase1.stage10.perf-report.v1"`. Both reports must identify
+the frozen baseline actual, required pass target/cap, separately predeclared
+optimization target, candidate actual, and delta/ratio/headroom; include
+complexity/work counters, logical-resource high-water counters, memory/RSS,
+complete physical-space terms, links
+between the reports and to run/raw artifacts, and measurement provenance; and
+issue `DIAGNOSTIC_PASS` or `FAIL`—never final `QUALIFIED`. The first Markdown
+table exposes those comparison fields per stage-owned metric.
+
+After the immutable reports exist, update the append-only tracker in
+[the benchmark note](benchmark_note.md), update the
+[overall scorecard](../stage_03_11_benchmark_note.md), and append the command,
+outcome, report links, and cleanup to `e2e/test-report.md`. The healthy-run
+planning estimate is **ESTIMATED**: 30–60 s for the core tiny loop, 35–72 s
+for the 20-cycle sentinel, and 65–135 s for the full local bundle. Every
+operation/cell remains ≤60 s and every matched invocation ≤5 min.
 
 ## 1. Stage contract
 
@@ -12,9 +40,9 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | Tier | **POC proof tier**; first explicit candidate-authority exercise, focused correctness/recovery, bounded soak/tiny loop, coarse long-lived memory sentinel |
 | Branch policy | Planning creates no branch. Implementation requires the exact branch `upgrade-2.0-phase-1`, created from the newest approved immutable product revision before Phase 1 implementation begins. |
 | Depends on | Stages 00–09: frozen authority/resource evidence, portable identities and publications, strict candidate read, durable shadow publication, bounded retention/GC/packs, and identity-preserving materialization squash |
-| Useful capability at exit | In explicit `candidate_authoritative_with_legacy_shadow` mode, the candidate root-catalog CAS is the single publication linearization point and candidate strict read is normal authority. A derived legacy v1 shadow stays generation-correlated for an explicit, quiesced read rollback. |
+| Useful capability at exit | In explicit `candidate_authoritative_with_legacy_shadow` mode, the candidate branch-head ref CAS is the single publication linearization point and candidate strict read is normal authority. A derived legacy v1 shadow stays generation-correlated for an explicit, quiesced read rollback. |
 | First-authority rule | This is the first stage allowed to report candidate write/read authority. Stages 00–09 must remain legacy-authoritative. |
-| Scope | Durable authority epoch, candidate receipt/retry semantics, candidate-strict read, ordered legacy shadow adapter/cursor, parity checks, explicit caught-up legacy read rollback, mixed-root restart, failpoints, bounded POC soak, observations |
+| Scope | Durable atomic `control/authority`, candidate receipt/retry semantics, candidate-strict read, atomic `control/legacy-shadow`, parity checks, explicit caught-up legacy read rollback, mixed-root restart, failpoints, bounded POC soak, observations |
 | Non-goals | Candidate default for ordinary deployments, silent legacy fallback, legacy writer competition, deletion/retirement of any legacy path/code/config, full affected suite or normative time/space/RSS/portability qualification; all are Stage 11 |
 | Entry | Stage 09 passes exact identity and lease invariants; Stage 08 reports zero unexplained bytes; all candidate roots required for cutover reconstruct; legacy and candidate shadow agree at a recorded generation; dependency fingerprint equals Stage 00. |
 | Exit | Focused candidate publications/retries/restarts have one receipt and one root generation; candidate reads never silently fall back; legacy shadow reaches exact parity; explicit read rollback serves only a cursor proven equal to current candidate generation; mixed roots survive restart; bounded soak releases resources; no legacy artifact is retired; external delta is zero. |
@@ -62,7 +90,7 @@ ephemeral-sandbox/
 │   │   │   └── recovery.rs                                 [add]
 │   │   ├── checkpoint/publication.rs                        [modify] — candidate CAS is authoritative
 │   │   ├── stack/ops/publish.rs                             [modify] — expose legacy shadow sink only
-│   │   ├── storage/catalog.rs                               [modify] — authority/shadow generation records
+│   │   ├── storage/control_store.rs                         [modify] — authority and shadow control files
 │   │   └── service/observe.rs                               [modify] — bounded authority/parity evidence
 │   └── tests/
 │       ├── candidate_authority.rs                           [add]
@@ -86,7 +114,13 @@ ephemeral-sandbox-test/
 └── benchmark/presets/layerstack-phase1-tiny-authority-soak.yml [add]
 ```
 
-### Complete `/eos` view after Stage 10
+### Superseded pre-simplification `/eos` inventory
+
+This inventory is retained only for requirement traceability. The normative
+Stage 10 delta is `control/{authority,legacy-shadow}` and the common
+`transactions/<TransactionId>/` shape from the
+[simplified storage contract](../layerstack_storage_contract.md#stage-ownership);
+it does not add an authority catalog or migration-specific journal family.
 
 Bracket order:
 `[change; class; owner; create→visible→durable→recover→delete; identity; access/authority; bound; space; exposure]`.
@@ -205,7 +239,7 @@ The dependency rule is one-way: candidate commit → immutable receipt → compa
 | Boundary | Host/image assumption before | Assumption after | Portable core or provider adapter | Evidence now | Later evidence |
 | --- | --- | --- | --- | --- | --- |
 | identity/receipt | current-host persistence implementation | explicit-width/order, typed digests, no host/provider values | portable core; filesystem adapter persists atomically | scalar golden and restart | cross-host/CPU release triples `deferred-to-stage_11` |
-| candidate read | Docker is the only live provider | immutable root + provider-neutral materialization contract | Docker adapter activates verified native carrier | public API on sole pinned Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | required hosts use that same image in Stage 11; cross-image portability is after Phase 1 and non-gating |
+| candidate read | Docker is the only live provider | immutable root + provider-neutral materialization contract | Docker adapter activates verified native carrier | Stage 10 focused public-API proof on pinned Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | Stage 11 runs the full Prep 04 host/image capability matrix: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less fixtures plus read-only and non-root variants |
 | legacy shadow | v1 filesystem shape is coupled to legacy authority | semantic tree/change input plus generation correlation | legacy compatibility adapter owns v1 encoding | exact parity/inventory | retirement decision `deferred-to-stage_11` |
 | rollback | legacy fallback could be mistaken for recovery | explicit epoch/cursor parity and no implicit fallback | authority orchestration + quiesced provider remount | focused recovery | full soak/operator gate `deferred-to-stage_11` |
 | future providers | Docker-only implementation | same root/receipt/lease/retention contracts | provider adapters own materialization/activation | dependency boundary only; designed-compatible | unverified until named/executed in Stage 11 |
@@ -417,7 +451,7 @@ The 20-cycle POC soak uses one daemon and no reset. Logical gauges must settle. 
 
 | Operation | Inputs | Expected time | Worst-case time | Peak app memory | Temporary disk | Settled physical disk | I/O pattern |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| candidate publication | captured bytes `C_capture`, changed paths `P`, catalog pages `G` | `O(C_capture+P+G)` | same streaming order plus bounded OCC retry; ≤60 s/operation | 32 KiB ring; 256 KiB worker buffers ×4; 16/64 KiB queue; ≤256 KiB encoding; 16 MiB shared cache; ≤4 MiB/publication; 64 MiB semaphore | journal + objects/manifest/root staging with `P_staging≤5% C_capture` target | deduplicated objects/root plus categorized metadata under complete envelope | sequential CDC/object writes, bounded catalog pages, fsync/rename |
+| candidate publication | unique captured bytes `U`, changed entries `E`, chunks `K`, and bounded catalog pages | `O(U+E+K)` plus bounded external ordering up to `O(E log E)` | same streaming order plus bounded OCC retry; ≤60 s/operation | 32 KiB ring; 256 KiB worker buffers ×4; 16/64 KiB queue; ≤256 KiB encoding; 16 MiB shared cache; ≤4 MiB/publication; 64 MiB semaphore | journal + objects/manifest/root staging with `P_staging≤5% C_capture` target | deduplicated objects/root plus categorized metadata under complete envelope | sequential CDC/object writes, bounded catalog pages, fsync/rename |
 | root OCC/receipt retry | one expected generation and `PublicationId` | bounded catalog lookup/CAS | bounded conflict/restart path; ≤60 s | ≤256 KiB receipt/catalog encoding | one journal until terminal | one committed root/receipt; retry adds no payload | bounded pages and atomic CAS |
 | candidate warm activation | native depth `D≤64` | `O(D)` | provider switch bound; ≤60 s | native descriptors/leases only | provider mount staging | selected native carriers | zero CAS payload reads; native mount |
 | legacy shadow | committed change bytes `C`, changed paths `P` | `O(C+P+v1 carrier write)` | ordered single transaction/restart; ≤60 s | bounded streaming buffer; zero independent payload queue | v1 layer staging + shadow journal | current retained legacy shadow plus candidate policy state; categorized coexistence | sequential compatibility write, cursor fsync/rename |
@@ -435,7 +469,7 @@ The 20-cycle POC soak uses one daemon and no reset. Logical gauges must settle. 
 | mixed v1/v2 roots and restart recovery | `stage-gating` | focused mixed-root case |
 | fixed SeqCDC `seqcdc-scalar-author-v1`: min 8,192, target 16,384, max/window 32,768 bytes, threshold 5, opposing 50, jump 512, 32 KiB ring/two slices, typed SHA-256; 256 KiB buffers, four workers, 16 descriptors/64 KiB queue, ≤256 KiB encoding, 16 MiB cache, ≤4 MiB/publication, 64 MiB semaphore | `stage-gating` regression invariant | publication/resource evidence |
 | sealed pack ≤64 MiB payload/100,000 records/80 MiB allocation; transaction ≤100,000 records or 64 MiB; compaction trigger ≥20% dead and aggregate urgent >5%; settled target ≤2%, hard >5%; grace ≥one complete durable epoch plus generation/lease recheck; last-locator safety; focused unexplained unreachable unleased bytes=0 | hard bounds/triggers/safety `stage-gating`; ≤2% settled corpus claim `deferred-to-stage_11` | Stage08 focused checks during soak now; final corpus later |
-| squash preserves RootId/publication generation; depth 48/64 and benefit 8/2 | `stage-gating` regression invariant | Stage09 focused checks during soak |
+| squash preserves RootId/publication generation; depth 48/64, routine benefits 7/8, and manual selected-run widths 1/2 | `stage-gating` regression invariant | Stage09 focused checks during soak |
 | every operation ≤60s | `stage-gating` POC timeout | focused/tiny cases |
 | bounded 20-cycle candidate-authority soak in one daemon | `stage-gating` POC stability | logical quiescence/coarse memory rule |
 | warm resolve/session and mount p50/p95 ≤baseline+5%+2ms; no-op exec ≤+3%+0.5ms; PTY create ≤+3%+1ms; PTY operations ≤+3%+0.5ms | `deferred-to-stage_11` | final paired benchmark |
@@ -445,6 +479,7 @@ The 20-cycle POC soak uses one daemon and no reset. Logical gauges must settle. 
 | RSS ≤384MiB absolute and ≤128MiB above idle | `deferred-to-stage_11` | final long-lived qualification |
 | settled mixed/no-dedup ≤1.08 `D_ideal`, many-small ≤1.15; hard 1.15/1.25 | `deferred-to-stage_11` | authoritative settled corpus |
 | native+pack duplicate ≤1% hard >3%; pack dead/slack ≤2% hard >5%; metadata budgets | focused hard-safety regression `stage-gating`; normative settled claims `deferred-to-stage_11` | tiny now/full corpus final |
+| required-release hosts plus pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root image cells; no target shell/libc/helper/network dependency | Stage 10 focused Ubuntu cell `stage-gating`; complete matrix `deferred-to-stage_11` | Stage 11 image/host capability report; an unverified required-release row is a no-go |
 | candidate default enablement and legacy retirement | `deferred-to-stage_11` | final go/no-go and operator approval |
 | SIMD acceleration | `not-applicable` | scalar only |
 

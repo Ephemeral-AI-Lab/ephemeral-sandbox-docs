@@ -1,6 +1,6 @@
 # Stage 04 E2E — Shadow CAS ingest
 
-[Implementation overview](../index.md) · [Stage 04 specification](spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Simplified storage contract](../layerstack_storage_contract.md) · [Stage 04 specification](spec.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -12,7 +12,9 @@ Stage 04 proves the first candidate-artifact writer without transferring any aut
 
 - A focused live-Docker case publishes changed bytes through the existing public CLI in a run-owned `shadow_write` configuration. It proves that v1 commits first and remains the sole read, write, OCC, revision, and publication authority while one correlated shadow transaction completes.
 - A second focused live-Docker case proves that a public no-op publication creates no candidate root or transaction.
-- Focused Rust integration tests prove canonical candidate artifacts, native-carrier locators, journal ordering, crash recovery, failure isolation, bounded memory, and exact empty reserved namespaces.
+- Focused Rust integration tests prove canonical candidate artifacts,
+  native-carrier locators, common transaction ordering, crash recovery,
+  failure isolation, bounded memory, and absence of premature namespaces.
 - One ignored 30–60 second Rust loop provides diagnostic incremental-work and resource evidence.
 
 This is a **POC proof tier**. It does not add or test a candidate public reader, mount, `HEAD`, root selector, authoritative response field, hydration path, pack writer, compactor, garbage collector, retention authority, migration, squash, or SeqCDC-versus-StreamCDC selection. Broad/full, nightly, release, three-host portability, scale-RSS, and final benchmark gates remain deferred to their owning stages.
@@ -216,16 +218,17 @@ For a completed changed shadow publication, only `V0–V2`, `I1–I2`, `C1–C3`
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Run-now rows below use the stage-local pinned Ubuntu 24.04 target image and do
+not qualify portability. Stage 11 must run required hosts/release runners and
+the full Prep 04 Phase-1 image matrix: pinned Ubuntu/Debian glibc, Alpine
+musl, minimal/distroless, shell-less, read-only, and non-root.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.layerstack-phase1.shadow-ingest.changed` | POC; `run-now-focused` | post-v1-commit `shadow_write` | pinned Ubuntu 24.04 target image, serial owned config/gateway, deterministic edit | public write, publish, read | exact v1 sole authority, one correlated shadow completion, zero payload writes | diagnostic phase elapsed | complete subtree inventory and envelope | tasks, queues, permits, transactions, FDs settle | exact external delta zero and pinned-environment record | `60000` ms | typed JSONL plus public/shadow/resource/storage/cleanup snapshots |
-| `runtime.layerstack-phase1.shadow-ingest.no-op` | POC; `run-now-focused` | no-op `shadow_write` | same owned config after changed-case cleanup | public no-op publish | unchanged v1, no candidate root or transaction, skipped counter increments | diagnostic elapsed | no journal/staging/root allocation delta | all owners settle and config/gateway restores | same dependency/image bundle | `60000` ms | typed JSONL plus before/after/cleanup snapshots |
+| `runtime.layerstack-phase1.shadow-ingest.no-op` | POC; `run-now-focused` | no-op `shadow_write` | same owned config after changed-case cleanup | public no-op publish | unchanged v1, no candidate root or transaction, skipped counter increments | diagnostic elapsed | no transaction/root allocation delta | all owners settle and config/gateway restores | same dependency/image bundle | `60000` ms | typed JSONL plus before/after/cleanup snapshots |
 | `SCI-R07` | POC; `run-now-tiny-bench` | incremental candidate ingest | long-lived process, private temporary storage root, deterministic corpus | typed wrapper invokes v1 commit and post-commit ingest campaign | exact roots, locators, counters, zero payload writes, bounded normal work | raw paired diagnostics | allocated bytes by subtree/class | logical owners settle every pair and RSS is classified | std-only core and exact external delta | `60000` ms | raw JSON, summary, dependency/layout inventories |
-| `runtime.layerstack-phase1.shadow-ingest.qualification` | release; `planned-final` | final shadow-ingest qualification | frozen Stage 11 presets and required runners using one pinned Ubuntu 24.04 target image | packaged matched workloads | all final correctness, benchmark, storage, memory, and runner gates | normative matched metrics | complete physical envelope | full scale and repeated lifecycle | required runners, pinned Ubuntu 24.04 target; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `runtime.layerstack-phase1.shadow-ingest.qualification` | release; `planned-final` | final shadow-ingest qualification | frozen Stage 11 presets, required runners, and full Prep 04 Phase-1 image matrix | packaged matched workloads | all final correctness, benchmark, storage, memory, image, and runner gates | normative matched metrics | complete physical envelope | full scale and repeated lifecycle | required runners plus pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root | `300000` ms | Stage 11 qualification bundle |
 
 Complete literal declaration metadata:
 
@@ -234,13 +237,13 @@ Complete literal declaration metadata:
 | `runtime.layerstack-phase1.shadow-ingest.changed` | `SCI-01 Changed Publish Commits V1 Before Shadow Evidence` | `In a run-owned shadow_write Ubuntu 24.04 configuration, public CLI operations publish and read deterministic changed bytes while v1 stays the sole authority and one correlated metadata-only shadow ingest completes with zero duplicate payload writes.` | `("runtime.workspace_session","runtime.layerstack-phase1.shadow-ingest")` | `{"assert-sci-01-v1-authoritative-shadow-complete":"The public v1 revision advances exactly once and returns the exact published bytes; the response exposes no candidate root or status; bounded evidence correlates exactly one completed shadow root to that v1 checkpoint, reports zero candidate payload writes and no mismatch, and all case-owned resources and completed journal or staging children quiesce."}` | `{"assert-sci-01-v1-authoritative-shadow-complete":("runtime.workspace_session","runtime.layerstack-phase1.shadow-ingest")}` | `"cli"` | `"e2e-core"` | `60000` | `("smoke","phase1","config")` |
 | `runtime.layerstack-phase1.shadow-ingest.no-op` | `SCI-02 No-op Publish Creates No Candidate Transaction` | `In the same run-owned shadow_write Ubuntu 24.04 configuration, a public publish with no changed state preserves the v1 revision and creates no candidate root, transaction, journal, or staging child.` | `("runtime.workspace_session","runtime.layerstack-phase1.shadow-ingest")` | `{"assert-sci-02-no-op-has-no-shadow-transaction":"Public bytes and revision are unchanged; candidate completion, root, and transaction counts do not increase; skipped_no_op_count increases exactly once; payload writes remain zero; resources quiesce and run-owned cleanup restores the prior gateway configuration."}` | `{"assert-sci-02-no-op-has-no-shadow-transaction":("runtime.workspace_session","runtime.layerstack-phase1.shadow-ingest")}` | `"cli"` | `"e2e-core"` | `60000` | `("smoke","phase1","config")` |
 | `SCI-R07` | `SCI-R07 Incremental shadow ingest tiny diagnostic` | `Runs the deterministic changed-entry corpus through metadata-only post-commit ingest in one long-lived process and records exact identity, work, disk, and memory evidence.` | `("runtime.layerstack-phase1.shadow-ingest","benchmark","observability.resource_efficiency")` | `{"terminal":"Every iteration produces the frozen root and locator records, writes no duplicate payload, reports bounded normal work, releases transaction and worker owners, and emits schema-valid raw samples and inventories."}` | `{"terminal":("runtime.layerstack-phase1.shadow-ingest","benchmark","observability.resource_efficiency")}` | `"cli"` | `"e2e-core"` | `60000` | `("benchmark","phase1")` |
-| `runtime.layerstack-phase1.shadow-ingest.qualification` | `Shadow ingest final qualification` | `Executes the frozen Stage 11 matched workloads, scale matrix, recovery faults, storage and memory gates, and required host/release-runner rows using the one pinned Ubuntu 24.04 target image; cross-image qualification is deferred beyond Phase 1.` | `("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability","ubuntu-24.04")` | `{"terminal":"All final shadow-ingest correctness, zero-duplicate-payload, recovery, time, storage, memory, and required-runner gates execute successfully against the pinned Ubuntu 24.04 target image with complete matched evidence; no cross-image acceptance is claimed."}` | `{"terminal":("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability","ubuntu-24.04")}` | `"cli"` | `"e2e-core"` | `300000` | `("release","benchmark","phase1","config")` |
+| `runtime.layerstack-phase1.shadow-ingest.qualification` | `Shadow ingest final qualification` | `Executes the frozen Stage 11 matched workloads, scale matrix, recovery faults, storage and memory gates, and required host/release-runner and Prep 04 Phase-1 image rows.` | `("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability")` | `{"terminal":"All final shadow-ingest correctness, zero-duplicate-payload, recovery, time, storage, memory, required-runner, and pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root gates execute with complete matched evidence."}` | `{"terminal":("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability")}` | `"cli"` | `"e2e-core"` | `300000` | `("release","benchmark","phase1","config")` |
 
 Supporting checks below are not additional typed E2E declarations:
 
 - `SCI-01` and `SCI-02` are the two `run-now-focused` live declarations above.
-- `SCI-R01` (`run-now-focused`) proves exact canonical root, manifest, index,
-  catalog bytes, and typed IDs.
+- `SCI-R01` (`run-now-focused`) proves exact canonical root, persistent
+  object, locator-SST, receipt bytes, and typed IDs.
 - `SCI-R02` (`run-now-focused`) proves ordered non-overlapping locator ranges
   cover each chunk and resolve only into verified immutable v1 carriers.
 - `SCI-R03` (`run-now-focused`) proves each
@@ -248,9 +251,10 @@ Supporting checks below are not additional typed E2E declarations:
   recovers idempotently.
 - `SCI-R04` (`run-now-focused`) proves typed failure and quarantine with no v1
   mutation or leaked owner, permit, or file descriptor.
-- `SCI-R05` (`run-now-focused`) proves the exact canonical subtree, empty
-  reserved children, and absence of a candidate `HEAD`.
-- `SCI-R06` (`run-now-focused`) proves normal work `O(U+E+K)` and separately
+- `SCI-R05` (`run-now-focused`) proves the exact canonical Stage 04 subtree,
+  absence of premature future directories, and absence of a candidate head.
+- `SCI-R06` (`run-now-focused`) proves normal work
+  `O(U+K+C+V_delta)` and separately
   labels the one-time bootstrap `O(C_current+E_current+K_current)`.
 - `SCI-R07` is the `run-now-tiny-bench` typed wrapper declared above.
 - The dependency/source/system/image inventory is `run-now-focused` and proves
@@ -265,25 +269,25 @@ Each declaration has exactly one terminal validation checkpoint and reports it e
 | Scenario/boundary | Injection or setup | Expected candidate result | Required v1/public result | Cleanup/residue disposition |
 | --- | --- | --- | --- | --- |
 | Legacy mode | checked default config | no candidate format/path/task/counter movement | ordinary successful v1 publish/read | no candidate residue; stage-gating regression |
-| Changed shadow publish | deterministic file set | one matching root/catalog observation after v1 commit | revision +1; exact public bytes; legacy authority | completed journal/staging reaped; stage-gating |
-| Shadow no-op | unchanged session | no root/transaction; skipped count +1 | revision/bytes unchanged | no journal/staging child; stage-gating |
+| Changed shadow publish | deterministic file set | one matching root/receipt observation after v1 commit | revision +1; exact public bytes; legacy authority | completed transaction reaped; stage-gating |
+| Shadow no-op | unchanged session | no root/transaction; skipped count +1 | revision/bytes unchanged | no transaction child; stage-gating |
 | First bootstrap | no prior candidate checkpoint | explicitly labeled full current-tree stream | v1 already committed/unchanged | excluded from normal timing; stage-gating correctness |
-| Incremental edit | prior candidate exists; small `U/E/K` | only changed carrier/events plus bounded merge work | v1 already committed/unchanged | work counters match `O(U+E+K)`; stage-gating |
+| Incremental edit | prior candidate exists; small `U/C/K` | only changed carrier/events and touched persistent nodes | v1 already committed/unchanged | work counters match `O(U+K+C+V_delta)` and remain independent of unchanged-tree size; stage-gating |
 | Native carrier locator | chunks span SeqCDC/ring boundaries | exact carrier ID/path bytes/offset/length; all hashes verify | carrier remains v1-owned | no loose/pack payload; stage-gating |
-| Candidate admission denied | 64 MiB semaphore or publication budget unavailable | `ResourceExhausted`, no partial catalog selection | committed v1 success unchanged | exact staging reaped or journal-owned; stage-gating |
+| Candidate admission denied | 64 MiB semaphore or publication budget unavailable | `ResourceExhausted`, no partial ref selection | committed v1 success unchanged | exact work reaped or transaction-owned; stage-gating |
 | Descriptor queue saturation | 16 items or 64 KiB reached | producer backpressures to deadline then typed failure | v1 unchanged | queue drains/owner releases; stage-gating |
 | Source read failure | each ingest phase | transaction fails/quarantines exact attributable evidence | v1 unchanged/readable | no callback after error; stage-gating |
-| Manifest/object write failure | before/after write/fsync | journal state does not advance past durable fact | v1 unchanged | boot resumes or quarantines exact txn |
-| Index page/catalog failure | page write/fsync/rename/catalog install boundaries | no catalog points to non-durable page | v1 unchanged | previous candidate generation remains valid |
-| Root write failure | write/fsync/rename/dir-fsync boundaries | no roots catalog selects non-durable root | v1 unchanged | recover/quarantine exact txn |
-| Catalog intent/install failure | every intent/fsync/rename/parent-fsync boundary | monotonic recovery chooses old or complete new generation | v1 unchanged | no split candidate selection |
+| Object write failure | before/after write/fsync/rename | `ready` never names a non-durable object | v1 unchanged | boot resumes or quarantines exact txn |
+| Locator SST/`CURRENT` failure | SST write/fsync/rename and `CURRENT` install boundaries | `CURRENT` never names a non-durable SST | v1 unchanged | previous locator generation remains valid |
+| Root write failure | write/fsync/rename/dir-fsync boundaries | no receipt selects a non-durable root | v1 unchanged | recover/quarantine exact txn |
+| `intent`/`ready`/receipt failure | every write/fsync/rename/parent-fsync boundary | recovery chooses uncommitted or complete committed result | v1 unchanged | no split candidate selection |
 | Comparison mismatch | candidate canonical/export digest differs | status mismatch; exact txn/root quarantined or retained unselected | successful v1 response is not rewritten | mismatch evidence durable/bounded; stage-gating defect |
 | Client cancellation after v1 commit | cancel before shadow completion | journal/recovery owns candidate continuation; request callbacks fenced | v1 commit semantics unchanged | no orphan task/permit |
 | Daemon crash/restart | states `Prepared`, `ManifestObjectsDurable`, `LocatorIndexDurable`, `RootDurable`, `CatalogIntentDurable`, `CatalogsInstalled`, `Compared`, `Complete` | replay is idempotent; complete or quarantine exact txn once | v1 opens and serves normally | no full-history scan; residue bound |
 | Corrupt candidate journal | checksum/schema/ID corruption | safely attributable txn quarantined; otherwise candidate initialization disabled | legacy service opens | no broad delete/repair |
 | Corrupt candidate catalog/page | checksum/generation corruption | previous valid candidate generation or disabled shadow route | v1 service opens | corrupt candidate bytes quarantined/accounted |
 | Carrier disappeared by legitimate v1 policy | recovery references absent carrier | `missed_source`; candidate-only txn reaped/quarantined | no carrier resurrection or manifest change | terminal bounded evidence |
-| Unexpected reserved child | object/pack/future journal/staging/lease/trash child | format violation; shadow disabled/quarantine | v1 service opens | no silent adoption |
+| Unexpected premature child | pack/ref/materialization/GC/control child before its owning stage | format violation; shadow disabled/quarantine | v1 service opens | no silent adoption |
 | Panic in worker | panic at each owned resource | candidate txn terminal/journal-owned; worker failure visible | v1 unchanged | permit, borrow, queue/FD guards release; shutdown joins |
 | Clean shutdown | admitted and queued work | stop admission, journal/drain within deadline, join four workers | normal legacy shutdown | zero active tasks/queue/permits/transactions |
 
@@ -301,8 +305,8 @@ The existing benchmark laboratory owns `layerstack-phase1-tiny-shadow-ingest`: s
 | Sampling | one bootstrap/warmup per mode and at least five counterbalanced alternating measured pairs; prefer three warmups and ten pairs only if the sub-minute cap holds |
 | Fixed context | same host, filesystem, cache treatment, seed, corpus, prebuilt binary, gateway custody, and operation order |
 | Iteration | v1 commit → optional bounded shadow ingest → exact v1/candidate digest/locator/counter checks → quiescence → exact run-owned cleanup |
-| Outputs | raw per-pair JSON; absolute elapsed/throughput and ratios; `U/E/K`; source read/scanned/hashed bytes; metadata/index/fsync counters; candidate physical categories; resource high-waters |
-| Hard POC gate | exact public v1 outputs/authority; exact candidate metadata; payload writes/loose/packs/`H_cold`=0; work proportional to `U+E+K`; configured bounds; no completed journal/staging residue |
+| Outputs | raw per-pair JSON; absolute elapsed/throughput and ratios; `U/C/K/V_delta`; source read/scanned/hashed bytes; object/locator/fsync counters; candidate physical categories; resource high-waters |
+| Hard POC gate | exact public v1 outputs/authority; exact candidate metadata; payload writes/packs/`H_cold`=0; work proportional to `U+K+C+V_delta` and independent of unchanged-tree size; configured bounds; no completed transaction residue |
 | Diagnostic only | insufficient samples make p95 unavailable; no final selection, RSS, space, portability, or production qualification claim |
 
 The loop uses run-owned state, no target-image helper/network/database/additional process, and no arbitrary sleep. It polls quiescence every 100 ms for at most 5 seconds and treats timeout, malformed artifacts, or cleanup residue as failure.
@@ -317,13 +321,13 @@ The loop uses run-owned state, no target-image helper/network/database/additiona
 | Payload queue | 0 bytes/items | explicit invariant counter | zero always |
 | Descriptor queue | ≤16 items and ≤64 KiB serialized | current/high-water | zero |
 | Capture/sort/publication metadata | ≤4 MiB/publication excluding shared page cache | charged byte permits and run-file accounting | zero managed allocation; exact files removed |
-| Manifest/journal encoder | ≤256 KiB/admitted operation | encoder capacity high-water | zero |
+| Object/transaction encoder | ≤256 KiB/admitted operation | encoder capacity high-water | zero |
 | Merge readers | fan-in 8 ×64 KiB | open reader/current bytes high-water | zero |
 | Index page cache | ≤4,096 ×4 KiB =16 MiB | logical pages/bytes plus diagnostic RSS | within bound; evictable, no publication owner |
 | Global managed-memory semaphore | 64 MiB | permits in use/high-water | zero |
-| Tasks/transactions | bounded by four admitted workers | registry current/high-water and journal correlation | zero or explicitly durable recovery-owned; clean settle zero |
-| FDs/mappings | workers + 8 merge readers + current journal/catalog; no mmap required | `/proc`/runtime outside observation where available | return to baseline tolerance; mappings zero |
-| Journals/staging | `≤1 MiB + min(1% retained bytes,64 MiB)` and no pending clean transaction | physical inventory | completed transaction children absent |
+| Tasks/transactions | bounded by four admitted workers | registry current/high-water and durable transaction correlation | zero or explicitly recovery-owned; clean settle zero |
+| FDs/mappings | workers + 8 merge readers + current transaction/SST; no mmap required | `/proc`/runtime outside observation where available | return to baseline tolerance; mappings zero |
+| Transaction work/residue | `≤1 MiB + min(1% retained bytes,64 MiB)` and no pending clean transaction | physical inventory | completed transaction children absent |
 
 Focused tests run success, cancellation, each failpoint, panic, and restart in one long-lived test process. After each phase they poll the logical terminal state, then sample host RSS/FDs as diagnostic evidence. Logical leaks, monotonic task/permit growth, unbounded queue/cache growth, or unexplained physical residue fail Stage 04. Allocator-retained RSS alone is reported rather than called a leak; scale-RSS qualification remains deferred.
 
@@ -339,17 +343,17 @@ The before/after inventory is canonicalized and compared as a set, not reviewed 
 | New core | `sandbox-runtime-layerstack-core` resolves only `std` and workspace-internal code; no build script/unsafe/FFI |
 | Existing runtime | hashing/persistence/provider adapters remain in existing `sandbox-runtime` code and reuse existing `sha2`/`serde`/OS edges |
 | Source/tool inventory | no new Python/npm/system package, generator, sidecar, database, FUSE, C/C++, privilege, network, or download |
-| Runtime image | sole Phase 1 target `ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`; no code/userland executes inside the target image for ingest |
+| Runtime image | stage-local target `ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`; no code/userland executes inside it for ingest; Stage 11 still owns the full Prep 04 Phase-1 image matrix |
 | Host determinism | golden root/object/chunk IDs match across debug/release and available architectures; canonical widths/order and raw Linux relative path bytes |
-| Physical portability | carrier path/ID/offset, catalog generation, page placement, journal ID, and backend materialization are excluded from logical IDs |
+| Physical portability | carrier path/ID/offset, locator-SST generation, object placement, transaction ID, and backend materialization are excluded from logical IDs |
 | Backend boundary | future backend supplies capture/materialization/locator adapters; it cannot change root/object/canonical SeqCDC semantics |
 
-The Stage 04 POC records one required-host row using the sole pinned Ubuntu OCI
-index and the exact inventory. Stage 11 retains the final required
-macOS/Linux/Windows host and release-runner gate, using that same OCI index on
-every applicable host and recording the resolved platform manifest. Cross-image
-portability is deferred beyond Phase 1 and is neither an acceptance nor a
-retirement gate.
+The Stage 04 POC records one required-host row using the stage-local pinned
+Ubuntu OCI index and exact inventory. Stage 11 retains the final required
+macOS/Linux/Windows host and release-runner gate and adds pinned
+Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only,
+and non-root rows, recording every resolved platform manifest. The Stage 04
+row alone makes no Phase-1 portability claim.
 
 ## 9. Focused and final-stage commands
 
@@ -480,11 +484,12 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 04 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 04 — Stage 11 host/image matrix
 
-Stage 11 runs this command once per required native host. Pinned Ubuntu 24 is
-the only Phase 1 E2E image; cross-image portability is deferred beyond Phase 1
-and is not an acceptance gate.
+The command below is the pinned-Ubuntu representative and runs once per
+required native host. The Stage 11 scheduler must additionally cover pinned
+Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and
+non-root rows; this Stage 04 command alone cannot qualify the matrix.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -551,7 +556,7 @@ Each live case produces one run-owned, fsynced bundle with:
 | Shadow correlation | transaction ID, v1 revision/hash, candidate root correlation, mode, terminal status, journal terminal state, bootstrap/incremental/no-op label, mismatch/error kind |
 | Logical work | `U`, `E`, `K`, paths/events, carrier bytes read, SeqCDC scanned/hashed bytes, chunks/descriptors, merge runs/passes/readers, index pages, fsync/rename counts |
 | Payload invariant | candidate payload bytes staged/written=0, loose object count/bytes=0, open/sealed pack count/bytes=0, `H_cold=0` |
-| Candidate physical | root/manifest/index/catalog/materialization bytes, journal/staging/quarantine bytes, unreachable/unexplained bytes, `L_hot`, `U_active`, `P_staging`, `M`, whole-filesystem used/free |
+| Candidate physical | root/object/locator-SST/receipt bytes, transaction/quarantine bytes, unreachable/unexplained bytes, `L_hot`, `U_active`, `P_staging`, `M`, whole-filesystem used/free |
 | Resources | active/idle workers, rings/borrows, queue items/bytes, encoder bytes, cache pages/bytes, publication bytes, semaphore permits, tasks/transactions, FDs/mappings, current/high-water |
 | Layout | versioned inventory with every expected path code, active/reserved classification, reserved unexpected children, mode/permission/owner where available |
 | Failure/recovery | injected boundary, durable journal state before/after, recovery action, replay count, quarantine reason/bytes, v1 before/after proof |
@@ -561,6 +566,34 @@ Each live case produces one run-owned, fsynced bundle with:
 The reporter writes setup/call/teardown, the single declared validation checkpoint, cleanup, execution-surface proof, bounded stdout/stderr, and artifact references as durable JSONL. Candidate observations are sampled before and after and correlated by checkpoint/transaction, not inferred from logs. Host `/eos` inspection is outside evidence after public assertions; it must not be used to decide whether the publish itself succeeded.
 
 All counters carry units, scope, source, timestamp/epoch, and availability. Saturation is explicit. Logs and artifacts redact arbitrary paths/content, xattrs, secrets, and unbounded IDs. Evidence must retain a candidate mismatch or cleanup failure even when the public v1 operation succeeded.
+
+### Performance arrival checkpoint
+
+The tiny runner must write
+`.benchmark-state/results/<run_id>/stage-04-perf-report.json` and
+`stage-04-perf-report.md` under the contract in
+[benchmark_note.md](benchmark_note.md). The JSON schema version is
+`phase1.stage04.perf-report.v1`, and Markdown is generated from the same
+record. Required groups are provenance and immutable run/raw links; raw legacy
+and shadow samples; frozen baseline actual; required pass target/cap;
+separately predeclared optimization target; candidate actual; delta, ratio,
+and headroom; `U/C/K/V_delta` plus prior-tree and changed-event work counters; memory/RSS;
+complete physical-space accounting including allocated-byte
+`C_capture+P_staging<=1.05*C_capture` numerator/denominator/headroom; payload
+copy/write/staging zeros; every declared cancellation/crash/ENOSPC/
+backpressure-deadline/retry/idempotency and 18-position transaction-failpoint
+result; canonical external package/version/source/checksum, feature, and direct
+edge before/after arrays with empty symmetric differences and zero
+system/runtime/image-helper deltas; cleanup;
+and a `DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes
+those comparison fields per stage-owned metric. An unavailable required
+counter makes the verdict `OPEN|FAIL`, never pass.
+
+Append Plan/Run to `e2e/test-report.md` before execution. After both reports
+validate, append Good/Defect there and append a row to the benchmark-note
+tracker. Stage exit verifies matching run IDs, provenance, raw links, and
+append-only entries. Stage 04 performance reports are **DIAGNOSTIC** and
+cannot satisfy final Prep qualification.
 
 ## 11. Stage exit verdict
 
@@ -573,11 +606,13 @@ Stage 04 passes only when all of the following are true:
 - `SCI-01` proves exact public v1 bytes/revision and legacy-only authority, then exactly one correlated shadow completion with no public candidate field.
 - `SCI-02` proves a no-op creates no candidate root/transaction and increments only the bounded skipped counter.
 - Candidate payload writes, loose objects, packs, and `H_cold` are exactly zero; locators reference verified immutable v1 carrier ranges and are excluded from logical identity.
-- Canonical roots/manifests/index/catalogs/materialization records match goldens; no candidate `HEAD` or public resolver exists.
-- Every journal/failure/cancel/panic/restart test preserves v1, recovers or quarantines only the exact candidate transaction, and never performs a full-history or broad delete.
-- Normal incremental work is `O(U+E+K)` plus bounded external ordering. Any first full scan is labeled bootstrap and excluded from normal samples.
-- Four workers, rings, borrows, queues, encoder, merge, cache, per-publication, semaphore, task, transaction, FD, mapping, and residue bounds hold; clean settle has zero active owners and no completed journal/staging child.
-- The complete `/eos` inventory matches the active/reserved lifecycle table; every future namespace remains empty and all unexplained candidate residue is zero.
+- Peak allocated publication space satisfies `C_capture+P_staging<=1.05*C_capture`, with both terms and headroom measured; all cancellation, crash, ENOSPC, backpressure, retry, and 18 transaction-boundary cells in the benchmark note pass across the four declared sub-five-minute invocations.
+- Canonical roots/persistent objects/locator SSTs/receipts match goldens; no candidate head ref or public resolver exists.
+- Every transaction/failure/cancel/panic/restart test preserves v1, recovers or quarantines only the exact candidate transaction, and never performs a full-history or broad delete.
+- Normal incremental work is `O(U+K+C+V_delta)` plus bounded changed-event ordering and is independent of unchanged-tree/history size. Any first full scan is labeled bootstrap and excluded from normal samples.
+- Four workers, rings, borrows, queues, encoder, merge, cache, per-publication, semaphore, task, transaction, FD, mapping, and residue bounds hold; clean settle has zero active owners and no completed transaction child.
+- The `/eos` inventory matches the compact Stage 04 ownership table; future namespaces are absent and all unexplained candidate residue is zero.
 - Both focused live cases produce exactly one terminal validation checkpoint, durable complete evidence, exact run-owned cleanup, and restored gateway/config state.
+- Both versioned performance-arrival reports validate with immutable raw/run links, the prior-tree and payload-zero fields, and matching append-only benchmark/E2E ledger entries.
 
 Final small-edit latency, scale RSS, candidate-read correctness, hydration, pack/GC/compaction, squash, migration, multi-host portability, selection/locality, and release space gates remain explicitly deferred. No favorable POC result authorizes Stage 05 or changes v1 authority by itself.

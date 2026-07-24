@@ -1,10 +1,51 @@
 # Stage 11 E2E — Cumulative qualification and retirement
 
 **Final integration and qualification tier; not a POC.**
-[Implementation overview](../index.md) · [Stage 11 specification](spec.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Stage 11 specification](spec.md) · [Benchmark note](benchmark_note.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+## Performance arrival checkpoint
+
+Stage 11 has not reached qualification until the final scheduler writes versioned
+`.benchmark-state/results/<run-id>/stage-11-perf-report.json` and
+`stage-11-perf-report.md` with
+`schema_version="phase1.stage11.perf-report.v1"`, frozen baseline actuals,
+required pass targets/caps, separately predeclared optimization targets,
+candidate actuals, deltas/ratios/headroom, complexity/work counters,
+logical-resource high-water counters, memory/RSS, complete allocated-space
+accounting, correctness/recovery/
+dependency/platform prerequisites, links between the reports and to immutable
+run/raw artifacts, and provenance. The first Markdown table exposes those
+comparison fields per Prep metric. It must adjudicate every cumulative Prep
+row: only all-pass is `QUALIFIED`; any miss or unverified value is `FAIL`.
+Then update the append-only [benchmark tracker](benchmark_note.md) and
+[overall scorecard](../stage_03_11_benchmark_note.md), and append command,
+outcome, reports, and cleanup to `e2e/test-report.md`.
+
+The no-op command control is direct, shell-free
+`docker exec <container-id> ls` in a fresh ordinary container created for each
+matched invocation from the pinned OCI/platform digest. Its pristine root
+contents match the candidate view, but it has no LayerStack-owned `/eos` root,
+candidate materialization/mount, root lease, LayerStack session or
+namespace-holder, or public API wrapper. Pull/create/start/health/setup are
+untimed and separately recorded. Time the already-running control only from
+the Docker exec request through complete exit/status/stdout/stderr drain, and
+pair it with public `exec_command(["ls"])` on matched
+host/filesystem/root-content/cwd/env/Docker-allocation/cache-class/order/
+output-drain fields. This is the raw Docker execution-floor control, not
+bare-host `fork/exec`.
+
+The developer tiny loop is **ESTIMATED** at 30–60 s. Full qualification is
+**OPEN** until time-cell `N`, corpus throughput, space-history cells, and
+compatible host×image row count freeze; the current non-normative local
+estimate is 11–27 runner-hours plus the required host×image portability
+matrix. The ≤60 s operation and ≤5 min leaf-cell/matched-invocation limits
+remain hard. Aggregate nodes only validate plans, dispatch/resume leaf run
+IDs, and validate completed immutable artifacts; their control-plane timeout
+does not contain campaign execution. See the benchmark note for the campaign
+matrix and setup/warmup/measurement/cleanup/reporting budgets.
 
 ## 1. Stage-local test objective
 
@@ -28,8 +69,10 @@ This stage must:
    and target-only restart;
 3. execute the complete time, throughput, SeqCDC-selection, locality, memory,
    physical-space, pack, GC, squash, and cleanup matrices;
-4. execute every required-release host row using the same sole pinned Ubuntu
-   OCI index, verify it, and record the resolved platform manifest;
+4. execute every compatible required-release host×image×variant row spanning
+   Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less
+   fixtures plus read-only-base and non-root variants; verify every exact OCI
+   index and resolved platform manifest;
 5. prove the exact external-dependency and runtime-helper delta is zero;
 6. emit one immutable, schema-valid qualification bundle whose missing required
    values are failures, never inferred passes.
@@ -410,10 +453,12 @@ every F0/F1 snapshot, R, and Q; its presence is always a hard failure.
 
 ## 4. Typed E2E case catalog
 
-Every row below preserves the required host and release-runner coverage while
-using only the `ubuntu:24.04` target image pinned to OCI index digest
-`sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`.
-Cross-image acceptance is deferred beyond Phase 1.
+Every row below preserves the required host and release-runner coverage.
+Normative performance uses `ubuntu:24.04` pinned to OCI index digest
+`sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`;
+the separate Phase 1 portability gate covers the complete frozen
+Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less matrix,
+including read-only-base and non-root variants.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -422,28 +467,28 @@ Cross-image acceptance is deferred beyond Phase 1.
 | `layerstack.phase1.qualification.concurrency` | final integration; `run-now-focused` | OCC, retry, cancellation | disjoint/conflicting/stale/duplicate histories | concurrent public publications and cancellation | linearizable OCC, idempotent retry, no lost update | per-history duration | transaction/staging allocation | permits/leases/workers release | provider-neutral history evidence | `60000` ms | operation histories and generations |
 | `layerstack.phase1.qualification.migration-rollback` | final integration; `run-now-focused` | migration, default soak, rollback, restore | v1-only, v2-only, mixed selected roots | migrate, switch, soak, rollback reads, restore | complete mappings, all data readable, authority fencing exact | bounded action and soak series | coexistence/migration allocation | route/session/lease owners quiesce | release environment matrix | `300000` ms | catalog, soak, snapshot/restore records |
 | `layerstack.phase1.qualification.target-only` | final integration; `run-now-focused` | retired-legacy target-only runtime | gated deletion slices and cold restart | public regression and recovery after each slice | only target writers/readers/tree remain and behavior is preserved | per-slice operation duration | target-only allocation | no retired owner or service remains | exact zero dependency/system delta | `60000` ms | target inventory and dependency snapshot |
-| `layerstack.phase1.qualification.images` | release; `run-now-focused` | single pinned Ubuntu 24.04 target-image profile | same pinned target on each compatible required runner, including non-root/read-only variants | public capability profile | exact helper-independent behavior; cross-image acceptance remains deferred | per-runner case duration | target-image categorized allocation | owners quiesce on every required runner | pinned OCI index/platform digests and runner manifests | `60000` ms | target-image manifest and validations |
-| `layerstack.phase1.qualification.hosts` | release; `run-now-focused` | required native host and release-runner triples | frozen macOS/Linux/Windows runners using the pinned Ubuntu 24.04 target where a container workload applies | public capability and identity corpus | identical canonical roots/public behavior and native carriers | per-host case duration | host-specific categorized allocation | owners quiesce on every host | machine/environment manifests plus the same pinned target digest | `60000` ms | host manifests and validations |
-| `layerstack.phase1.qualification.selection` | final benchmark; `run-now-focused` | Raw/StreamCDC/SeqCDC selection | frozen matched campaign plans | benchmark scheduler runs matched workloads | statistical selection, distribution, locality gates | paired raw and bootstrap metrics | matched physical envelope | matched lifecycle and RSS evidence | same environment per comparison | `300000` ms | raw observations and paired bootstrap |
-| `layerstack.phase1.qualification.time` | final benchmark; `run-now-focused` | warm/cold/command/PTY/publication/squash time | frozen factors and matched order | benchmark scheduler invokes public workloads | every latency and throughput gate | paired p50/p95/throughput | allocation context for samples | owner settle before every sample | pinned environment and dependency record | `60000` ms | raw control/candidate samples |
-| `layerstack.phase1.qualification.rss` | final benchmark; `run-now-focused` | scale and history memory matrix | 64 MiB/256 MiB/1 GiB by histories 1/16/64 | cold public lifecycle campaign | logical release and raw physical bounds | bounded sampling duration | allocation context for memory rows | adjusted final/peak and RSS gates | source/scope/availability explicit | `300000` ms | bounded memory samples |
-| `layerstack.phase1.qualification.space` | final benchmark; `run-now-focused` | physical space and amplification | required corpora, histories, faults, maintenance | public workload and bounded maintenance | complete accounting and amplification gates | operation durations as context | complete allocated tree categories | cleanup and settled-space lifecycle | filesystem allocation semantics recorded | `60000` ms | allocated tree inventories |
-| `layerstack.phase1.qualification.all` | promoted final; `run-now-focused` | cumulative Phase 1 qualification | all frozen Stage 11 plans on required runners with the pinned Ubuntu 24.04 target | dispatch all eleven final drivers above | every normative gate and required row passes; cross-image acceptance is not claimed | complete normative time set | complete physical envelope | complete memory/lifecycle matrix | complete runner, pinned-target, and dependency matrix | `300000` ms | signed qualification bundle |
-| `phase1.final.workspace-scratch.qualification` | promoted Stage 01 final; `run-now-focused` | workspace scratch release matrix | frozen command/PTY/restart corpus on required runners with the pinned Ubuntu 24.04 target | correctness, recovery, host, image, time, RSS, space drivers | containment, isolation, rollback, cleanup, portability | matched command/PTY metrics | workspace/global allocation | sustained scratch owner matrix | required-runner rows with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `runtime.layerstack-phase1.portable-root.release-matrix` | promoted Stage 02 final; `run-now-focused` | portable-root release matrix | frozen golden corpus on required runners with the pinned Ubuntu 24.04 target | correctness, hosts, images drivers | identical canonical IDs and compatible behavior | per-row diagnostic duration | encoded and runtime allocation | repeated lifecycle matrix | every required-runner row with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `runtime.layerstack-phase1.seqcdc.selection` | promoted Stage 03 final; `run-now-focused` | SeqCDC selection and portability | frozen matched algorithm corpus on required runners with the pinned Ubuntu 24.04 target | selection, time, RSS, space, host, image drivers | selection/distribution/locality/storage/portability gates | matched selection metrics | complete matched envelope | full scale/repeated lifecycle | frozen required-runner proof with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `runtime.layerstack-phase1.shadow-ingest.qualification` | promoted Stage 04 final; `run-now-focused` | shadow-ingest qualification | frozen recovery/scale corpus on required runners with the pinned Ubuntu 24.04 target | correctness, recovery, selection, time, RSS, space, host, image drivers | v1 authority, exact shadow, zero duplicate payload, all final gates | matched ingest metrics | complete shadow envelope | scale/repeated lifecycle | required-runner rows with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `phase1.final.materialization.qualification` | promoted Stage 05 final; `run-now-focused` | candidate materialization qualification | frozen correctness/fault/scale corpus on required runners with the pinned Ubuntu 24.04 target | correctness, recovery, time, RSS, space, host, image drivers | exact tree, atomic visibility, warm reuse, recovery, portability | matched materialization metrics | complete carrier envelope | scale/sustained lifecycle | required-runner rows with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `phase1.final.strict.qualification` | promoted Stage 06 final; `run-now-focused` | strict activation qualification | frozen route/failure/rollback corpus on all release triples with the pinned Ubuntu 24.04 target | correctness, recovery, migration, time, RSS, hosts, images drivers | actual candidate source, zero fallback, exact rollback and cleanup | matched activation metrics | complete carrier/mount envelope | full history/owner matrix | all release triples with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `phase1.final.publication.qualification` | promoted Stage 07 final; `run-now-focused` | durable publication qualification | frozen OCC/recovery/scale corpus on required runners with the pinned Ubuntu 24.04 target | correctness, recovery, concurrency, migration, time, RSS, space drivers | atomicity, OCC, retry, authority, resource gates | matched publication metrics | complete amplification envelope | full history/soak lifecycle | required-runner matrix with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `layerstack.phase1.retention-gc.qualification` | promoted Stage 08 final; `run-now-focused` | retention, GC, pack qualification | frozen fault/history/scale corpus on required runners with the pinned Ubuntu 24.04 target | recovery, concurrency, time, RSS, space drivers | reachability, leases, pack caps, compaction, recovery gates | matched maintenance metrics | full live/staging/trash/slack envelope | full repeated-cycle owners/RSS | required-runner matrix with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `layerstack.phase1.squash.qualification` | promoted Stage 09 final; `run-now-focused` | identity-preserving squash qualification | frozen identity/remount/depth corpus on required runners with the pinned Ubuntu 24.04 target | correctness, recovery, concurrency, time, RSS, space drivers | identity, lease continuity, recovery, depth, resource gates | matched squash metrics | source/target/settled envelope | scale/repeated remount lifecycle | required-runner matrix with one pinned target | `300000` ms | mapped Stage 11 bundle |
-| `layerstack.phase1.authority.qualification` | promoted Stage 10 final; `run-now-focused` | candidate authority and retirement gate | frozen authority/shadow/rollback/retirement corpus on required runners with the pinned Ubuntu 24.04 target | correctness, recovery, concurrency, migration, target-only, hosts, images, time, RSS, space drivers | candidate authority, shadow parity, rollback fencing, retirement gates | matched authority metrics | authoritative peak/settled envelope | full soak and owner lifecycle | complete release-runner matrix with one pinned target | `300000` ms | mapped Stage 11 bundle |
+| `layerstack.phase1.qualification.images` | release; `run-now-focused` | full Phase 1 image capability profile | every compatible required host×frozen image×normal/read-only-root/non-root variant | public workspace/file/storage/recovery capability leaves | exact helper-independent behavior, including images unable to execute commands | per-leaf case duration | per-image categorized allocation | owners quiesce on every required row | exact OCI index/platform digests and runner manifests | `60000` ms per leaf | target-image manifest and validations |
+| `layerstack.phase1.qualification.hosts` | release; `run-now-focused` | required native host and release-runner triples | frozen macOS/Linux/Windows runners crossed with every compatible required image row | public capability and identity leaves | identical canonical roots/public behavior and native carriers | per-leaf case duration | host-specific categorized allocation | owners quiesce on every host×image row | machine/environment and exact image manifests | `60000` ms per leaf | host manifests and validations |
+| `layerstack.phase1.qualification.selection` | final benchmark; artifact dispatcher/validator | Raw/StreamCDC/SeqCDC selection | frozen matched leaf plans | validate plan, dispatch/resume leaf run IDs, then validate completed bundles | statistical selection, distribution, locality gates only from immutable leaf artifacts | paired raw and bootstrap metrics | matched physical envelope | matched lifecycle and RSS evidence | same environment per comparison | `300000` ms control plane | plan, leaf IDs, raw observations, paired bootstrap |
+| `layerstack.phase1.qualification.time` | final benchmark; artifact dispatcher/validator | warm/cold/command/PTY/publication/squash time | frozen factors, statistics, and matched leaf order | validate plan, dispatch/resume ≤5 min leaf IDs, then validate completed bundles | every latency, slope, isolation, and throughput gate from immutable samples | paired p50/p95/throughput and regression CIs | allocation context for samples | owner settle before every leaf | pinned environment and dependency record | `60000` ms control plane | plan, leaf IDs, raw control/candidate samples |
+| `layerstack.phase1.qualification.rss` | final benchmark; artifact dispatcher/validator | scale and history memory matrix | 64 MiB/256 MiB/1 GiB by histories 1/16/64 leaf plan | validate plan, dispatch/resume leaf run IDs, then validate completed bundles | logical release and raw physical bounds | bounded per-leaf sampling duration | allocation context for memory rows | adjusted final/peak and RSS gates | source/scope/availability explicit | `300000` ms control plane | plan, leaf IDs, bounded memory samples |
+| `layerstack.phase1.qualification.space` | final benchmark; artifact dispatcher/validator | physical space and amplification | required corpora, histories, faults, maintenance leaf plan | validate plan, dispatch/resume leaf run IDs, then validate completed bundles | complete accounting and amplification gates | operation durations as context | complete allocated tree categories | cleanup and settled-space lifecycle | filesystem allocation semantics recorded | `60000` ms control plane | plan, leaf IDs, allocated tree inventories |
+| `layerstack.phase1.qualification.all` | promoted final; artifact validator | cumulative Phase 1 qualification | completed immutable bundles for all frozen Stage 11 leaf plans and required host×image rows | validate signatures, schemas, links, completeness, and verdicts; execute no campaign inline | every normative gate and required row passes | complete normative time set | complete physical envelope | complete memory/lifecycle matrix | complete host×image and dependency matrix | `300000` ms control plane | signed qualification bundle |
+| `phase1.final.workspace-scratch.qualification` | promoted Stage 01 final; artifact validator | workspace scratch release matrix | completed mapped Stage 11 leaf bundles | validate correctness, recovery, host, image, time, RSS, and space artifacts | containment, isolation, rollback, cleanup, portability | matched command/PTY metrics | workspace/global allocation | sustained scratch owner matrix | complete compatible host×image rows | `300000` ms control plane | mapped Stage 11 bundle |
+| `runtime.layerstack-phase1.portable-root.release-matrix` | promoted Stage 02 final; artifact validator | portable-root release matrix | completed mapped Stage 11 leaf bundles | validate correctness, hosts, and images artifacts | identical canonical IDs and compatible behavior | per-row diagnostic duration | encoded and runtime allocation | repeated lifecycle matrix | complete compatible host×image rows | `300000` ms control plane | mapped Stage 11 bundle |
+| `runtime.layerstack-phase1.seqcdc.selection` | promoted Stage 03 final; artifact validator | SeqCDC selection and portability | completed mapped Stage 11 leaf bundles | validate selection, time, RSS, space, host, and image artifacts | selection/distribution/locality/storage/portability gates | matched selection metrics | complete matched envelope | full scale/repeated lifecycle | complete compatible host×image proof | `300000` ms control plane | mapped Stage 11 bundle |
+| `runtime.layerstack-phase1.shadow-ingest.qualification` | promoted Stage 04 final; artifact validator | shadow-ingest qualification | completed mapped Stage 11 leaf bundles | validate correctness, recovery, selection, time, RSS, space, host, and image artifacts | v1 authority, exact shadow, zero duplicate payload, all final gates | matched ingest metrics | complete shadow envelope | scale/repeated lifecycle | complete compatible host×image rows | `300000` ms control plane | mapped Stage 11 bundle |
+| `phase1.final.materialization.qualification` | promoted Stage 05 final; artifact validator | candidate materialization qualification | completed mapped Stage 11 leaf bundles | validate correctness, recovery, time, RSS, space, host, and image artifacts | exact tree, atomic visibility, warm reuse, recovery, portability | matched materialization metrics | complete carrier envelope | scale/sustained lifecycle | complete compatible host×image rows | `300000` ms control plane | mapped Stage 11 bundle |
+| `phase1.final.strict.qualification` | promoted Stage 06 final; artifact validator | strict activation qualification | completed mapped Stage 11 leaf bundles | validate correctness, recovery, migration, time, RSS, hosts, and images artifacts | actual candidate source, zero fallback, exact rollback and cleanup | matched activation metrics | complete carrier/mount envelope | full history/owner matrix | complete compatible release host×image rows | `300000` ms control plane | mapped Stage 11 bundle |
+| `phase1.final.publication.qualification` | promoted Stage 07 final; artifact validator | durable publication qualification | completed mapped Stage 11 leaf bundles | validate correctness, recovery, concurrency, migration, time, RSS, and space artifacts | atomicity, OCC, retry, authority, resource gates | matched publication metrics | complete amplification envelope | full history/soak lifecycle | frozen environment matrix | `300000` ms control plane | mapped Stage 11 bundle |
+| `layerstack.phase1.retention-gc.qualification` | promoted Stage 08 final; artifact validator | retention, GC, pack qualification | completed mapped Stage 11 leaf bundles | validate recovery, concurrency, time, RSS, and space artifacts | complete selector reachability, leases, pack caps, compaction, recovery gates | matched maintenance metrics | full live/staging/trash/slack envelope | full repeated-cycle owners/RSS | frozen environment matrix | `300000` ms control plane | mapped Stage 11 bundle |
+| `layerstack.phase1.squash.qualification` | promoted Stage 09 final; artifact validator | identity-preserving squash qualification | completed mapped Stage 11 leaf bundles | validate correctness, recovery, concurrency, time, RSS, and space artifacts | identity, lease continuity, evacuation, recovery, depth/count/byte limits, resource gates | matched squash metrics | source/target/settled envelope | scale/repeated remount lifecycle | frozen environment matrix | `300000` ms control plane | mapped Stage 11 bundle |
+| `layerstack.phase1.authority.qualification` | promoted Stage 10 final; artifact validator | candidate authority and retirement gate | completed mapped Stage 11 leaf bundles | validate correctness, recovery, concurrency, migration, target-only, hosts, images, time, RSS, and space artifacts | candidate authority, shadow parity, rollback fencing, retirement gates | matched authority metrics | authoritative peak/settled envelope | full soak and owner lifecycle | complete compatible host×image matrix | `300000` ms control plane | mapped Stage 11 bundle |
 
 In the mappings below, `hosts` retains every required host and release-runner
-row, while `images` denotes the single pinned Ubuntu 24.04 target-image driver
-on each compatible required runner. Cross-image coverage is deferred beyond
-Phase 1.
+row, while `images` denotes the complete frozen Phase 1 image-capability
+matrix on each compatible required runner. Normative performance remains on
+the pinned Ubuntu row; portability is an independent correctness gate.
 
 The eleven promoted IDs map verbatim to Stage 11 drivers as follows:
 
@@ -468,27 +513,34 @@ Complete literal declaration metadata for all 22 executable Stage 11 IDs:
 | `layerstack.phase1.qualification.concurrency` | `Phase 1 publication and maintenance histories are linearizable` | `Executes disjoint, conflicting, stale, duplicate-request, cancellation, lease, publication, GC, and squash histories against one candidate-default daemon.` | `("layerstack","concurrency","publication","maintenance","phase1")` | `{"terminal":"OCC generations are linearizable; retries are identical; no update, root, or last locator is lost; cancellation releases every transaction, permit, worker, and lease."}` | `{"terminal":("layerstack","concurrency","publication","maintenance","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","hard","config")` |
 | `layerstack.phase1.qualification.migration-rollback` | `Migration rollback and forward restore preserve every selected root` | `Migrates v1-only and mixed roots, runs the approved candidate-default soak, performs verified legacy-read rollback, and restores candidate reads.` | `("layerstack","migration","candidate-authority","read-rollback","phase1")` | `{"terminal":"Every selected root has a complete v2 mapping; candidate remains sole write authority; rollback fails closed without verified parity and reads every root with verified parity; forward restore is generation-fenced and exact."}` | `{"terminal":("layerstack","migration","candidate-authority","read-rollback","recovery")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
 | `layerstack.phase1.qualification.target-only` | `Target-only runtime survives cold restart after legacy retirement` | `Applies the approved gated retirement slices, cold-restarts after each slice, and runs affected public behavior and recovery with only the target tree and owners.` | `("layerstack","legacy-retirement","recovery","phase1")` | `{"terminal":"No legacy writer, reader, helper, service, direct dependency edge, or mutable authority remains; every public contract and selected root survives cold restart with complete target-only evidence."}` | `{"terminal":("layerstack","legacy-retirement","recovery","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","config")` |
-| `layerstack.phase1.qualification.images` | `Pinned Ubuntu 24.04 target-image capability profile is helper-independent` | `Runs the frozen public capability corpus against the same pinned Ubuntu 24.04 target on every compatible required runner, including non-root and read-only variants where prescribed; cross-image acceptance is deferred beyond Phase 1.` | `("layerstack","portability","ubuntu-24.04","phase1")` | `{"terminal":"Every required-runner row passes exact behavior against the same pinned target without invoking a target shell, libc utility, package manager, network fetch, or undeclared helper; OCI index and platform digests are recorded and no cross-image claim is made."}` | `{"terminal":("layerstack","portability","ubuntu-24.04","workspace-session")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","config")` |
-| `layerstack.phase1.qualification.hosts` | `Required native host triples preserve portable identity and behavior` | `Runs the frozen identity and public capability corpus on every required macOS, Linux, and Windows release triple with its native provider carrier and the pinned Ubuntu 24.04 target where a container workload applies.` | `("layerstack","portability","host-matrix","ubuntu-24.04","phase1")` | `{"terminal":"Canonical roots and public results are identical across required hosts; each provider uses its declared native carrier; every applicable workload uses the same pinned target; machine, toolchain, filesystem, dependency, and target-digest evidence is complete."}` | `{"terminal":("layerstack","portability","host-matrix","ubuntu-24.04","workspace-session")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","config")` |
-| `layerstack.phase1.qualification.selection` | `Matched campaigns select the Phase 1 chunking algorithm` | `Runs frozen Raw versus StreamCDC and Raw versus SeqCDC plans with identical corpus, order, cache state, environment, collectors, and correctness oracle.` | `("layerstack","benchmark","chunking-selection","phase1")` | `{"terminal":"All raw pairs validate; bootstrap and distribution gates are computed from matched samples; locality and physical-space gates pass; the selected algorithm and rejection rationale are persisted."}` | `{"terminal":("layerstack","benchmark","chunking-selection","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
-| `layerstack.phase1.qualification.time` | `Candidate time and throughput gates pass on matched workloads` | `Runs frozen warm, cold, command, PTY, publication, hydration, maintenance, and squash workloads through the benchmark scheduler.` | `("layerstack","benchmark","performance","phase1")` | `{"terminal":"Every workload has schema-valid matched raw samples, exact correctness, approved p50 and p95 or throughput gates, bounded per-operation duration, and no competing campaign."}` | `{"terminal":("layerstack","benchmark","performance","workspace-session")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","benchmark","config")` |
-| `layerstack.phase1.qualification.rss` | `Candidate logical and physical memory gates pass at scale` | `Runs the cold 64 MiB, 256 MiB, and 1 GiB by history-depth 1, 16, and 64 matrix with repeated lifecycle and explicit sampler provenance.` | `("layerstack","benchmark","memory","resource-efficiency","phase1")` | `{"terminal":"All logical owners return to settled bounds; adjusted final and peak process or cgroup memory passes the frozen gates; unavailable sources are explicit and no required row is unverified."}` | `{"terminal":("layerstack","benchmark","memory","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
-| `layerstack.phase1.qualification.space` | `Candidate physical space and amplification gates pass` | `Measures allocated bytes for every required corpus, history, fault residue, carrier, index, journal, pack, trash, quarantine, and maintenance state.` | `("layerstack","benchmark","storage-efficiency","phase1")` | `{"terminal":"Peak and settled categorized allocated bytes reconcile with zero unexplained required residue and satisfy all frozen amplification, slack, staging, and reclamation gates."}` | `{"terminal":("layerstack","benchmark","storage-efficiency","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","benchmark","config")` |
-| `layerstack.phase1.qualification.all` | `Phase 1 cumulative release qualification` | `Promotes the Stage 00 planned-final ID and dispatches every Stage 11 correctness, recovery, concurrency, migration, target-only, image, host, selection, time, RSS, and space driver across the required runners with only the pinned Ubuntu 24.04 target.` | `("layerstack","phase1-qualification","portability","ubuntu-24.04","resource-efficiency")` | `{"terminal":"All eleven Stage 11 drivers and every required release-runner row execute successfully against the pinned target; the aggregate bundle is schema-valid, internally linked, contains no inferred or missing required observation, and makes no cross-image acceptance claim."}` | `{"terminal":("layerstack","phase1-qualification","portability","ubuntu-24.04","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `phase1.final.workspace-scratch.qualification` | `Final workspace scratch qualification` | `Promotes the Stage 01 planned-final ID into the mapped Stage 11 correctness, recovery, host, image, time, RSS, and space drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("phase1.qualification","runtime.workspace_session","runtime.pty","ubuntu-24.04")` | `{"terminal":"All workspace scratch command, PTY, cancellation, restart, rollback, memory, and required-runner rows execute successfully against the pinned target with complete evidence and no global scratch writes; cross-image acceptance remains deferred."}` | `{"terminal":("phase1.qualification","runtime.workspace_session","runtime.pty","ubuntu-24.04","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `runtime.layerstack-phase1.portable-root.release-matrix` | `Portable root release matrix` | `Promotes the Stage 02 planned-final ID into the mapped Stage 11 correctness, host, and image drivers for canonical portable identities across required runners with only the pinned Ubuntu 24.04 target.` | `("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","ubuntu-24.04")` | `{"terminal":"Every required-runner row against the pinned target produces identical canonical root identifiers and compatible public behavior with complete environment and lifecycle evidence; cross-image acceptance remains deferred."}` | `{"terminal":("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","ubuntu-24.04")}` | `"cli"` | `"e2e-core"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `runtime.layerstack-phase1.seqcdc.selection` | `SeqCDC final selection and portability qualification` | `Promotes the Stage 03 planned-final ID into the mapped Stage 11 selection, time, RSS, space, host, and image drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability","ubuntu-24.04")` | `{"terminal":"All final selection, distribution, locality, physical-space, lifecycle-memory, and required-runner gates execute against the pinned target from matched raw evidence; the selected algorithm is recorded without an unverified required row or a cross-image acceptance claim."}` | `{"terminal":("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability","ubuntu-24.04")}` | `"cli"` | `"e2e-core"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
-| `runtime.layerstack-phase1.shadow-ingest.qualification` | `Shadow ingest final qualification` | `Promotes the Stage 04 planned-final ID into the mapped Stage 11 correctness, recovery, selection, time, RSS, space, host, and image drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability","ubuntu-24.04")` | `{"terminal":"All final shadow-ingest correctness, zero-duplicate-payload, recovery, time, storage, memory, and required-runner gates execute successfully against the pinned target with complete matched evidence; cross-image acceptance remains deferred."}` | `{"terminal":("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability","ubuntu-24.04")}` | `"cli"` | `"e2e-core"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
-| `phase1.final.materialization.qualification` | `Final materialization qualification` | `Promotes the Stage 05 planned-final ID into the mapped Stage 11 correctness, recovery, time, RSS, space, host, and image drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("phase1.qualification","storage.materialization","portability","ubuntu-24.04")` | `{"terminal":"All final materialization exactness, atomicity, warm-reuse, corruption, recovery, time, physical-space, memory, and required-runner gates execute successfully against the pinned target with complete evidence; cross-image acceptance remains deferred."}` | `{"terminal":("phase1.qualification","storage.materialization","observability.resource_efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `phase1.final.strict.qualification` | `Final strict activation qualification` | `Promotes the Stage 06 planned-final ID into the mapped Stage 11 correctness, recovery, migration-rollback, time, RSS, host, and image drivers across every required release triple with only the pinned Ubuntu 24.04 target.` | `("phase1.qualification","storage.candidate_activation","portability","ubuntu-24.04")` | `{"terminal":"All strict activation route, no-fallback, corruption, mount, rollback, correctness, time, space, memory, soak, and required-release-runner gates execute successfully against the pinned target with complete evidence; cross-image acceptance remains deferred."}` | `{"terminal":("phase1.qualification","storage.candidate_activation","observability.resource_efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `phase1.final.publication.qualification` | `Final durable publication qualification` | `Promotes the Stage 07 planned-final ID into the mapped Stage 11 correctness, recovery, concurrency, migration-rollback, time, RSS, and space drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("phase1.qualification","storage.publication_v2","storage.occ","storage.recovery","portability","ubuntu-24.04")` | `{"terminal":"All final publication atomicity, OCC, retry, recovery, authority, time, amplification, memory, history, soak, and required-runner gates execute successfully against the pinned target with complete evidence; cross-image acceptance remains deferred."}` | `{"terminal":("phase1.qualification","storage.publication_v2","storage.occ","storage.recovery","observability.resource_efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `layerstack.phase1.retention-gc.qualification` | `Retention GC and pack qualification matrix` | `Promotes the Stage 08 planned-final ID into the mapped Stage 11 recovery, concurrency, time, RSS, and space drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("layerstack","phase1-qualification","retention","garbage-collection","pack","portability","ubuntu-24.04")` | `{"terminal":"All Stage 11 retention, reachability, lease, pack-cap, compaction, recovery, time, space, memory, soak, portability, required-runner, and affected-regression gates execute against the pinned target with no unverified required row; cross-image acceptance remains deferred."}` | `{"terminal":("layerstack","phase1-qualification","retention","resource-efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `layerstack.phase1.squash.qualification` | `Identity-preserving squash release qualification` | `Promotes the Stage 09 planned-final ID into the mapped Stage 11 correctness, recovery, concurrency, time, RSS, and space drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("layerstack","phase1-qualification","squash","materialization","portability","ubuntu-24.04")` | `{"terminal":"Every Stage 11 squash identity, lease-continuity, remount, recovery, depth, latency, space, memory, soak, and required-release-runner gate executes successfully against the pinned target; cross-image acceptance remains deferred."}` | `{"terminal":("layerstack","phase1-qualification","squash","resource-efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
-| `layerstack.phase1.authority.qualification` | `Candidate authority release qualification and legacy retirement gate` | `Promotes the Stage 10 planned-final ID into the mapped Stage 11 correctness, recovery, concurrency, migration-rollback, target-only, host, image, time, RSS, and space drivers across required runners with only the pinned Ubuntu 24.04 target.` | `("layerstack","phase1-qualification","candidate-authority","legacy-shadow","portability","ubuntu-24.04")` | `{"terminal":"All authority, shadow parity, rollback fencing, soak, performance, space, memory, required-runner, affected-regression, default-enable, and legacy-retirement gates execute successfully against the pinned target; cross-image acceptance remains deferred."}` | `{"terminal":("layerstack","phase1-qualification","candidate-authority","resource-efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.qualification.images` | `Phase 1 image capability matrix is helper-independent` | `Runs one bounded public capability leaf for every compatible required host crossed with frozen Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less fixtures and their normal, read-only-root, and non-root variants.` | `("layerstack","portability","image-matrix","phase1")` | `{"terminal":"Every required host×image×variant row passes public storage behavior without a target shell, libc utility, package manager, network fetch, or undeclared helper; exact OCI index and resolved platform digests are recorded."}` | `{"terminal":("layerstack","portability","image-matrix","workspace-session")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.qualification.hosts` | `Required native host triples preserve portable identity and behavior` | `Runs the frozen identity and public capability leaves on every required macOS, Linux, and Windows release triple with its native provider carrier and every compatible required image row.` | `("layerstack","portability","host-matrix","image-matrix","phase1")` | `{"terminal":"Canonical roots and public results are identical across required hosts; each provider uses its declared native carrier; every compatible host×image row has complete machine, toolchain, filesystem, dependency, OCI-index, and platform-manifest evidence."}` | `{"terminal":("layerstack","portability","host-matrix","image-matrix","workspace-session")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.qualification.selection` | `Matched campaigns select the Phase 1 chunking algorithm` | `Validates the frozen Raw-versus-StreamCDC and Raw-versus-SeqCDC plan, dispatches/resumes bounded leaf run IDs, and validates their immutable matched artifacts; it executes no campaign inline.` | `("layerstack","benchmark","chunking-selection","artifact-validator","phase1")` | `{"terminal":"All completed raw pairs validate; bootstrap/distribution gates derive from matched leaf samples; locality and physical-space gates pass; dispatch success alone is never a pass."}` | `{"terminal":("layerstack","benchmark","chunking-selection","artifact-validator","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
+| `layerstack.phase1.qualification.time` | `Candidate time and throughput gates pass on matched workloads` | `Validates the frozen time plan, dispatches or resumes bounded leaf run IDs, and later validates immutable warm, cold, exact docker-exec command control, PTY, publication, hydration, scale-regression, maintenance-isolation, and squash artifacts; it executes no campaign inline.` | `("layerstack","benchmark","performance","artifact-validator","phase1")` | `{"terminal":"Every completed leaf has schema-valid matched samples, exact correctness, approved p50/p95, slope, isolation, or throughput gates, ≤60-second operations and ≤5-minute leaf duration; dispatch success alone is never a pass."}` | `{"terminal":("layerstack","benchmark","performance","artifact-validator","workspace-session")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","benchmark","config")` |
+| `layerstack.phase1.qualification.rss` | `Candidate logical and physical memory gates pass at scale` | `Validates and dispatches/resumes bounded cold 64 MiB, 256 MiB, and 1 GiB by history-depth 1, 16, and 64 leaf run IDs, then validates immutable results; it executes no matrix inline.` | `("layerstack","benchmark","memory","artifact-validator","resource-efficiency","phase1")` | `{"terminal":"All completed leaves return logical owners to settled bounds; adjusted final and peak process or cgroup memory passes frozen gates; unavailable sources are explicit, and dispatch success alone is never a pass."}` | `{"terminal":("layerstack","benchmark","memory","artifact-validator","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
+| `layerstack.phase1.qualification.space` | `Candidate physical space and amplification gates pass` | `Validates and dispatches/resumes bounded corpus, history, clean-session, fault, evacuation, lowerdir-boundary, GC-selector, and maintenance leaf run IDs, then validates immutable allocated-byte artifacts; it executes no matrix inline.` | `("layerstack","benchmark","storage-efficiency","artifact-validator","phase1")` | `{"terminal":"Completed leaf artifacts reconcile categorized peak/settled bytes with zero unexplained residue; clean sessions clone zero payload; all amplification, lowerdir, selector, evacuation, slack, staging, and reclamation gates pass; dispatch alone never passes."}` | `{"terminal":("layerstack","benchmark","storage-efficiency","artifact-validator","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `60000` | `("runtime","layerstack","serial","release","benchmark","config")` |
+| `layerstack.phase1.qualification.all` | `Phase 1 cumulative release qualification` | `Promotes the Stage 00 planned-final ID and validates signed completed bundles for every Stage 11 driver and compatible required host×image×variant row; it executes no campaign inline.` | `("layerstack","phase1-qualification","portability","image-matrix","artifact-validator","resource-efficiency")` | `{"terminal":"All eleven driver bundles and every required host×image×variant artifact pass; the aggregate is schema-valid, internally linked, and contains no inferred or missing required observation; dispatch or bundle presence alone never passes."}` | `{"terminal":("layerstack","phase1-qualification","portability","image-matrix","artifact-validator","resource-efficiency")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `phase1.final.workspace-scratch.qualification` | `Final workspace scratch qualification` | `Validates the completed mapped Stage 11 correctness, recovery, host, image, time, RSS, and space bundles; it executes no campaign inline.` | `("phase1.qualification","runtime.workspace_session","runtime.pty","image-matrix","artifact-validator")` | `{"terminal":"All mapped workspace scratch command, PTY, cancellation, restart, rollback, memory, and compatible host×image rows pass with complete evidence and no global scratch writes."}` | `{"terminal":("phase1.qualification","runtime.workspace_session","runtime.pty","image-matrix","artifact-validator","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `runtime.layerstack-phase1.portable-root.release-matrix` | `Portable root release matrix` | `Validates the completed mapped Stage 11 correctness, host, and image bundles for canonical portable identities; it executes no campaign inline.` | `("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","image-matrix","artifact-validator")` | `{"terminal":"Every compatible required host×image row produces identical canonical root identifiers and compatible public behavior with complete environment and lifecycle evidence."}` | `{"terminal":("runtime.layerstack-phase1.portable-root","phase1.qualification","portability","image-matrix","artifact-validator")}` | `"cli"` | `"e2e-core"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `runtime.layerstack-phase1.seqcdc.selection` | `SeqCDC final selection and portability qualification` | `Validates the completed mapped Stage 11 selection, time, RSS, space, host, and image bundles; it executes no campaign inline.` | `("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability","image-matrix","artifact-validator")` | `{"terminal":"All selection, distribution, locality, physical-space, lifecycle-memory, and compatible host×image gates pass from matched immutable evidence with no unverified required row."}` | `{"terminal":("runtime.layerstack-phase1.seqcdc","phase1.qualification","benchmark","portability","image-matrix","artifact-validator")}` | `"cli"` | `"e2e-core"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
+| `runtime.layerstack-phase1.shadow-ingest.qualification` | `Shadow ingest final qualification` | `Validates the completed mapped Stage 11 correctness, recovery, selection, time, RSS, space, host, and image bundles; it executes no campaign inline.` | `("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability","image-matrix","artifact-validator")` | `{"terminal":"All shadow-ingest correctness, zero-duplicate-payload, recovery, time, storage, memory, and compatible host×image gates pass with complete matched evidence."}` | `{"terminal":("runtime.layerstack-phase1.shadow-ingest","phase1.qualification","benchmark","portability","image-matrix","artifact-validator")}` | `"cli"` | `"e2e-core"` | `300000` | `("runtime","layerstack","serial","release","benchmark","config")` |
+| `phase1.final.materialization.qualification` | `Final materialization qualification` | `Validates the completed mapped Stage 11 correctness, recovery, time, RSS, space, host, and image bundles; it executes no campaign inline.` | `("phase1.qualification","storage.materialization","portability","image-matrix","artifact-validator")` | `{"terminal":"All materialization exactness, atomicity, warm-reuse, corruption, recovery, time, physical-space, memory, and compatible host×image gates pass with complete evidence."}` | `{"terminal":("phase1.qualification","storage.materialization","observability.resource_efficiency","portability","image-matrix","artifact-validator")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `phase1.final.strict.qualification` | `Final strict activation qualification` | `Validates the completed mapped Stage 11 correctness, recovery, migration-rollback, time, RSS, host, and image bundles; it executes no campaign inline.` | `("phase1.qualification","storage.candidate_activation","portability","image-matrix","artifact-validator")` | `{"terminal":"All strict activation route, no-fallback, corruption, mount, rollback, correctness, time, space, memory, soak, and compatible host×image gates pass with complete evidence."}` | `{"terminal":("phase1.qualification","storage.candidate_activation","observability.resource_efficiency","portability","image-matrix","artifact-validator")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `phase1.final.publication.qualification` | `Final durable publication qualification` | `Validates the completed mapped Stage 11 correctness, recovery, concurrency, migration-rollback, time, RSS, and space bundles; it executes no campaign inline.` | `("phase1.qualification","storage.publication_v2","storage.occ","storage.recovery","artifact-validator")` | `{"terminal":"All publication atomicity, OCC, retry, recovery, authority, time, amplification, memory, history, and soak gates pass with complete immutable evidence."}` | `{"terminal":("phase1.qualification","storage.publication_v2","storage.occ","storage.recovery","observability.resource_efficiency","artifact-validator")}` | `"cli"` | `"phase1-storage"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.retention-gc.qualification` | `Retention GC and pack qualification matrix` | `Validates the completed mapped Stage 11 recovery, concurrency, time, RSS, and space bundles; it executes no campaign inline.` | `("layerstack","phase1-qualification","retention","garbage-collection","pack","artifact-validator")` | `{"terminal":"Every strong-edge, independent weak-selector/removal, materialization-carrier/locator, lease, pack-cap, compaction, evacuation, recovery, time, space, memory, and soak gate passes with complete evidence."}` | `{"terminal":("layerstack","phase1-qualification","retention","resource-efficiency","artifact-validator")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.squash.qualification` | `Identity-preserving squash release qualification` | `Validates the completed mapped Stage 11 correctness, recovery, concurrency, time, RSS, and space bundles; it executes no campaign inline.` | `("layerstack","phase1-qualification","squash","materialization","artifact-validator")` | `{"terminal":"Every squash identity, lease-continuity, remount, evacuation, recovery, depth/count/serialized-byte, isolation, latency, space, memory, and soak gate passes with complete evidence."}` | `{"terminal":("layerstack","phase1-qualification","squash","resource-efficiency","artifact-validator")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
+| `layerstack.phase1.authority.qualification` | `Candidate authority release qualification and legacy retirement gate` | `Validates the completed mapped Stage 11 correctness, recovery, concurrency, migration-rollback, target-only, host, image, time, RSS, and space bundles; it executes no campaign inline.` | `("layerstack","phase1-qualification","candidate-authority","legacy-shadow","portability","image-matrix","artifact-validator")` | `{"terminal":"All authority, shadow parity, rollback fencing, soak, performance, space, memory, compatible host×image, affected-regression, default-enable, and legacy-retirement gates pass with complete evidence."}` | `{"terminal":("layerstack","phase1-qualification","candidate-authority","resource-efficiency","portability","image-matrix","artifact-validator")}` | `"cli"` | `"layerstack-phase1"` | `300000` | `("runtime","layerstack","serial","release","config")` |
 
 Every declaration has exactly the terminal checkpoints named in `validations`,
 and each checkpoint is emitted once. The benchmark scheduler owns all campaign
-ordering; pytest never starts a competing benchmark campaign.
+ordering; pytest never starts a competing benchmark campaign. `selection`,
+`time`, `rss`, and `space` use their listed 60–300 s timeouts only to validate
+the frozen plan, dispatch/resume bounded leaf IDs, and validate completed
+artifacts. `all` and every promoted Stage 01–10 ID validate signed mapped
+bundles only. Each producing leaf is independently bounded to ≤5 min and each
+operation to ≤60 s. A successful dispatch, an incomplete bundle, or a
+control-plane timeout that merely outlasts a campaign never constitutes a
+pass.
 
 ## 5. Correctness and failure matrix
 
@@ -501,11 +553,15 @@ ordering; pytest never starts a competing benchmark campaign.
 | Publication | no-op, localized edit, many-small, deletes/renames, retry | Immutable objects; one atomic root generation; idempotent `PublicationId` |
 | OCC | disjoint, overlapping, stale base, duplicate request | Disjoint merge semantics preserved; conflict is explicit; no lost update |
 | Warm activation | depths 1, 16, 48, 64 | `O(D)`, zero CAS payload bytes, native mount |
+| Mount admission | exact serialized `lowerdir=` byte length at `L_limit-1`, `L_limit`, `L_limit+1`, crossed with independent layer-count boundaries | Count and serialized-byte rules both enforced; over-limit option rejected before any mount syscall |
 | Cold activation | complete/partial cache, object miss, corrupt object, disk full | Private verify/fsync/swap; no partial visibility or fallback |
-| Commands | success, nonzero exit, no-op, cancel, timeout | Native files; exit behavior and cleanup unchanged |
-| PTY/stdin | create, drain, supported stdin, control-C, control-D | Compatible timings/bytes; resize, arbitrary signal, literal EOF remain deterministically unsupported |
-| Squash | manual/routine/threshold; concurrent reader/writer; restart in every state | `RootId` and publication generation unchanged; materialization generation advances; leases overlap |
-| GC/pack | live/dead/weak ancestry/pin/lease; compaction interruption | Strong data retained; weak unpinned provenance collectible; grace and final recheck |
+| Commands | success, nonzero exit, exact shell-free `docker exec <container-id> ls` in a ready ordinary non-LayerStack control versus public `exec_command(["ls"])`, cancel, timeout; idle versus event-synchronized packer/squash-builder/GC-active cells | Native files; setup excluded; exit behavior and cleanup unchanged; matched context exact; maintenance-owned critical-path counters zero |
+| PTY/stdin | create, drain, supported stdin, control-C, control-D; idle versus event-synchronized packer/squash-builder/GC-active cells | Compatible timings/bytes; maintenance-owned critical-path counters zero; resize, arbitrary signal, literal EOF remain deterministically unsupported |
+| Squash | manual/routine/threshold; concurrent reader/writer; restart in every state; distinct build/commit/frozen/remount/evacuation intervals | `RootId` and publication generation unchanged; materialization generation advances; leases overlap; evacuation last-locator/cursor/lease end state proven |
+| GC strong graph | selected root with complete manifest, metadata, segment, and chunk references | Every strong edge retains its target regardless of ancestry selectors |
+| GC weak selectors | parent/base selected independently by durable lease, pin, active branch, configured history window, migration frontier, in-flight transaction, or pending transaction; plus unselected control | Each sole selector retains ancestry; removing only it permits collection only after durable grace and final recheck |
+| GC materialization root | materialization record with no weak ancestry selector | Required carriers and locators remain until materialization lifecycle releases them |
+| GC/pack lifecycle | live/dead and selector-removal cases; compaction interruption | Last locator never lost; cursor bounded/recoverable; grace and final root/generation/lease/locator recheck |
 | Migration | v1-only, v2-only, mixed, interrupted, retry, stale mapping | Complete verified mapping; one authority; idempotent restart |
 | Retirement | writer removal, reader removal, artifact deletion as separate checkpoints | Each deletion gate passes and target-only restart succeeds |
 | Namespace | two sandboxes and two sessions with same logical paths | No cross-namespace read, locator, lease, transcript, or observation leakage |
@@ -535,27 +591,44 @@ The final scheduler executes these frozen campaigns:
 
 | Campaign | Corpus / ordering | Samples | Gate |
 | --- | --- | --- | --- |
-| Time | no-op exec, command throughput, PTY/stdin, warm prepare/mount, remount, squash, publish, cold hydrate/activate | ≥3 warmups then enough counterbalanced pairs for stable p50/p95; raw stored | Stage 11 numeric time/throughput contract |
+| Time | exact direct shell-free `docker exec <container-id> ls` in the ready ordinary non-LayerStack control versus public `exec_command(["ls"])`, setup excluded and root contents/cwd/env/allocation/cache/order/output drain matched; command throughput; PTY/stdin; warm prepare/mount; publish; cold hydrate/activate; warm-size `S=64/256/1024 MiB` at `D=16`; mount/remount depth `D=1/16/48/64` at `S=256 MiB`; fixed-`D` remount over prebuilt 16/64/256 MiB; synchronized idle/active command and PTY under each packer/squash-builder/GC actor | ≥3 excluded warmups then frozen `N` counterbalanced pairs per cell; raw stored; frozen tasks/verified FDs and structural counters; slope/statistics inputs frozen before candidate data | independent Prep p50/p95 caps; separately report ≥80 ms saved command target at both percentiles without rebasing; warm `β_S` upper CI within raw noise; mount/remount `β_D` ratio upper CI≤1.10; zero payload and maintenance critical-path counters |
 | Selection | localized large source and mixed tree; separate no-dedup/many-small guardrails | 3 fresh matched corpus sets; ≥5 interleaved samples/workload/invocation; counterbalanced | paired-bootstrap 95% lower bound≥0.10 where required |
 | Distribution | SeqCDC and StreamCDC with identical min/max and corpus | same matched records | means within 5%; p10/p50/p90 within 10% |
 | Locality | source `F≥16MiB`, edit≤64KiB | all raw samples retained | target changed+2×32KiB+segment overhead; hard median>4×target or any≥25%F |
 | RSS | inputs 64 MiB/256 MiB/1 GiB × histories 1/16/64, cold | 3 independent repetitions/point, one raw and one candidate invocation each | absolute, idle-adjusted, scale, release, and slope gates |
-| Space | mixed≥512 MiB/20k files; no-dedup≥512 MiB; many-small≥100k; sparse≥8 GiB logical; repeated small/large histories | 3 settled repetitions/cell | amplification, duplication, slack, residue, metadata |
-| Maintenance | pack, GC, compaction, autosquash at controlled live/dead/depth values | exact threshold boundaries + restart variants | capacity/threshold/grace/slice gates |
+| Space | mixed≥512 MiB/20k files; no-dedup≥512 MiB; many-small≥100k; sparse≥8 GiB logical; repeated small/large histories; separate prebuilt clean workspaces 64/256/1,024 MiB × simultaneous sessions 1/8/32 | 3 settled repetitions/cell | amplification, duplication, slack, residue, metadata; for clean sessions, copied/read lower payload and new upper/workspace payload allocation exactly 0, constant directory/lease/journal counts and bounded record sizes, and allocated metadata `≤M0+N×m_cap` with the same predeclared caps at every workspace size |
+| Maintenance | pack/compaction/autosquash at controlled live/dead/depth; serialized `lowerdir=` at `L_limit-1/L_limit/L_limit+1`; squash build/commit/frozen/remount/evacuation; strong graph, each weak selector independently, unselected weak control, materialization carrier/locator root, selector removal, grace/restart | exact threshold/boundary case once plus frozen selector-removal and restart variants | count and byte-limit admission before mount; capacity/threshold/last-locator/evacuation/grace/slice gates; complete GC matrix |
+| Portability | every compatible required host × exact-digest Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less fixture × normal/read-only-root/non-root variant | one deterministic capability leaf per frozen row; ≤5 min/leaf and ≤60 s/operation | no target userland dependency; exact OCI index/platform evidence; every required row executes |
+
+For warm-size independence, fit
+`latency_ms=α+β_S×log2(S/64MiB)` separately for warm resolve/session, mount,
+and no-op exec p50/p95 cell estimates. The candidate one-sided 95% upper
+bound for `β_S` must not exceed the pre-candidate frozen raw-control
+slope-noise ceiling, and the structural work-counter tuple must be identical
+at all sizes. For mount/remount depth, fit
+`latency_ms=α+β_D×D` separately to matched p50/p95 estimates and require the
+frozen paired-bootstrap one-sided 95% upper bound of
+`β_D,candidate/β_D,raw≤1.10`.
 
 Inputs are pre-generated outside timed intervals. A matched cell fixes host,
-image, daemon binary, filesystem, CPU/memory allocation, cache class, corpus
+image, root, working directory, environment, stdout-drain rule, daemon binary,
+filesystem, CPU/memory allocation, cache class, corpus
 digest, seed, operation order, and background load. Raw control and candidate
-alternate; no campaign overlaps another. No operation exceeds 60 seconds.
+alternate; no top-level campaign overlaps another. The sole overlap exception
+is an explicitly event-synchronized maintenance-isolation leaf that overlaps
+one named actor with its command/PTY probe. No operation exceeds 60 seconds.
 Each matched pair/invocation is at most five minutes. Each RSS point receives
 its own five-minute raw invocation and candidate invocation, repeated three
 times. Selection uses separate raw/Stream and raw/Seq invocations; the
 two-invocation set is repeated three times.
 
 Every sample records absolute values, ratio/difference, warmup status, order,
-and rejection reason. No sample is silently dropped. Bootstrap method, seed,
-resamples, pairing key, confidence interval, and predeclared exclusion policy
-are artifact fields.
+and rejection reason. No sample is silently dropped. Time-cell `N`, OLS
+implementation, percentile estimator, raw slope-noise ceiling, bootstrap
+method, seed, resamples, pairing key, confidence interval, and predeclared
+exclusion policy are frozen plan fields before candidate data and copied into
+artifacts. A non-positive raw depth-slope denominator or raw interval
+including zero leaves that row `OPEN`; no post-hoc statistic replaces it.
 
 ## 7. Memory-stability and reclamation test
 
@@ -617,6 +690,15 @@ Publication staging is `C_capture+≤5%`; hydration is `C_target+≤5%`; squash
 has one replacement plus leased old carriers; compaction has a bounded source
 and target. SeqCDC unique retained bytes are ≤1.14× StreamCDC.
 
+For the clean-session matrix, inventory the warmed lower and all session
+upper/work directories before and after creating `N∈{1,8,32}` sessions over
+prebuilt `S∈{64,256,1024}` MiB workspaces without any write. Lower/workspace
+payload reads, copied payload bytes, and new payload allocation must each be
+exactly zero. Directory, lease, and journal owner counts and bounded record
+sizes must be constant per session, and allocated metadata must be
+`≤M0+N×m_cap` using the same predeclared `M0,m_cap` at every `S`; missing
+allocation provenance or any workspace-size term fails.
+
 ## 8. Dependency and portability proof
 
 For every target/feature invocation, compare before/after canonical inventories:
@@ -638,32 +720,38 @@ No database, daemon, FUSE helper, target-image shell, libc, package manager, or
 network fetch is permitted. Apache-2.0 SeqCDC provenance and legal approval are
 mandatory evidence.
 
-Sole pinned Phase 1 target image:
+Frozen Phase 1 image matrix:
 
-| Image | OCI index | linux/amd64 manifest | linux/arm64 manifest | Capability case |
-| --- | --- | --- | --- | --- |
-| `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | public capability profile plus read-only and non-root runtime variants |
+| Required fixture | Repository/tag selection | OCI index | linux/amd64 manifest | linux/arm64 manifest | Variants |
+| --- | --- | --- | --- | --- | --- |
+| Ubuntu glibc | `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | normal, read-only root, non-root |
+| Debian glibc | `OPEN — release owner freezes an exact repository/tag` | `OPEN` | `OPEN` | `OPEN` | normal, read-only root, non-root |
+| Alpine musl | `OPEN — release owner freezes an exact repository/tag` | `OPEN` | `OPEN` | `OPEN` | normal, read-only root, non-root |
+| Minimal/distroless | `OPEN — release owner freezes an exact repository/tag` | `OPEN` | `OPEN` | `OPEN` | normal, read-only root, non-root |
+| Shell-less | `OPEN — freeze a deterministic fixture recipe and repository/tag` | `OPEN` | `OPEN` | `OPEN` | no shell/userland helper, read-only root, non-root |
 
-The same OCI index identity is used on every applicable required host. The
-index is verified and its host-appropriate resolved platform manifest is
-recorded for every run. Required target capability profile
+Every `OPEN` exact digest is a pre-run blocker. Tags alone never qualify. Each
+compatible required host uses the same frozen OCI index identity for a fixture,
+verifies it, and records its host-appropriate resolved platform manifest.
+Required target capability profile
 `linux-image-capability-v1` contains a Linux OCI rootfs/config, supported native
 architecture, provider-side OverlayFS/mount/xattr capabilities, and writable
 provider storage even when the image root is read-only. It contains no
 userland requirement. A requested command may fail because its executable is
 absent; storage, workspace, file, publication, and recovery must still work.
-No second target image supplies Phase 1 evidence. Cross-image portability is
-deferred beyond Phase 1 and is neither an acceptance nor a retirement gate.
+Normative performance stays on pinned Ubuntu; the full image matrix is a
+separate Phase 1 portability correctness gate.
 
 Required-release matrix:
 
 | Host triple | Frozen runtime | Image/platform | Disposition before execution | Required result |
 | --- | --- | --- | --- | --- |
-| macOS 26.4 / Darwin 25.4.0 / arm64 | Docker Desktop 4.76.0, Engine 29.5.2, LinuxKit 6.12.76, 4 CPU, ~4.1 GiB | same pinned Ubuntu OCI index; verify and record arm64 manifest | `unverified`; planning host provenance only | required-release; normative performance row |
-| Ubuntu 24.04 LTS / amd64 | Docker Engine 29.5.2 | same pinned Ubuntu OCI index; verify and record amd64 manifest | `unverified` | required-release contract row |
-| Windows 11 24H2 / amd64, Linux containers | Docker Desktop 4.76.0, Engine 29.5.2 | same pinned Ubuntu OCI index; verify and record amd64 manifest | `unverified` | required-release contract row |
+| macOS 26.4 / Darwin 25.4.0 / arm64 | Docker Desktop 4.76.0, Engine 29.5.2, LinuxKit 6.12.76, 4 CPU, ~4.1 GiB | every compatible frozen matrix fixture; verify/record arm64 manifest | `unverified`; planning host provenance only | required-release; Ubuntu normative-performance row plus full portability rows |
+| Ubuntu 24.04 LTS / amd64 | Docker Engine 29.5.2 | every compatible frozen matrix fixture; verify/record amd64 manifest | `unverified` | required-release portability contract row |
+| Windows 11 24H2 / amd64, Linux containers | Docker Desktop 4.76.0, Engine 29.5.2 | every compatible frozen matrix fixture; verify/record amd64 manifest | `unverified` | required-release portability contract row |
 
-Unavailable or unexecuted required-release rows are no-go. Other Linux
+Unavailable or unexecuted compatible required host×image×variant rows are
+no-go. Other Linux
 kernel/filesystem/Docker combinations may be `contract-tested` or
 `unverified`; they cannot substitute for a required row.
 
@@ -756,12 +844,14 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### Stage 11 native-host/pinned-Ubuntu-24 matrix
+### Stage 11 native-host/full-image matrix
 
-Run this single-image matrix once per applicable required host and record the
-actual host row. Pinned Ubuntu 24.04 is the only Phase 1 target image;
-cross-image portability is deferred beyond Phase 1 and is not an acceptance
-gate. No tag-only result counts.
+Run the portability driver once per compatible required
+host×image×variant row from `pinned-images.json` and record the actual host
+row, exact OCI index, and resolved platform manifest. The command below is
+only the already-pinned Ubuntu row example; it does not replace the Debian,
+Alpine, minimal/distroless, shell-less, read-only-root, or non-root rows. No
+tag-only result counts, and any required `OPEN` digest blocks the matrix.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -794,7 +884,9 @@ E2E_IMAGE=ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffb
 
 ### Full Phase 1 qualification
 
-The final qualification uses only pinned Ubuntu 24.04:
+The normative performance plans below use pinned Ubuntu 24.04. The final
+qualification also consumes the separately completed full host×image
+portability bundles above:
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test/benchmark
@@ -851,37 +943,50 @@ sandbox deletion, and concurrent campaign execution are prohibited.
 | --- | --- | --- | --- |
 | Correctness | versioned byte/metadata/tree/root oracle | exact per checkpoint | exact; missing fails |
 | Route | closed enum authority/read/fallback/mismatch counters | start/end deltas per operation | candidate only; all fallback/mismatch zero |
-| Warm time | resolve, prepare, mount, frozen remount | paired p50/p95 | ≤raw +5%+2 ms |
-| Squash | full build/install/remount | paired p50/p95 | ≤raw +10%+5 ms |
-| Command | no-op, native throughput | paired p50/p95 / bytes/s | no-op≤+3%+0.5 ms; throughput≥97% |
+| Warm time | resolve, prepare, mount, frozen remount; size sweep `S=64/256/1024 MiB` at `D=16` | paired p50/p95 plus frozen OLS `β_S` and one-sided 95% bound | numeric cap; candidate slope bound within frozen raw noise; structural tuple identical; zero payload |
+| Depth slope | mount/remount at `D=1/16/48/64`, fixed `S=256 MiB` | paired p50/p95 OLS `β_D` and paired-bootstrap ratio bound | one-sided 95% upper bound `β_D,candidate/β_D,raw≤1.10`; invalid raw denominator remains `OPEN` |
+| Squash | build, commit, frozen, remount, evacuation separately plus full interval | paired p50/p95 and event timestamps | full≤raw+10%+5 ms; frozen≤raw+5%+2 ms; complete last-locator/cursor/lease evacuation evidence |
+| Command | direct shell-free `docker exec <container-id> ls` in the ready ordinary non-LayerStack control versus public `exec_command(["ls"])`, with setup excluded and matched root contents/cwd/env/allocation/cache/order/output drain; native throughput | paired p50/p95 / bytes/s | required candidate≤control×1.03+0.5 ms; separately report control−candidate≥80 ms at p50/p95 without rebasing; throughput≥97% |
 | PTY/stdin | create, drain, supported control | paired p50/p95 | create≤+3%+1 ms; rest≤+3%+0.5 ms |
 | Native file | sequential read/write | paired throughput | ≥97% |
 | Publication | disjoint and localized small edit | throughput / p95 | disjoint≥90%; edit≤+15%+5 ms |
 | Cold | hydrate bytes/s and activation p95 | matched native-copy control | hydrate≥70%; activation≤1.5×copy+warm |
-| Selection | saved unique bytes ratio | paired bootstrap | required lower CI≥0.10; guardrail regressions≤3% |
-| Chunking | count, mean, p10/p50/p90, retained/locality bytes | per corpus and matched algorithm | all fixed gates; missing fails |
+| Selection | normalized end-to-end publication elapsed-time advantage against each algorithm's paired raw control | paired median and bootstrap over matched samples | localized/mixed advantage≥0.10 and 95% lower CI≥0.10; no-dedup/many-small regressions≤3% |
+| Chunking/storage | count, mean, p10/p50/p90, unique-retained ratio, retained/locality bytes | per corpus and matched algorithm | fixed distribution/locality gates and SeqCDC unique retained≤1.14× StreamCDC; missing fails |
 | Memory | owned bytes/counts, RSS/cgroup/Docker and scope | 100 ms bounded stream, medians/peaks/slope | all lifecycle/absolute/scale gates |
-| Space | allocated bytes in `L_hot,H_cold,ΣU_active,P_staging,M` | pre/visible/settled/restart | all amplification/residue/metadata gates |
-| Maintenance | depth, carriers, pack bytes/records/allocation, dead/slack, slice | exact threshold boundary | all squash/pack/GC thresholds |
+| Space | allocated bytes in `L_hot,H_cold,ΣU_active,P_staging,M`; clean-session lower reads/copies, payload allocation, and per-session directory/lease/journal owners | pre/visible/settled/restart; clean matrix 64/256/1,024 MiB ×1/8/32 ×3 | all amplification/residue/metadata gates; clean payload growth exactly 0 and metadata `≤M0+N×m_cap` with the same predeclared caps at every workspace size |
+| Mount admission | layer count and exact serialized `lowerdir=` bytes at `L_limit-1/L_limit/L_limit+1` | exact boundary and mount-syscall count | both limits enforced; over-limit rejected before mount |
+| Maintenance isolation | synchronized idle/active command and PTY under packer, squash builder, and GC | matched p50/p95 plus active events and critical-path owner counters | ordinary command/PTY gates pass; every maintenance-owned critical-path counter exactly zero |
+| Maintenance | depth, carriers, pack bytes/records/allocation, dead/slack, slice, evacuation | exact threshold boundary and interval/event evidence | all squash/pack/GC/last-locator/evacuation thresholds |
+| GC reachability | strong graph; weak lease/pin/active-branch/history-window/frontier/in-flight/pending selectors separately; materialization carriers/locators; removal controls | per-root/selector decision before and after grace/final recheck | every matrix cell present; strong targets retained; each sole selector retains; removal collects only after gate |
+| Portability | compatible required host×image×variant matrix | exact OCI index/resolved platform manifest and public capability result per leaf | every required row passes; `OPEN`, unavailable, tag-only, or target-userland dependency fails |
 | Dependencies | canonical exact sets and edge multiset | byte-for-byte before/after | zero delta |
 
 The final numeric time gates are: warm prepare/resolve and mount p50/p95
 ≤baseline+5%+2 ms with zero CAS payload; remount same; squash
-≤baseline+10%+5 ms; no-op exec ≤baseline+3%+0.5 ms; native command, read,
-and write ≥97%; PTY create ≤+3%+1 ms; drain/stdin/control-C/control-D
+≤baseline+10%+5 ms; public `exec_command(["ls"])` p50/p95
+≤direct shell-free `docker exec <container-id> ls`×1.03+0.5 ms in the ready
+ordinary non-LayerStack control under the frozen matched context, with setup
+excluded and the separate non-normative ≥80 ms saved target
+reported at both percentiles and never rebased; native command, read, and
+write ≥97%; PTY create ≤+3%+1 ms; drain/stdin/control-C/control-D
 ≤+3%+0.5 ms; disjoint publication ≥90%; small-edit publish p95
 ≤+15%+5 ms; cold hydration ≥70% native copy; cold activation p95
 ≤1.5× native copy plus warm allowance.
 
 Maintenance gates are: enqueue autosquash at projected depth≥48 and
-compact/reject before depth>64; routine squash benefit≥8 carriers and manual
-benefit≥2; pack payload≤64 MiB, records≤100,000, allocation≤80 MiB;
+compact/reject before depth>64; routine squash benefit≥8 carriers and a manual
+selected run containing≥2 lowers; pack payload≤64 MiB, records≤100,000, allocation≤80 MiB;
 individual compaction at≥20% dead; urgent aggregate when>5%, target≤2%;
 each slice≤100,000 records or64 MiB; deletion grace≥one complete durable epoch
-plus a final lease/root/generation recheck.
+plus a final lease/root/generation/locator recheck; mount preflight enforces
+both layer count and exact serialized lowerdir bytes; and every GC selector,
+materialization root, evacuation interval, and maintenance-isolation cell is
+present.
 
 Every record includes product/test commit, dirty state, binary digest, config
-and rollout mode, host/runtime versions, image index/platform digest,
+and rollout mode, host/runtime versions, host×image×variant identity and exact
+image index/platform digest,
 architecture, CPU/memory/storage allocation, kernel/filesystem/mount/xattr,
 toolchains, corpus/seed, cache state, operation order, source/scope, and
 `measured|derived|estimated|unknown`. Evidence streams are bounded or written
@@ -901,8 +1006,7 @@ The qualification verdict is `go` only when:
   physical non-test Rust lines or has an approved recorded exception;
 - exact dependency, feature, manifest-edge, service, helper, download, and
   target-image prerequisite deltas are zero;
-- every required-release host row executes successfully using the sole pinned
-  Ubuntu OCI index, with the verified resolved platform manifest recorded;
+- every compatible required host×Ubuntu/Debian/Alpine/minimal-or-distroless/shell-less×runtime-variant row executes successfully with exact OCI index and verified resolved platform manifest evidence;
 - candidate-default soak has zero legacy authority/fallback/mismatch and
   bounded resources;
 - rollback and forward restore preserve all roots and public behavior;

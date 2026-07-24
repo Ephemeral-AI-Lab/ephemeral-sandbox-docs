@@ -1,6 +1,13 @@
 # Stage 03 — Bounded scalar streaming SeqCDC
 
-[Implementation overview](../index.md) · [Stage 03 E2E plan](e2e_test.md) · [Preparation 02](../../prep/02-storage-solution-examination-review.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [Stage 03 E2E plan](e2e_test.md) · [Benchmark note](benchmark_note.md) · [Preparation 02](../../prep/02-storage-solution-examination-review.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Stage 03 creates no `/eos` v2 state and no
+> reserved future directories. It emits typed descriptors through the bounded
+> object-sink contract required by the
+> [simplified storage contract](../layerstack_storage_contract.md). Later
+> references to catalogs or journals describe downstream behavior only, not a
+> Stage 03 storage API.
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -14,7 +21,7 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | Owners / affected crates | `sandbox-runtime-layerstack-core` owns scalar boundary selection; the existing `sandbox-runtime` LayerStack module owns SHA-256 and descriptor adaptation; focused Rust/external POC tests. |
 | Objective | Implement the authors’ increasing-mode scalar SeqCDC semantics as one safe, standard-library-only, bounded streaming primitive whose boundaries are deterministic under arbitrary `Read` fragmentation. |
 | System-visible outcome | None. No production capture/publication route calls the chunker; no v2 artifact exists; v1 remains sole read/write/publication authority. |
-| Fixed profile | `seqcdc-scalar-author-v1`; increasing; min 8,192 B; effective-mean target 16,384 B; max/window 32,768 B; sequence threshold 5; opposing-slope trigger 50; jump 512 B; typed/domain-separated SHA-256 in the existing LayerStack adapter. |
+| Fixed profile | `seqcdc-scalar-author-v1`; increasing; min 8,192 B; effective-mean target 16,384 B; max/window 32,768 B; sequence threshold 5; opposing-slope trigger 50; jump 512 B; typed/domain-separated SHA-256 using ASCII `EOS-LS2\0`, `ObjectKind::ChunkPayload=3`, and two-byte big-endian format version `2` in the existing LayerStack adapter. |
 | Scope | Scalar cut loop; 32 KiB circular window; at most two borrowed slices; callback/visitor API; checked offsets/lengths; author-oracle fixtures; fragmentation/boundary/property tests; existing-`sha2` chunk-ID adapter; tiny diagnostic loop; exact dependency/source audit. |
 | Non-goals | Runtime shadow writer; CAS persistence; packs/indexes/catalogs; async/SIMD/unsafe; public route; authoritatively selected SeqCDC; integrated 10% advantage; full storage/RSS/portability qualification; StreamCDC fallback implementation; materialization/GC/squash. |
 | Entry | Stage 02 POC exit passes; immutable oracle provenance/digest is recorded; exact dependency baselines remain available; no candidate `/eos` subtree exists. |
@@ -260,7 +267,7 @@ It emits only an `ObjectId`, file offset, and length to a bounded descriptor sin
 | Concern | Frozen rule | Compatibility action |
 | --- | --- | --- |
 | Algorithm identity | Exact `seqcdc-scalar-author-v1`; profile serialized in every future root | Any semantic/parameter change creates a new profile/format; never reinterpret old roots |
-| Oracle | Pinned source revision, file digest, extraction method, increasing-mode outputs | Fixture is append-only; changed output blocks and requires review |
+| Oracle | `UWASL/dedup-bench@8e2697cbf6332ac5da6dc615bfab82a720e820e4`; `seq_chunking.cpp` SHA-256 `d19548ac340a54edd5d6ac5f445f0d1fd7a31dbbdce4f6e243e115c81933cc9b`; 16 KiB config SHA-256 `8dc85094530b052fb1a9b2f7e7510f8670e5473628b43c168fb4c759c319f6c0`; increasing-mode extraction | Fixture is append-only; changed output blocks and requires review |
 | Test input | Deterministic bytes with documented generator/seed, plus tiny explicit literals | No runtime download or package |
 | Expected cuts | Ordered cumulative offsets and lengths; final byte count equals input | Never infer from current implementation |
 | Expected IDs | Existing LayerStack typed SHA-256 over exact chunk bytes | Core boundary test distinguishes cut defect from hash adapter defect |
@@ -271,6 +278,13 @@ It emits only an `ObjectId`, file offset, and length to a bounded descriptor sin
 | Sparse file | Reader bytes are logical payload bytes | Sparse preservation/capture is Stage 04+; no claim from a byte-stream test |
 
 Oracle corpora include: empty; 1, 8, 7, 8,191, 8,192, 8,193; 16,383–16,385; 32,767–32,769 bytes; monotone increasing/decreasing; equal runs; sawtooth around threshold 5; opposing slope at 49/50/51; jump landing at 511/512/513; wrap across ring end; deterministic pseudorandom; localized insert/delete; and multi-megabyte repeated records. Integer boundaries are explicitly included.
+
+One required immutable case is `S03-OPPOSING-JUMP`: make a 9,000-byte zero
+buffer, write byte 8,191=`255`, bytes 8,192…8,241=`254…205`, and bytes
+8,754…8,758=`1…5`. The pinned routine must record 50 opposing comparisons, one
+jump from scan position 8,242 to 8,754, and first cutpoint 8,758. Check in that
+ordered cut and its typed chunk IDs before candidate execution, then require the
+whole-reader and every fragmented-reader candidate result to match exactly.
 
 ## 7. Workflow and failure semantics
 
@@ -344,21 +358,21 @@ Jumps advance the scan position and never cause rescanning. Diagnostic counters 
 | Each focused operation ≤60 s; diagnostic loop 30–60 s | **stage-gating** |
 | Effective mean within 5% of 16 KiB on final required corpora | **deferred-to-stage_11**; Stage 03 reports tiny diagnostic distribution only |
 | SIMD/accelerated path and scalar/SIMD differential | **not-applicable**; Stage 03 intentionally implements scalar only. Any later acceleration needs safe runtime detection and byte-identical boundaries/IDs. |
-| Publication `O(U+E+K)`, 4 workers, per-worker 32 KiB ring, ≤4 global borrowed chunks, queue 16/≤64 KiB, ≤4 MiB/publication, 64 MiB global semaphore | Core per-worker ring **stage-gating**; runtime workers/queue/permits **deferred-to-stage_04** |
+| Incremental publication `O(U+K+C+V_delta)` after a separately labeled `O(R+E)` bootstrap, 4 workers, per-worker 32 KiB ring, ≤4 global borrowed chunks, queue 16/≤64 KiB, ≤4 MiB/publication, 64 MiB global semaphore | Core per-worker ring **stage-gating**; runtime workers/queue/permits **deferred-to-stage_04** |
 | 256 KiB pack-read/hydration buffers, 16 MiB page cache, merge fan-in 8×64 KiB | **deferred-to-stage_05** / `stage_08` as owned; not allocated here |
 | Publication peak `C_capture + staging≤5%`; ENOSPC preserves authority | **deferred-to-stage_04** |
 | Metadata ≤96 B/chunk, ≤64 B/segment, ≤256 B+path changed record | descriptor shape diagnostic now; persisted/accounted gate **deferred-to-stage_04** and final `stage_11` |
-| Warm resolve/mount p50/p95 ≤ baseline+5%+2 ms, zero CAS; cold hydrate ≥70% copy; cold activate ≤1.5× copy + warm | **deferred-to-stage_05** |
+| Warm resolve/mount p50/p95 ≤ baseline+5%+2 ms, zero CAS; cold hydrate ≥70% copy; cold activate ≤1.5× copy + warm | private materialization/cold-hydration diagnostics **deferred-to-stage_05**; public resolve/mount/activation diagnostics **deferred-to-stage_06**; qualification **deferred-to-stage_11** |
 | Disjoint publication ≥90% baseline/OCC; small-edit p95 ≤baseline+15%+5 ms | **deferred-to-stage_07** |
 | Packs ≤64 MiB/100k/80 MiB; dead/slack and maintenance slice/grace thresholds | **deferred-to-stage_08** |
-| Depth 48/64, squash benefit 8/manual 2, squash/remount timing | **deferred-to-stage_09** |
-| No-op exec p50/p95 ≤+3%+0.5 ms; command/file throughput ≥97%; PTY create ≤+3%+1 ms; drain/stdin/C/D ≤+3%+0.5 ms; unsupported semantics unchanged | **deferred-to-stage_11**; Stage 03 only checks legacy compatibility |
+| Depth 48/64, routine squash benefit 8, manual selected run ≥2 lowers, squash/remount timing | **deferred-to-stage_09** |
+| No-op exec p50/p95 ≤+3%+0.5 ms; command/file throughput ≥97%; PTY create ≤+3%+1 ms; drain/stdin/C/D ≤+3%+0.5 ms; unsupported semantics unchanged | component diagnostics **deferred-to-stage_06**; qualification **deferred-to-stage_11**; Stage 03 only checks legacy compatibility |
 | Selection advantage ≥10% on localized-source and mixed-tree; no-dedup/small-file regression≤3%; 3 fresh matched sets, ≥5 interleaved samples, counterbalance, paired-bootstrap 95% LCB≥0.10; equal distribution mean≤5%, p10/p50/p90≤10% | **deferred-to-stage_11** |
 | Unique payload ≤1.14× StreamCDC; locality target for `F≥16MiB`, edit≤64KiB is change+64KiB+segment, hard median>4× or any≥25%F | **deferred-to-stage_11** |
 | Total `T`, amplification (1.08/1.15; small-file 1.15/1.25), duplicate (1/3%), slack (2/5%), unreachable 0 | **deferred-to-stage_11** |
 | RSS≤384 MiB and≤128 MiB over idle; 64/256/1024MiB×1/16/64 roots×3 cold; ≤16 MiB full variation and≤8 MiB/4× | **deferred-to-stage_11** |
 | Long-lived release without restart/trim/cache purge/sleep | Scanner logical release **stage-gating**; full process/RSS slope **deferred-to-stage_11** |
-| Required-release host matrix using sole pinned Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` and recording each resolved platform manifest | source/design independence **stage-gating**; executed host rows **deferred-to-stage_11**; cross-image portability is beyond Phase 1 and non-gating |
+| Required-release host and Prep 04 Phase-1 image matrix: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root, recording every resolved platform manifest | source/design independence **stage-gating**; executed host/image rows **deferred-to-stage_11**; Stage 03's pinned Ubuntu row alone makes no qualification claim |
 | Candidate/baseline invocation ≤5 min | **not-applicable** to the Stage 03 diagnostic; final paired campaigns `deferred-to-stage_11` |
 
 Raw GB/s from a paper or this tiny loop cannot satisfy integrated selection.
@@ -461,12 +475,43 @@ Focused Rust artifacts, not daemon metrics, report: oracle ID/digest, profile ID
 
 Do not log individual production payload bytes, chunk IDs, or paths. Test failure may reference a bounded case index, expected/actual offset, and fixture digest. Missing memory/dependency evidence is a failure, not zero.
 
+### Performance arrival checkpoint
+
+Stage 03 is not reached until the diagnostic loop in
+[benchmark_note.md](benchmark_note.md) produces both of these validated files
+under the test run result:
+
+```text
+.benchmark-state/results/<run_id>/stage-03-perf-report.json
+.benchmark-state/results/<run_id>/stage-03-perf-report.md
+```
+
+The JSON is the versioned machine truth
+(`schema_version=phase1.stage03.perf-report.v1`); the Markdown is generated
+from the same record for human review. Both contain raw oracle/control and
+candidate samples, frozen baseline actual, required pass target/cap,
+separately predeclared optimization target, candidate actual,
+delta/ratio/headroom, `U/K` and scan/comparison/jump work counters,
+ring/borrow/descriptor and RSS evidence, physical-space/payload-zero evidence,
+literal algorithm/mode/digest/domain/object-kind/format fields, pinned oracle
+revision/source/config/fixture digests, the deterministic
+`S03-OPPOSING-JUMP` expected/actual trace, provenance, run and raw artifact
+links, and a
+`DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes those
+comparison fields per stage-owned metric. Unsupported absolute “minus N ms”
+goals are forbidden; any relative cap names its raw baseline.
+The stage cannot be marked reached until schemas validate, the benchmark-note
+tracker is appended, and the matching Plan/Run plus Good/Defect result is
+appended to `e2e/test-report.md`. This report is diagnostic and is not Stage 11
+qualification.
+
 ## 12. Completion checklist
 
 - [ ] Exact branch `upgrade-2.0-phase-1` and its newest approved immutable product base, plus immutable test/doc bases, are recorded; planning itself created no branch.
 - [ ] Stage 02 portable contract and exact-zero dependency gate pass.
 - [ ] Oracle provenance/revision/digest/method/license is pinned and independently reviewed.
 - [ ] Profile values exactly match `seqcdc-scalar-author-v1`; target mean is not a cut-loop input.
+- [ ] Typed chunk identity records `EOS-LS2\0`, kind `3`, format `2`, canonical length, and exact bytes; `S03-OPPOSING-JUMP` records 50 opposing comparisons, one 512-byte jump, and author cutpoint 8,758.
 - [ ] Empty, short, exact-boundary, tail, wrap, slope, threshold, jump, monotone, repeated, random, and localized-edit vectors pass.
 - [ ] Every cut matches the oracle and is deterministic under arbitrary `Read` fragmentation and `Interrupted`.
 - [ ] Input is consumed once; scan offset never regresses; combined work is linear.
@@ -478,4 +523,5 @@ Do not log individual production payload bytes, chunk IDs, or paths. Test failur
 - [ ] V1 publication, mount, command, file, PTY, stdin, and cancellation behavior remains compatible.
 - [ ] Complete `/eos` tree remains legacy-only; every canonical candidate subtree is absent.
 - [ ] Focused operations are <60 seconds; 30–60 second loop is explicitly diagnostic.
+- [ ] Versioned Stage 03 JSON and Markdown performance-arrival reports validate, link raw/run evidence, and are appended to both performance and E2E ledgers.
 - [ ] POC verdict claims no integrated selection, final memory/space/performance, portability, release, or production approval.

@@ -1,9 +1,31 @@
 # Stage 10 E2E — Candidate authority, legacy shadow, and read rollback
 
-[Implementation overview](../index.md) · [Stage 10 specification](spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Stage 10 specification](spec.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+## Performance arrival checkpoint
+
+Stage 10 has not reached its exit until the focused test runner writes versioned
+`.benchmark-state/results/<run-id>/stage-10-perf-report.json` and
+`stage-10-perf-report.md` with
+`schema_version="phase1.stage10.perf-report.v1"`, the frozen baseline actual,
+required pass target/cap, separately predeclared optimization target,
+candidate actual, delta/ratio/headroom, complexity/work counters,
+logical-resource high-water counters, memory/RSS,
+complete allocated-space accounting, links between the reports and to
+immutable run/raw artifacts, provenance, and a `DIAGNOSTIC_PASS` or `FAIL`
+verdict. The first Markdown table exposes those comparison fields per
+stage-owned metric. It must then update the append-only
+[benchmark tracker](benchmark_note.md) and
+[overall scorecard](../stage_03_11_benchmark_note.md), and append the exact
+command, outcome, report links, and cleanup to `e2e/test-report.md`.
+
+The full Stage 10 local cycle is **ESTIMATED** at 65–135 s: setup 8–14 s,
+warmups 7–14 s, measured work 37–72 s, quiescence/cleanup 7–20 s, and
+reporting 6–12 s. Its core developer loop remains 30–60 s. These are planning
+numbers; the ≤60 s operation/cell and ≤5 min invocation limits remain hard.
 
 ## 1. Stage-local test objective
 
@@ -26,9 +48,9 @@ This is the first **POC proof tier** allowed to enable candidate authority, and 
 
 This stage does not make candidate mode the default and does not run the full
 suite, normative performance/space/RSS matrices, required host/release-runner
-matrix using the sole pinned Ubuntu target, or retirement gate. Stage 11 owns
-all of them. Cross-image portability is outside Phase 1 and is not an
-acceptance or retirement gate.
+and image-capability matrices, or retirement gate. Stage 11 owns all of them,
+including the complete Prep 04 image matrix; any unverified required-release
+row blocks acceptance and retirement.
 
 ## 2. Existing assets to reuse
 
@@ -173,7 +195,7 @@ Public manager/runtime/file/workspace/observability operations are the correctne
 | `layerstack.phase1.authority.legacy-read-rollback` | hard / `run-now-focused` | explicit verified legacy read rollback | lagging, mismatched, and caught-up shadow cursors; active sessions | request route changes; publish while legacy reads; return to candidate | lag/mismatch fail closed; caught-up epoch switch quiesced; candidate remains sole write authority; reads fenced; fallback zero | route/remount durations | route staging and candidate/legacy coexistence | session leases and route coordinator return to warmed idle | no per-read fallback/helper; provider-neutral epoch contract | `60000` ms | epoch/cursor timeline, remount/lease state, receipts, digests, allocation inventory, logs |
 | `layerstack.phase1.authority.mixed-root-restart` | hard / `run-now-focused` | mixed v1/v2 restart recovery | retained pre-migration v1 plus migrated/new v2 roots; authority/publication/shadow/materialization failpoints | restart and read every selected root; retry incomplete public operations | one durable authority/root generation; all roots reconstruct; cursor/journal resume idempotently; legacy artifacts remain | recovery duration per failpoint | journal/staging/quarantine/trash/residue allocation | all owners quiesce and no lease/worker/journal leaks | zero dependency delta; v1/v2 format and pinned-environment evidence | `60000` ms | root matrix, authority/catalog snapshots, journal states, digests, disk/memory series, logs |
 | `layerstack.phase1.authority.soak-tiny` | bench / `run-now-tiny-bench` | diagnostic authority stability loop | one daemon; warmup; 20 bounded cycles; ≥5 alternating pairs; receipt/shadow/route faults | publish/read/switch/restart/clean up through public surfaces | exact receipt/tree/cursor/authority oracle each cycle; hard resource and zero-fallback invariants | raw phase samples; 30–60 s loop diagnostic target | categorized peak/settled allocation | logical final/high-water gauges plus explicit cgroup/RSS availability | frozen dependency evidence and pinned-environment manifest | `60000` ms | plan/result JSON, raw samples, environment, timelines, disk/memory series, logs |
-| `layerstack.phase1.authority.qualification` | release / `planned-final` | cumulative final qualification/default/retirement | Stage 11 regression/soak/performance/space/RSS/required-host matrix using the sole pinned Ubuntu 24.04 target image | Stage 11 public benchmark, rollback rehearsal, and affected suite | all normative gates/required rows pass before candidate default or legacy retirement | normative paired p50/p95 and ≤5 min pair | authoritative full peak/settled envelope | full repeated-cycle/scale/RSS gates | required release runners use the pinned Ubuntu 24.04 target; cross-image acceptance is deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle only |
+| `layerstack.phase1.authority.qualification` | release / `planned-final` | cumulative final qualification/default/retirement | Stage 11 regression/soak/performance/space/RSS matrix over required hosts and the complete Prep 04 image-capability matrix | Stage 11 public benchmark, rollback rehearsal, and affected suite | all normative gates/required rows pass before candidate default or legacy retirement | normative paired p50/p95; each matched cell ≤5 min | authoritative full peak/settled envelope | full repeated-cycle/scale/RSS gates | pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root cells; every unverified required-release row blocks | `300000` ms for aggregate artifact validation only; dispatched cells own their timeout | Stage 11 qualification bundle only |
 
 Each live case emits exactly one terminal validation checkpoint after cleanup.
 
@@ -243,7 +265,7 @@ Each live case emits exactly one terminal validation checkpoint after cleanup.
 @e2e_test(
     id="layerstack.phase1.authority.qualification",
     title="Candidate authority release qualification and legacy retirement gate",
-    description="Stage 11-only full affected regression, authority soak, time/space/RSS matrices, required hosts using the sole pinned Ubuntu 24.04 target image, default enablement, rollback rehearsal, and evidence-gated legacy retirement; cross-image acceptance is deferred beyond Phase 1.",
+    description="Stage 11-only full affected regression, authority soak, time/space/RSS matrices, required-host and complete Prep 04 image-capability matrices, default enablement, rollback rehearsal, and evidence-gated legacy retirement.",
     features=("layerstack", "phase1-qualification", "candidate-authority", "legacy-shadow", "portability"),
     validations={
         "terminal": "All normative gates and required-release rows execute successfully, candidate default is approved, rollback is rehearsed, and legacy retirement satisfies the explicit Stage 11 deletion gate.",
@@ -253,7 +275,7 @@ Each live case emits exactly one terminal validation checkpoint after cleanup.
     },
     execution_surface="cli",
     owner_id="layerstack-phase1",
-    timeout_ms=300_000,
+    timeout_ms=300_000,  # aggregate artifact validator only; every dispatched cell owns its timeout
 )
 ```
 
@@ -365,17 +387,18 @@ Capture and compare exact before/after:
 
 Pass requires zero external delta, including no relocated duplicate edge. Candidate/legacy composition uses existing internal crates and std-only core. No `tar`, shell, checksum command, Python, libc-specific utility, package manager, helper binary, FFI library, service, sidecar, or network lookup is added.
 
-The pinned focused fixture is the sole Phase 1 target,
+The pinned Stage 10 focused fixture is
 `ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`;
 record its resolved platform manifest plus Docker Desktop/Engine and guest
 kernel/filesystem/mount/userxattr. Storage correctness uses public operations,
 so the target image need not provide a command. Read-only and non-root runtime
-variants use the same image identity. This one required-host row is not the
-final cross-host qualification. Stage 11 executes every required
-host/architecture/Docker release-runner row using the same OCI index and
-records the resolved platform manifest; no unexecuted required row is
-qualified. Cross-image portability is deferred beyond Phase 1 and is neither
-an acceptance nor a retirement gate.
+variants are exercised locally where available. This focused row is not the
+final host/image qualification. Stage 11 executes every required
+host/architecture/Docker release-runner row and pins both OCI index and
+resolved platform-manifest digests for Ubuntu/Debian glibc, Alpine musl,
+minimal/distroless, and shell-less fixtures, including read-only and
+non-root cases. No unexecuted required-release row is qualified; it blocks
+default enablement and retirement.
 
 ## 9. Focused and final-stage commands
 
@@ -477,11 +500,16 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 10 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 10 — Stage 11 host/image capability matrix
 
-Stage 11 runs this single-image matrix once per applicable required host.
-Pinned Ubuntu 24.04 is the only Phase 1 target image; cross-image portability
-is deferred beyond Phase 1 and is not an acceptance gate.
+The command below is only the already-pinned Ubuntu cell. Stage 11's image
+driver must dispatch it once for every entry in the frozen image manifest:
+Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less, plus
+read-only and non-root variants. The manifest records each OCI index and
+resolved platform digest and labels every host/image row
+`qualified|contract-tested|designed-compatible|unverified` and
+`required-release|informational`. Do not run or accept this single command as
+the Phase 1 matrix.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -549,7 +577,7 @@ Block on duplicate/ambiguous commit, silent fallback, stale rollback read, shado
 
 Passing does **not** mean default enablement, production qualification,
 required-host portability, normative performance/space/RSS, or legacy
-retirement. Those decisions require Stage 11 evidence using the sole pinned
-Ubuntu target on every applicable required host; all legacy paths and rollback
-code remain through the end of Stage 10. Cross-image portability is deferred
-beyond Phase 1 and is not a gate.
+retirement. Those decisions require Stage 11 evidence over every applicable
+required host and every required Prep 04 image-capability cell; all legacy
+paths and rollback code remain through the end of Stage 10. Any unverified
+required-release host/image row is a production and retirement no-go.

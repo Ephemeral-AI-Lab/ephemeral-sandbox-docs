@@ -1,9 +1,47 @@
 # Stage 11 — Qualification, default enablement, and legacy retirement
 
-[Implementation overview](../index.md) · [Stage 11 E2E plan](e2e_test.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [Stage 11 E2E plan](e2e_test.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Final qualification uses the compact tree in
+> the [simplified storage contract](../layerstack_storage_contract.md), not the
+> superseded catalog/journal/staging tree later retained for migration-history
+> traceability. Retirement is blocked until every retained checkpoint
+> reconstructs without a v1-only last locator and repeated GC/compaction/
+> cancellation cycles prove bounded memory and resource release.
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+## Performance arrival checkpoint
+
+Stage 11 has not reached qualification until the final scheduler emits
+versioned `.benchmark-state/results/<run-id>/stage-11-perf-report.json` and
+`stage-11-perf-report.md` with
+`schema_version="phase1.stage11.perf-report.v1"`. They must adjudicate every
+cumulative Prep gate and contain frozen baseline actuals, required pass
+targets/caps, separately predeclared optimization targets, candidate actuals,
+deltas/ratios/headroom, complexity/work counters, logical-resource high-water
+counters, memory/RSS, complete
+physical-space terms, correctness/recovery/dependency/platform prerequisites,
+links between the reports and to immutable run/raw artifacts, provenance, and
+one terminal verdict. The first Markdown table exposes those comparison
+fields per Prep metric. `QUALIFIED` is
+valid only when every required row passes; any miss or unverified value is
+`FAIL`.
+
+After the immutable reports exist, update the append-only tracker in
+[the benchmark note](benchmark_note.md), update the
+[overall scorecard](../stage_03_11_benchmark_note.md), and append the command,
+outcome, report links, and cleanup to `e2e/test-report.md`. The developer tiny
+loop is **ESTIMATED** at 30–60 s. The sequential full qualification aggregate
+is **OPEN** pending frozen time-cell `N`, corpus throughput, space-history
+cells, the compatible host×image row count, and runner availability; the
+current non-normative local planning range is 11–27 runner-hours plus the full
+required host×image portability matrix. Every leaf cell or matched invocation
+remains ≤5 min and every individual operation remains ≤60 s. Aggregate
+qualification nodes only validate plans, dispatch/resume leaf run IDs, and
+validate completed immutable artifacts; their control-plane timeout is not a
+license to execute a campaign inside one test.
 
 ## 1. Stage contract
 
@@ -14,16 +52,25 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | Owners / affected crates | All Phase 1 storage, workspace-scratch, operation, overlay adapter, config, CLI, E2E, benchmark, packaging, and release-matrix owners |
 | Objective | Make the qualified candidate the default, prove every cumulative Phase 1 correctness/resource/time/space/dependency/portability gate, demonstrate rollback once more, and only then retire legacy writers/readers and transitional artifacts. |
 | User-visible outcome | Existing command, file, PTY, stdin, workspace, publish, export, squash, and recovery behavior remains compatible; storage defaults to portable SeqCDC/CAS roots with native Docker/OverlayFS materializations. |
-| Scope | Complete affected regression, normative Docker Desktop/Ubuntu qualification, all required host-release rows using the sole pinned Ubuntu 24.04 target image, long-lived memory and disk matrices, candidate default/soak/rollback, mixed-root migration completion, legacy retirement, final documentation. |
+| Scope | Complete affected regression; normative Docker Desktop/Ubuntu performance qualification; the full required host×image portability matrix spanning Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less profiles plus read-only-base and non-root variants; long-lived memory and disk matrices; candidate default/soak/rollback; mixed-root migration completion; legacy retirement; final documentation. |
 | Non-goals | Firecracker or WASM implementation; Windows containers; new PTY parity; a resident materialization for every inactive root; execution-time CAS VFS; Phase 2 branch/MCTS policy. |
 | Entry | Stage 10 candidate authority has zero unexplained mismatch/corruption/fallback, its soak duration and cohort are approved, all legacy roots are readable/migratable, rollback preserves candidate data, and the recorded implementation lineage proves all Phase 1 changes descend from the newest approved immutable base on mandated branch `upgrade-2.0-phase-1`. |
-| Exit | Every mandatory correctness gate precedes and passes before scoring; every prep-04 normative gate passes; all required-release host rows execute using Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` and record the resolved platform manifest; external dependency delta is exactly zero; scalar core is safe and ≤300 physical non-test Rust lines or has an approved exception; rollback passes; then legacy writes/readers/data are retired and restart recovery proves the target-only tree. Cross-image portability is deferred beyond Phase 1 and is not an acceptance or retirement gate. |
+| Exit | Every mandatory correctness gate precedes and passes before scoring; every Prep-04 normative gate passes; every retained checkpoint reconstructs without a v1-only last locator; branch/checkpoint/rollback/MCTS-fork/squash/GC memory-safety gates pass; every compatible required-release host×image×variant row executes against an exact frozen OCI index and resolved platform-manifest digest; storage behavior is proven through public APIs even when the image cannot run a command; external dependency delta is exactly zero; scalar core is safe and ≤300 physical non-test Rust lines or has an approved exception; rollback passes; then legacy writes/readers/data are retired and restart recovery proves the target-only tree. |
 | Rollback | Before retirement, restore Stage 10 `candidate_authoritative_with_legacy_shadow`. After retirement is authorized, rollback is a versioned restore procedure from the retained pre-retirement snapshot/backup into a binary that still contains the compatibility reader; destructive cleanup never precedes that proof. |
 
 No row, metric, or workload is “passed” by this document. Missing evidence is
 `unverified`; any unverified required-release host row or normative metric is a
-no-go. Cross-image portability is deferred beyond Phase 1 and cannot create a
-Phase 1 no-go.
+no-go. Any unverified compatible required-release image or runtime-variant row
+is likewise a Phase 1 no-go.
+
+The final target additionally fails qualification if any of these storage
+architecture checks fails: no SQLite/dependency/file is present; no complete
+tree/history/GC live set is resident; repeated error/cancel/restart cycles
+return tasks, permits, queues, mappings, FDs, leases, and transaction memory to
+their bounds; clean branch and checkpoint operations allocate zero payload;
+checkout/revert/reset are distinct and correct; checkpoints survive squash;
+MCTS graph depth does not increase native lower depth; and every retained root
+has a non-v1-only reconstruction path before legacy deletion.
 
 ## 2. Current evidence
 
@@ -82,9 +129,9 @@ ephemeral-sandbox/
 │   ├── src/
 │   │   ├── object_store.rs                                          [add]
 │   │   ├── pack_store.rs                                            [add]
-│   │   ├── index_store.rs                                           [add]
-│   │   ├── catalog_store.rs                                         [add]
-│   │   ├── journal_store.rs                                         [add]
+│   │   ├── locator_store.rs                                         [add]
+│   │   ├── ref_store.rs                                             [add]
+│   │   ├── transaction_store.rs                                     [add]
 │   │   ├── recovery.rs                                              [add]
 │   │   ├── docker_materializer.rs                                   [add]
 │   │   ├── storage_budget.rs                                        [add]
@@ -142,7 +189,14 @@ ephemeral-sandbox-test/
 
 `layerstack-core/src/lib.rs` exports explicit modules/value types; it is not a grouping façade that re-exports provider implementations. Test support remains in `tests/`.
 
-### Final `/eos` tree
+### Superseded pre-simplification `/eos` inventory
+
+This inventory is retained only to trace retirement and compatibility
+requirements. It is not the final implementation target. The final target is
+the compact tree in the
+[simplified storage contract](../layerstack_storage_contract.md#canonical-filesystem-layout);
+qualification must fail if a catalog family, operation-specific journal/staging
+family, reserved-empty future namespace, or SQLite file remains.
 
 Annotation format:
 `[change; class; owner; create→visible→durable→recover→delete; RootId; R/W; bound; space; permissions/exposure]`.
@@ -256,7 +310,7 @@ Forbidden edges: core → filesystem/Docker/overlay/operation/telemetry; provide
 | --- | --- | --- | --- | --- |
 | path | UTF-8/host `PathBuf` leaks into legacy change handoff | validated Linux byte path at provider boundary; canonical bytes in core | core/provider | golden cross-host/path corpus |
 | CPU/byte order | host serializer/runtime assumptions | explicit-width canonical big-endian encoding; scalar safe SeqCDC | core | scalar forced on amd64/arm64 |
-| target image | command/userland often assumed by tests | storage uses host/daemon syscalls only | Docker adapter | public API proof plus read-only/non-root runtime variants of the sole pinned Ubuntu 24.04 image on each required host |
+| target image | command/userland often assumed by tests | storage uses host/daemon syscalls only | Docker adapter | public API proof for exact-digest Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less fixtures, including read-only-base and non-root variants on every compatible required host |
 | provider | physical lower paths in revision | `MaterializationId` and provider locator excluded from `RootId` | adapter | squash/root stability and alternate adapter contract tests |
 
 Adding an approved StreamCDC profile changes only a new core profile implementation, profile registry, goldens, and selection config; RootId includes the versioned profile, while publication/leases/providers remain stable. Adding Firecracker changes a new materializer/activation adapter and capability report; adding WASM/WASI does the same. Neither edits logical identity, object formats, OCC, leases, retention, journals, recovery, or GC. Contract tests are shared against each `MaterializationPort`. Phase 2 uses `RootId`, parent/base provenance, OCC, diff/blame, activation, leases, retention, rollback without a resident sandbox per node. Phase 3 adapters use the same truth plane.
@@ -382,11 +436,41 @@ Downgrade after retirement requires the documented restore binary/snapshot and n
 
 Final publish: quiesce/lease captured upper → stream canonical changes through SeqCDC/object sink → journal and verify objects/manifests → OCC compare-and-commit one root → expose publication generation → release source/buffers/permits → asynchronously maintain packs within bounds.
 
-Final activation: resolve root and materialization catalog in `O(D)` with zero CAS payload when warm; otherwise journal cold hydration, stream missing bytes into a private carrier, verify/fsync, atomically swap catalog, acquire overlapping lease, mount via overlay, then expose workspace. Normal command/file/PTY/stdin use native files only.
+Final activation: resolve root and materialization catalog in `O(D)` with zero
+CAS payload when warm; otherwise journal cold hydration, stream missing bytes
+into a private carrier, verify/fsync, atomically swap catalog, acquire
+overlapping lease, mount via overlay, then expose workspace. Mount preflight
+checks both the layer/kernel count and the byte length of the exact serialized
+`lowerdir=` value before any mount syscall. Normal command/file/PTY/stdin use
+native files only.
 
-Final squash: `PLANNED→BUILDING→VERIFIED→COMMIT_INTENT→INSTALLED→REMOUNTING→EVACUATING→DONE`; `ABORTED/CONFLICT` only before `INSTALLED`. Build outside freeze; materialization-catalog generation swap is linearization; leases overlap; remount uses verified FDs; durable trash deletion waits one epoch and final generation/lease recheck.
+Final squash:
+`PLANNED→BUILDING→VERIFIED→COMMIT_INTENT→INSTALLED→REMOUNTING→EVACUATING→DONE`;
+`ABORTED/CONFLICT` only before `INSTALLED`. Build outside freeze;
+materialization-catalog generation swap is linearization; leases overlap;
+remount uses verified FDs; durable trash deletion waits one epoch and final
+generation/lease recheck. The report records build, commit, frozen, remount,
+and evacuation separately. Evacuation starts when the replacement generation
+is installed and old carriers first become evacuation-eligible; it ends only
+after their required last locators have moved, the cursor is durable, and the
+old carriers are lease-safe for their next lifecycle state.
 
-GC/compaction streams a disk-backed live set and bounded cursor; it never loads all roots/objects. Content/metadata edges are strong; provenance is weak absent pins. A fault at every journal/fsync/rename/catalog/locator/lease/mount/trash boundary has an idempotent restart outcome. Disk full fails before visibility and never deletes authoritative input.
+GC/compaction streams a disk-backed live set and bounded cursor; it never
+loads all roots/objects. A selected root's complete manifest, metadata,
+segment, and chunk edges are always strong. Parent/base ancestry is weak and
+is retained only when independently selected by each tested selector: durable
+lease, pin, active branch, configured history window, migration frontier,
+in-flight transaction, or pending transaction. Materialization records
+separately retain the carriers and locators required by active backends.
+Qualification constructs a positive and removal case for every selector,
+then proves collection only after the grace epoch and final reachability,
+generation, lease, and locator recheck. A fault at every
+journal/fsync/rename/catalog/locator/lease/mount/trash boundary has an
+idempotent restart outcome. Disk full fails before visibility and never
+deletes authoritative input. Background packer, squash-builder, and GC cells
+also synchronize known active work against command and PTY operations and
+require zero maintenance waits, locks, bytes, or tasks in those critical
+paths.
 
 ### Memory resource lifecycle
 
@@ -414,7 +498,7 @@ Cancellation requests the owner, stops admission, joins within the documented fi
 | --- | --- | --- | --- | --- | --- | --- |
 | boundary/hash | `U,K` | `O(U+K)=O(U)` | 32 KiB window/ring + descriptors | none | objects only | sequential |
 | publication | `U,E,K` | `O(U+E+K)`; external order up to `O(E log E)` | `O(B)`, ≤4 MiB/op excl cache | `C_capture` +≤5% staging | unique objects/manifests/native current | sequential + bounded merge |
-| warm prepare/mount | `D≤64` | `O(D)` | descriptors/FDs bounded by D | none | none | metadata only; zero CAS payload |
+| clean session / warm prepare/mount | `D≤64`, workspace bytes `S`, sessions `N` | clean session `O(D)` plus namespace/mount syscalls; warm prepare/mount `O(D)`; both independent of `S` | descriptors/FDs bounded by D; clean state `O(N)` total and `O(1)` per session | none; zero lower/workspace payload clone | constant-size session directories, leases, and journal records | metadata only; zero CAS payload |
 | cold hydration/activation | `R,E,D` | `O(R+E)` / `O(R+E+D)` | 256 KiB/worker + bounded metadata | `C_target`+≤5% | one current native target | sequential |
 | squash | `S,E_s,D` | build `O(S+E_s)`; freeze `O(D+tasks+verified FDs)` | `O(B)` | one replacement + leased old | one selected generation | sequential + metadata |
 | GC/compaction | `G` | `O(G)`/slice | bounded fan-in/cache | one bounded source+target | live packs, slack target | sequential/external merge |
@@ -433,7 +517,22 @@ Every row below is `stage-gating`:
 
 - warm root resolve/session preparation p50/p95 ≤ baseline +5%+2 ms, zero CAS payload; OverlayFS mount same;
 - frozen remount p50/p95 ≤ baseline +5%+2 ms; full squash p50/p95 ≤ baseline +10%+5 ms;
-- no-op exec p50/p95 ≤ baseline +3%+0.5 ms; native command throughput ≥97%;
+- no-op command pairs direct, shell-free `docker exec <container-id> ls`
+  in a fresh ordinary control container created for the matched invocation
+  from the pinned OCI/platform digest with public `exec_command(["ls"])`.
+  The control has equivalent pristine root contents but no LayerStack-owned
+  `/eos` root, candidate materialization/mount, root lease,
+  session/namespace-holder setup, or API wrapper. Pull/create/start/health/
+  setup are untimed and separately reported; time the already-running control
+  from Docker exec request through complete exit/status/stdout/stderr drain.
+  Match host/filesystem/root contents/cwd/env/Docker allocation/cache
+  class/order/output drain. This is raw Docker execution, not bare-host
+  `fork/exec`; the independent
+  required p50/p95 gate is
+  `candidate≤docker_exec_ls×1.03+0.5 ms`; separately report the frozen
+  optimization target `docker_exec_ls-candidate≥80 ms` at both p50 and p95,
+  and never rebase or waive that target when the control is faster than
+  80 ms; native command throughput ≥97%;
 - PTY create ≤baseline +3%+1 ms; drain/supported stdin/control-C/control-D ≤baseline +3%+0.5 ms; resize/arbitrary signal/literal EOF preserve deterministic unsupported behavior;
 - sequential native read/write ≥97%; concurrent disjoint publication ≥90%; small-edit publish p95 ≤baseline +15%+5 ms;
 - cold hydration ≥70% native copy; cold activation p95 ≤1.5× verified native copy + warm allowance;
@@ -442,16 +541,82 @@ Every row below is `stage-gating`:
 - SeqCDC unique retained≤1.14× StreamCDC; localized F≥16MiB/edit≤64KiB target `changed+2×32KiB+segment overhead`, algorithm hard failure median>4×target or any≥25%F;
 - managed publication memory≤4MiB excluding 16MiB index cache; 64MiB semaphore; four workers/chunks; exact buffer/queue/fan-in bounds above; native depth≤64;
 - RSS≤384MiB absolute and≤128MiB above idle raw at every cold point: inputs 64MiB/256MiB/1GiB × roots1/16/64, three reps each; adjusted median final/peak variation≤16MiB across series and no 4× input/history adds>8MiB;
+- clean-session matrix uses prebuilt 64MiB/256MiB/1GiB workspaces ×1/8/32 simultaneous sessions ×3 repetitions: copied/read lower payload and new upper/workspace payload allocation are exactly zero; directory/lease/journal counts and bounded record sizes are constant per session, and allocated metadata is `≤M0+N×m_cap` using the same predeclared caps across workspace sizes;
+- warm workspace-size regression uses prebuilt `S∈{64,256,1024} MiB`,
+  fixed `D=16`, one session, and identical root/image/cwd/env/cache,
+  task/verified-FD schedule, and zero-write state. For warm resolve/session,
+  mount, and no-op exec, fit the predeclared
+  `latency_ms=α+β_S×log2(S/64MiB)` model to the frozen counterbalanced
+  samples; the candidate one-sided 95% upper bound for `β_S` must not exceed
+  the raw-control slope-noise ceiling frozen before candidate data. Structural
+  work-counter tuples must be identical across sizes and payload reads/copies
+  exactly zero;
+- mount/remount depth regression uses `D∈{1,16,48,64}` at fixed warm
+  `S=256 MiB`, session/task/verified-FD schedule, options, and cache. Fit
+  `latency_ms=α+β_D×D` to matched p50 and p95 cell estimates and require the
+  frozen paired-bootstrap one-sided 95% upper bound of
+  `β_D,candidate/β_D,raw≤1.10`; a non-positive raw denominator or raw
+  interval including zero leaves the row `OPEN`, with no substitute
+  statistic;
 - first/last settled windows and robust slope inside frozen raw noise and16MiB tolerance; logical release passes independently; no restart/purge/trim/allocator swap;
 - mixed/no-dedup settled amplification target≤1.08, hard>1.15; many-small target≤1.15, hard>1.25; avoidable duplication target≤1%, hard>3%; pack dead/slack target≤2%, hard>5%; persistent unexplained unreachable bytes zero; depth>64 fails;
 - metadata≤96B/chunk,≤64B/segment ref,≤256B+path bytes/changed path; recovery residue≤1MiB+min(1% retained payload,64MiB) and no pending transaction;
-- enqueue autosquash projected D≥48; compact/reject before D>64; routine benefit≥8 carriers; manual≥2;
+- enqueue autosquash projected D≥48; compact/reject before D>64; routine benefit≥8 carriers; manual selected run contains≥2 lowers;
 - pack payload≤64MiB, records≤100k, allocation≤80MiB; individual compaction≥20% dead; urgent aggregate>5%; slice≤100k or64MiB; grace≥one durable epoch plus final check;
+- mount admission exercises the exact serialized `lowerdir=` byte length at
+  `L_limit-1`, `L_limit`, and `L_limit+1`; the over-limit request is rejected
+  before a mount syscall, independently of the `D≤64` count check;
+- packer, squash-builder, and GC isolation each compare event-synchronized
+  active versus idle no-op command and PTY create/drain cells. Normal
+  command/PTY gates still pass and maintenance-owned wait, lock, permit, CDC,
+  CAS, manifest, pack, and GC counters in each command/PTY critical path are
+  exactly zero;
+- squash evidence reports build, commit, frozen, remount, and evacuation
+  intervals separately, including the evacuation start/end events and
+  last-locator/cursor/lease evidence defined in section 7;
+- GC retains strong manifest/metadata/segment/chunk edges unconditionally and
+  tests weak parent/base ancestry independently under durable lease, explicit
+  pin, active branch, configured history window, migration frontier,
+  in-flight transaction, and pending transaction selectors. A separate
+  materialization-record case retains required carriers/locators. Each weak
+  selector is removed alone and collection occurs only after the durable
+  grace epoch and final checks;
 - corpora: mixed≥512MiB/20k files; large source≥256MiB; no-dedup≥512MiB; many-small≥100k files; sparse≥8GiB logical; repeated small/large histories;
 - scalar core≤300 physical non-test Rust lines or approved exception; no unsafe/SIMD requirement; optional acceleration only safe runtime detection and byte-identical;
-- no operation>60 seconds; each matched pair/invocation≤5 minutes. Each RSS point has its own five-minute raw/candidate invocation×3. Selection uses separate raw/Stream and raw/Seq invocations, the two-invocation set×3. Aggregate suite budget is separate.
+- no operation>60 seconds; each leaf cell or matched pair/invocation≤5
+  minutes. Each RSS point has its own five-minute raw/candidate invocation×3.
+  Selection uses separate raw/Stream and raw/Seq invocations, the
+  two-invocation set×3. Aggregate suite budget is separate. Aggregate
+  qualification tests validate/dispatch artifact-producing leaves and later
+  validate their immutable completed bundles; aggregate dispatch success is
+  never a performance pass.
 
 Correctness, recovery, OCC, lease, atomic visibility, namespace isolation, dependency, and portability gates pass before performance or space scoring. Hard failures from prep 04 apply without weakening.
+
+The slope-noise ceiling, OLS implementation, percentile estimator, pairing
+key, bootstrap method/seed/resample count, measured `N`, and exclusion policy
+are frozen before the first candidate sample. Missing inputs keep the affected
+row `OPEN`; plots or post-hoc statistics cannot close it.
+
+### Frozen Phase 1 image matrix
+
+The portability manifest is a Phase 1 acceptance input. Every compatible
+required row needs an exact OCI index digest and exact resolved platform
+manifest before execution. `OPEN` is a pre-run blocker, never a tag-only pass.
+
+| Required fixture | Repository/tag selection | OCI index | linux/amd64 manifest | linux/arm64 manifest | Variants |
+| --- | --- | --- | --- | --- | --- |
+| Ubuntu glibc | `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | normal, read-only root, non-root |
+| Debian glibc | `OPEN — release owner freezes an exact repository/tag` | `OPEN` | `OPEN` | `OPEN` | normal, read-only root, non-root |
+| Alpine musl | `OPEN — release owner freezes an exact repository/tag` | `OPEN` | `OPEN` | `OPEN` | normal, read-only root, non-root |
+| Minimal/distroless | `OPEN — release owner freezes an exact repository/tag` | `OPEN` | `OPEN` | `OPEN` | normal, read-only root, non-root |
+| Shell-less | `OPEN — freeze a deterministic fixture recipe and repository/tag` | `OPEN` | `OPEN` | `OPEN` | no shell/userland helper, read-only root, non-root |
+
+Normative latency/throughput scoring remains on the pinned Ubuntu environment.
+Portability is a separate correctness/capability campaign across every
+compatible required host×image×variant row. The product must not require a
+target shell, libc, package manager, checksum helper, or network; shell-less
+storage behavior is exercised through public workspace/file APIs.
 
 ## 9. Diagrams
 
@@ -495,12 +660,27 @@ stateDiagram-v2
 
 ## 10. Implementation sequence
 
-1. Freeze final product/test commits, clean state, binaries, configs, target-feature dependency snapshots, the sole pinned Ubuntu 24.04 OCI index and resolved per-host platform manifests, machine allocation, seeds, corpora, and raw controls. No behavior change.
+1. Freeze final product/test commits, clean state, binaries, configs,
+   target-feature dependency snapshots, the complete compatible
+   host×image×variant matrix and every exact OCI index/platform digest,
+   machine allocation, seeds, corpora, raw controls, command tuple, time-cell
+   `N`, regression/statistics implementation, bootstrap inputs, and exclusions.
+   Any `OPEN` required-image digest blocks execution. No behavior change.
 2. Promote configuration from Stage 10 cohort authority to `candidate_default`; retain legacy shadow/read compatibility. Run all accumulated focused route/recovery tests.
 3. Run the complete correctness/failpoint/mixed-root/scratch/resource suite. Stop before performance on any failure.
 4. Execute default-mode soak, verify zero legacy authority/fallback/mismatch and bounded memory/disk, then perform and document rollback to Stage 10 and forward restoration.
-5. Run the normative Docker Desktop+Ubuntu performance/space/memory matrices and SeqCDC-vs-Stream selection exactly as specified.
-6. Run every required-release host triple using the same Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`, recording its resolved platform manifest, including scalar-forced differential and all available safe acceleration paths. Do not add a second target image; cross-image portability is post-Phase-1 and non-gating.
+5. Run the normative Docker Desktop+Ubuntu performance/space/memory
+   matrices, including the exact direct `docker exec <container-id> ls`
+   control, warm-size and depth regressions, clean-session
+   64MiB/256MiB/1GiB ×1/8/32 zero-payload/constant-metadata sweep,
+   lowerdir byte-limit boundaries, event-synchronized command/PTY
+   maintenance-isolation cells, evacuation timing, the full GC
+   selector/root matrix, and SeqCDC-vs-Stream selection exactly as specified.
+6. Run every compatible required-release host×image×variant row in the frozen
+   Phase 1 matrix. Record the exact OCI index and resolved platform manifest,
+   including scalar-forced differential and every available safe acceleration
+   path where applicable. Exercise storage through public workspace/file APIs
+   for minimal or shell-less fixtures that cannot execute `ls`.
 7. Compare dependency, feature, edge, system/runtime/helper, license, process, socket, and image inventories exactly; obtain Apache-2.0 provenance approval.
 8. Create a durable pre-retirement snapshot and migration inventory. Prove every legacy root maps to verified v2, no legacy reader/writer counter changed during the approved soak, no legacy lease exists, and restore works.
 9. In separate commits remove the legacy writer, then legacy read selection, then legacy code/config, then legacy `/eos` artifacts/global scratch. After each slice, boot/recovery and target-only focused tests pass.
@@ -510,23 +690,53 @@ Refactor, mode change, qualification assets, and deletion commits remain distinc
 
 ## 11. Observability
 
-Final structured evidence includes mode/authority/read source; route/fallback/mismatch/shadow counts; bytes scanned/hashed/reused/new/read/written; chunk/object/file/root/layer/pack/index/journal/staging counts; root/publication/materialization generations; warm/cold classification and reconstructed bytes; lease/retention/GC/compaction decisions; live/high-water buffers/tasks/workers/queues/permits/maps/FDs/caches/registries/transactions; logical cleanup/quiescence; process RSS and scope, anonymous/file-backed when available, cgroup current/peak, Docker fallback, allocated disk by category; first/last settled delta and slope.
+Final structured evidence includes mode/authority/read source;
+route/fallback/mismatch/shadow counts; exact command/control tuple and stdout
+drain; bytes scanned/hashed/reused/new/read/written;
+chunk/object/file/root/layer/pack/index/journal/staging counts;
+root/publication/materialization generations; warm/cold classification and
+reconstructed bytes; raw/candidate size and depth slopes, confidence bounds,
+noise ceiling, pairing/bootstrap inputs, and exclusions; serialized
+`lowerdir=` bytes and mount-syscall count; lease/retention/GC/compaction
+selector/root decisions; maintenance active/idle events and critical-path
+ownership counters; squash build/commit/frozen/remount/evacuation timestamps
+and last-locator/cursor/lease state; live/high-water
+buffers/tasks/workers/queues/permits/maps/FDs/caches/registries/transactions;
+logical cleanup/quiescence; process RSS and scope, anonymous/file-backed when
+available, cgroup current/peak, Docker fallback, allocated disk by category;
+first/last settled delta and slope.
 
-Evidence labels are bounded closed enums and aggregates, not object/path cardinality. Every artifact records the final commits, dirty states, environment, image index/platform digest, cache state, corpus/seed, config/mode, sampling scope, and `measured/derived/estimated/unknown`. Missing normative data is no-go.
+Evidence labels are bounded closed enums and aggregates, not object/path
+cardinality. Every artifact records the final commits, dirty states,
+environment, exact image index/platform digest, host×image×variant row, cache
+state, corpus/seed, config/mode, sampling scope, and
+`measured/derived/estimated/unknown`. Aggregate nodes record planned and
+completed leaf IDs and validate immutable bundles rather than compressing
+campaign work into their own timeout. Missing normative data is no-go.
 
 ## 12. Completion checklist
 
 - [ ] All Stages 00–10 focused proofs are promoted and pass cumulatively.
 - [ ] Correctness/recovery/OCC/lease/namespace/atomic-visibility gates pass before scoring.
 - [ ] Full time, throughput, memory, lifecycle, physical-space, SeqCDC selection/locality, pack, squash, and maintenance gates pass exactly.
+- [ ] Direct shell-free `docker exec <container-id> ls` runs in the ready
+  ordinary non-LayerStack control with setup excluded, and it and public
+  `exec_command(["ls"])` use the frozen matched context; the required
+  p50/p95 gate passes and the independent ≥80 ms saved p50/p95 stretch result
+  is reported without rebasing.
+- [ ] Warm-size and mount/remount-depth regression inputs and statistics were
+  frozen before candidate data, and both slope gates pass.
+- [ ] Clean-session creation has zero lower/workspace payload growth and one workspace-size-independent `O(1)` metadata record shape per session over the 64MiB/256MiB/1GiB ×1/8/32 matrix.
+- [ ] Serialized `lowerdir=` boundaries, synchronized active/idle
+  packer/squash-builder/GC command/PTY isolation, complete squash evacuation
+  timing, and every independent GC selector/removal case pass.
 - [ ] Every matched pair/scale point uses its own allowed invocation and repetitions.
 - [ ] Long-lived logical release and physical stability pass without restart or allocator/page-cache manipulation.
 - [ ] Target `/eos` tree, permissions, lifecycle, recovery, masking, and absence of `/eos/attempts` are verified.
 - [ ] Exact external package/version, feature, direct-edge, system/service/helper delta is zero on every target/feature invocation.
 - [ ] Scalar implementation is safe, deterministic, portable, and within the LOC gate or has approved exception.
-- [ ] Every required host row executes with the sole pinned Ubuntu 24.04 OCI index; no unverified required-release host row remains.
-- [ ] Target-image shell/libc/package-manager/network independence is proven through public APIs and runtime variants of that same image.
-- [ ] Cross-image portability is recorded as deferred beyond Phase 1 and does not block qualification or retirement.
+- [ ] Every compatible required host×Ubuntu/Debian/Alpine/minimal-or-distroless/shell-less×runtime-variant row executes with exact OCI index and resolved platform digests; no required row remains `OPEN` or unverified.
+- [ ] Target-image shell/libc/package-manager/network independence is proven through public APIs, including read-only-base and non-root variants.
 - [ ] Phase 2 consumer and Phase 3 provider contract tests pass; only Docker adapter is implemented.
 - [ ] Candidate default soak and rollback proof pass before retirement.
 - [ ] Every transitional component meets its deletion gate; legacy deletion is separately committed and restart-tested.

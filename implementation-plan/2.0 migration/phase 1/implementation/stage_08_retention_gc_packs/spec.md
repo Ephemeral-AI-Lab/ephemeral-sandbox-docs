@@ -1,9 +1,39 @@
 # Stage 08 — Bounded retention, garbage collection, and packs
 
-[Implementation overview](../index.md) · [Stage 08 E2E plan](e2e_test.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [Stage 08 E2E plan](e2e_test.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Stage 08 adds immutable packs, locator SST
+> compaction, pin refs, disk-backed GC epochs/mark runs, a durable concurrent-ref
+> write barrier, trash-first deletion, and last-locator evacuation. Separate
+> retention/lease/pack catalogs and GC/compaction journal families are
+> superseded by refs, locator `CURRENT`, the common transaction shape, and
+> `gc/`.
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+> **Performance arrival checkpoint.** Stage 08 is not reached until its
+> [benchmark note](benchmark_note.md) has a new append-only row and the run emits versioned
+> `.benchmark-state/results/<run-id>/stage-08-perf-report.json` and
+> `stage-08-perf-report.md` with
+> `schema_version="phase1.stage08.perf-report.v1"`. The reports must contain
+> the frozen raw baseline actual, required pass target/cap, separately
+> predeclared optimization target, candidate actual, delta, ratio, and
+> headroom, complexity/work counters, logical-resource high-water counters,
+> memory/RSS, physical space,
+> run/raw-artifact links, provenance, missing values, and a
+> `DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes those
+> comparison fields per stage-owned metric.
+> Arrival also requires terminal checkpoints for
+> `layerstack.phase1.retention-gc.pack-limit-boundaries` and
+> `layerstack.phase1.retention-gc.transaction-limit-boundaries`. Their raw
+> artifacts must contain every below/at/would-cross row from the benchmark
+> note, exact before/projected/after counters, the measured allocation quantum,
+> seal/cursor decisions, and recovery/quiescence state. A missing or
+> unrepresentable boundary remains `OPEN`.
+> Append the invocation and
+> `Good`/`Defect`/`Fix` plus cleanup to `e2e/test-report.md`. This checkpoint is
+> **diagnostic**; Stage 11 alone qualifies the Prep performance gates.
 
 ## 1. Stage contract
 
@@ -14,13 +44,33 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | Depends on | Stage 07 and its Stage 00/02–06 ancestry: frozen evidence, portable `layerstack-core`, SeqCDC/CAS objects, logical roots, Docker materialization, strict candidate reads, and durable candidate shadow publication. Stage 01 remains independent until Stage 10. |
 | Useful capability at exit | Candidate storage has bounded sealed packs, deterministic retention selection, lease-safe graph marking, epoch-delayed deletion, resumable compaction, and last-locator evacuation. A crash at any maintenance boundary preserves a reconstructable committed root. |
 | Authority | Legacy v1 remains the only publication and read rollback authority. Candidate maintenance consumes only candidate state derived from a committed legacy publication and must not mutate or delete any legacy carrier or v1 manifest. |
-| Scope | Pack caps, locator catalog transactions, root-set retention, strong/weak graph rules, GC cursors, durable grace epochs, trash, pack compaction, evacuation, recovery, bounded work and memory, observations, focused tests |
+| Scope | Pack caps, locator SST/`CURRENT` transactions, ref-root retention, strong/weak graph rules, disk-backed mark runs, concurrent-ref write barrier, durable grace epochs, trash, pack compaction, evacuation, recovery, bounded work and memory, observations, focused tests |
 | Non-goals | Identity-preserving squash (Stage 09), candidate authority (Stage 10), legacy retirement/default enablement, full performance/space/RSS/portability qualification (Stage 11), SIMD, another storage backend |
-| Entry | Stage 07 has a recoverable candidate publication journal and byte-verified candidate roots while the configured authority remains `legacy_v1`; dependency fingerprints still equal Stage 00. |
-| Exit | Focused tests prove leased/pinned/live root retention, unreachable unleased collection after the durable grace rule, all pack/transaction caps, crash-resumable locator replacement, zero last-locator loss, zero legacy mutation, bounded logical resource release, and zero external dependency delta. |
+| Entry | Stage 07 has recoverable publication transactions/receipts and byte-verified candidate roots while the configured authority remains `legacy_v1`; dependency fingerprints still equal Stage 00. |
+| Exit | Focused tests prove retention of current roots, root/carrier leases, pins, active branches, configured-retention ancestors, frontier/in-flight roots, and pending-transaction roots/objects; weak ancestry alone does not retain history; unreachable unleased collection follows the durable grace rule; every exact pack/transaction boundary passes; locator replacement is crash-resumable; last-locator loss, legacy mutation, and external dependency delta are zero; logical resources release. |
 | Rollback | Disable candidate maintenance, recover or quarantine its private transactions, and continue entirely from untouched legacy `manifest.json`, `workspace.json`, `base/`, `layers/`, and `.layer-metadata/`. Candidate packs are never required for legacy rollback. |
 
-Stage 08 bounds *work*, not only the final number of bytes. No scan, queue, journal, encoding, transaction, or in-memory root set may grow with total history without a persisted cursor or external run.
+Stage 08 bounds *work*, not only the final number of bytes. No scan, queue,
+encoding, transaction, pending set, or in-memory root set may grow with total
+history without a disk-backed run or bounded cursor. In particular, GC may not
+materialize the reachable set as a resident `HashSet`.
+
+### Concurrent GC and last-locator rule
+
+`gc/ACTIVE` names the collecting epoch. Before any head, checkpoint, pin,
+lease, authority, retained receipt, or transaction commit makes a root newly
+visible during that epoch, it first creates and `fsync`s
+`epochs/<Epoch>/barrier-roots/<RootId>`. GC drains those barrier roots into
+sorted disk-backed mark runs and closes the epoch only while holding the GC
+lock with no undrained barrier. A ref commit that cannot join the closing epoch
+must join the next epoch before visibility.
+
+Collection is two-phase: move bounded candidates to `trash/<Epoch>/`, then
+unlink only after a later complete epoch and final ref, lease, materialization
+`CURRENT`, locator `CURRENT`, and transaction checks. Uncertain restart state
+is live. A reachable object's last carrier range or pack location is never
+removed until a verified replacement pack/SST is durable and the replacement
+locator `CURRENT` has committed.
 
 ## 2. Current evidence
 
@@ -65,7 +115,8 @@ ephemeral-sandbox/
 │   │   │   ├── compaction.rs                                 [add]
 │   │   │   ├── evacuation.rs                                 [add]
 │   │   │   └── recovery.rs                                   [add]
-│   │   ├── storage/catalog.rs                                 [modify] — transactional locator/retention pages
+│   │   ├── storage/ref_store.rs                               [modify] — pins plus atomic ref updates
+│   │   ├── storage/locator_store.rs                           [modify] — generationed locator SSTs
 │   │   └── service/observe.rs                                 [modify] — bounded maintenance gauges
 │   └── tests/
 │       ├── pack_bounds.rs                                     [add]
@@ -83,7 +134,13 @@ ephemeral-sandbox-test/
 └── benchmark/presets/layerstack-phase1-tiny-retention-gc.yml [add]
 ```
 
-### Complete `/eos` view after Stage 08
+### Superseded pre-simplification `/eos` inventory
+
+This inventory is retained only for requirement traceability. The normative
+Stage 08 delta is `objects/packs/`, `objects/locators/`, `refs/pins/`,
+`gc/epochs/`, and `trash/` from the
+[simplified storage contract](../layerstack_storage_contract.md#stage-ownership);
+it does not add retention catalogs or compaction-specific journals.
 
 Each bracket records
 `change; class; owner; create→visible→durable→recover→delete; identity; access/authority; bound; space term; exposure`.
@@ -157,7 +214,9 @@ Each bracket records
     └── runtime.pid [existing; control identity; gateway; boot→ready→identity/stale recovery→shutdown; none; service R/W; one; M; daemon-only]
 ```
 
-Delta from Stage 07: pack, retention, GC, compaction, evacuation, trash, and maintenance-cursor entries become active. Legacy entries and the consolidated workspace layout do not move.
+Normative delta from Stage 07: immutable packs, locator SST compaction,
+pin refs, GC epochs/mark runs/`ACTIVE`, evacuation, and trash become active.
+Legacy entries and the consolidated workspace layout do not move.
 
 ## 4. SRP, SOLID, and coupling design
 
@@ -165,11 +224,11 @@ Delta from Stage 07: pack, retention, GC, compaction, evacuation, trash, and mai
 | --- | --- | --- | --- |
 | core `PackLimits` / record codec | Deterministic record sizing and cap admission | `Digest32`, byte slices | filesystem, policy, workers |
 | core `RetentionPlanner` | Select strong root seeds from explicit policy inputs | typed IDs/generations | file deletion, clocks, leases acquisition |
-| core `MarkPlanner` | Traverse typed strong reconstruction edges in bounded batches | `ObjectSource`, catalog cursors | provider carriers, weak-history policy |
+| core `MarkPlanner` | Traverse typed strong reconstruction edges in bounded batches | `ObjectSource`, disk-backed run cursors | provider carriers, weak-history policy |
 | core `EvacuationPlan` | Prove replacement locator coverage | locator snapshots | file rename/unlink |
-| layerstack pack store | Durable pack/footer/index creation | core codec, object/catalog ports | retention decisions |
-| layerstack GC worker | Execute persisted mark/sweep/grace batches | planner, catalogs, journals, `ResourceBudget` | publication authority |
-| layerstack compactor | Copy live records and atomically replace locators | pack store, catalog transaction | root identity or squash |
+| layerstack pack store | Durable pack/footer/index creation | core codec, object/locator ports | retention decisions |
+| layerstack GC worker | Execute persisted mark/barrier/sweep/grace batches | planner, refs, locator SSTs, common transactions, `ResourceBudget` | publication authority |
+| layerstack compactor | Copy live records and atomically replace locator `CURRENT` | pack store, locator store, common transaction | root identity or squash |
 | operation scheduler | Admit/cancel one maintenance work class | existing worker lifecycle | graph semantics or deletion proof |
 | Docker materialization adapter | Protect native carriers with provider leases | `MaterializationPort` | logical root retention |
 
@@ -177,12 +236,12 @@ Delta from Stage 07: pack, retention, GC, compaction, evacuation, trash, and mai
 flowchart LR
   OP["operation maintenance scheduler"] --> LS["layerstack maintenance service"]
   LS --> CORE["layerstack-core retention / GC / pack plans"]
-  LS --> PORTS["ObjectSource/Sink · CatalogTransaction · ResourceBudget"]
-  FS["filesystem pack/catalog adapters"] --> PORTS
+  LS --> PORTS["ObjectSource/Sink · RefStore · LocatorStore · ResourceBudget"]
+  FS["filesystem object/ref/SST adapters"] --> PORTS
   DOCKER["Docker MaterializationPort"] --> PORTS
   CORE --> TYPES["RootId · ObjectId · PackId · RetentionEpoch"]
   LEGACY["legacy v1 authority"] --> LS
-  LS -. consumes committed shadow only .-> CAND["candidate catalogs"]
+  LS -. consumes committed shadow only .-> CAND["candidate refs and objects"]
 ```
 
 Dependency direction is inward: operation → layerstack → portable core; filesystem and Docker adapters implement ports. The core never imports operation, Docker, OverlayFS, paths, syscalls, wall clocks, or telemetry.
@@ -198,9 +257,9 @@ Dependency direction is inward: operation → layerstack → portable core; file
 | Boundary | Host/image assumption before | Assumption after | Portable core or provider adapter | Evidence now | Later evidence |
 | --- | --- | --- | --- | --- | --- |
 | Serialization | current host scalar encoding | fixed-width, explicit byte order/sort, typed SHA-256; no inode/time/locale | portable core | scalar golden pack/footer/mark vectors | release host/CPU triples `deferred-to-stage_11` |
-| Storage paths | host filesystem paths can reach orchestration code | identity carries validated Linux path bytes only; adapter maps `/eos` paths | portable core values + filesystem provider adapter | invalid/path-order contracts and outside-sandbox inventory | required hosts use the sole pinned Ubuntu image in Stage 11 |
+| Storage paths | host filesystem paths can reach orchestration code | identity carries validated Linux path bytes only; adapter maps `/eos` paths | portable core values + filesystem provider adapter | invalid/path-order contracts and outside-sandbox inventory | Stage 11 required-host plus full Prep 04 Phase-1 image matrix |
 | Memory/work | scheduler-local implicit capacity | `ResourceBudget` fixes buffers, queue, fan-in, and transaction batches | portable port, supplied by orchestration | exact logical gauges and cap tests | RSS/scale matrix `deferred-to-stage_11` |
-| Target image | pinned Ubuntu proof environment | no target-image shell, libc, package manager, coreutils, helper, or userland storage reader | Docker/OverlayFS provider adapter outside image | public file/workspace proof on Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | cross-image portability after Phase 1; not an acceptance or retirement gate |
+| Target image | pinned Ubuntu proof environment | no target-image shell, libc, package manager, coreutils, helper, or userland storage reader | Docker/OverlayFS provider adapter outside image | Stage 08 diagnostic public file/workspace proof on Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | Stage 11 qualifies pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root rows; any unverified required row blocks |
 | Future providers | Docker is the only implemented provider | roots, objects, retention, and GC remain provider-neutral | provider adapters implement materialization/activation | dependency boundary and contract signatures only | Firecracker/WASM are designed-compatible but unverified; named evidence `deferred-to-stage_11` |
 
 ## 5. Type, class, and field design
@@ -229,9 +288,8 @@ pub enum PackAdmission { Append, SealBeforeAppend }
 
 pub struct RetentionSnapshot {
     pub epoch: RetentionEpoch,
-    pub roots_generation: u64,
-    pub leases_generation: u64,
-    pub pins_generation: u64,
+    pub locator_current: LocatorGeneration,
+    pub active_barrier: bool,
 }
 
 pub struct RootSeed {
@@ -240,13 +298,19 @@ pub struct RootSeed {
 }
 
 pub enum RootSeedReason {
-    Current, RetainedHistory, Pin, Branch, Frontier, Lease(LeaseId), InFlight(PublicationId),
+    Current,
+    RootOrCarrierLease(LeaseId),
+    Pin,
+    ActiveBranch,
+    ConfiguredRetentionAncestor,
+    Frontier,
+    InFlight(PublicationId),
+    PendingTransaction,
 }
 
 pub enum ReconstructionEdge {
-    StrongTree(TreeManifestId),
+    StrongTree(TreeNodeId),
     StrongObject(ObjectId),
-    StrongMaterialization(MaterializationId),
     WeakProvenance(RootId),
 }
 
@@ -266,7 +330,7 @@ pub enum GcAction {
 
 pub struct LocatorReplacement {
     pub object_id: ObjectId,
-    pub expected_generation: u64,
+    pub expected_current: LocatorGeneration,
     pub add: PackLocator,
     pub remove: PackLocator,
     pub proves_surviving_locator: bool,
@@ -277,35 +341,59 @@ pub enum EvacuationState {
     SourceTrashed, GraceWaiting, Done, Aborted, Conflict,
 }
 
-pub trait MaintenanceCatalog {
-    fn retention_snapshot(&self) -> Result<RetentionSnapshot, CatalogError>;
-    fn roots_page(&self, cursor: Option<GcCursor>, limit: u16)
-        -> Result<(Vec<RootSeed>, Option<GcCursor>), CatalogError>;
-    fn transact_locators(
+pub trait MaintenanceStore {
+    fn retention_snapshot(&self) -> Result<RetentionSnapshot, MaintenanceError>;
+    fn stream_ref_seeds(
         &self,
-        expected_generation: u64,
+        cursor: Option<GcCursor>,
+        sink: &mut dyn RootSeedSink,
+    ) -> Result<Option<GcCursor>, MaintenanceError>;
+    fn stream_transaction_seeds(
+        &self,
+        cursor: Option<GcCursor>,
+        sink: &mut dyn RootSeedSink,
+    ) -> Result<Option<GcCursor>, MaintenanceError>;
+    fn install_locator_table(
+        &self,
+        expected_current: LocatorGeneration,
+        table: LocatorTableId,
         replacements: &[LocatorReplacement],
-    ) -> Result<u64, CatalogError>;
-    fn close_epoch(&self, epoch: RetentionEpoch) -> Result<(), CatalogError>;
+    ) -> Result<LocatorGeneration, MaintenanceError>;
+    fn write_barrier_root(
+        &self,
+        epoch: RetentionEpoch,
+        root: RootId,
+    ) -> Result<(), MaintenanceError>;
+    fn close_epoch(&self, epoch: RetentionEpoch) -> Result<(), MaintenanceError>;
 }
 ```
 
 | Type/status | Owner and visibility | Responsibility / exact fields | Ownership, allocation, persistence, and release | Defaults, validation, errors, concurrency, compatibility |
 | --- | --- | --- | --- | --- |
 | `PackLimits` / `PackAdmission` / `PackLimitError` — new | `sandbox-runtime-layerstack-core::pack`; public to workspace crates, not product API | fields and variants exactly as above; pure next-record cap decision | copy values; no heap/cache/persistence; caller releases stack value immediately | only `FIXED_V1` is valid for format v1; checked arithmetic; error before mutation; `Send + Sync`; additive internal API |
-| `RetentionSnapshot`, `RootSeed`, `RootSeedReason`, `ReconstructionEdge` — new | core `retention`; crate/workspace-public | exact epoch/generation/ID/reason fields above; separates strong reconstruction from weak provenance | owned values; paged vectors allocated by caller under budget and dropped after batch; snapshot/edge encodings persist only in epoch/mark evidence | explicit closed enums, typed IDs, deterministic ordering; unknown persisted discriminant fails closed; thread-safe immutable sharing; v1 authority unchanged |
-| `GcBatch`, `GcAction`, `GcCursor` — new except shared typed cursor if introduced earlier | core `gc`; crate/workspace-public | exact batch fields/actions above; cursor references the next durable page/run position | one owner per GC transaction; vector ≤100,000 records, queue ≤16 descriptors/64 KiB, payload permits ≤64 MiB; journal/cursor persisted; drop releases permits on success/cancel/error, recovery reacquires | no implicit default; constructors validate epoch/caps/action legality; errors retain data; one mutable transaction owner, immutable worker inputs; versioned additive encoding |
-| `LocatorReplacement`, `PackLocator` — new/modified | core `evacuation`; `PackLocator` remains existing locator module owner | exact object/generation/add/remove/proof fields; prove replacement and surviving coverage | batch-owned vector under transaction caps; encoded into journal/catalog CAS then dropped; locator records persist | generation and typed-object match required; false/last-locator risk is an error; conflict retries from fresh snapshot; no provider path in logical IDs |
-| `EvacuationState` — new | layerstack maintenance journal schema; crate-visible state enum | exact closed states above | one persisted state/transaction; in-memory scalar freed at terminal; recovery owns nonterminal state | no default; monotonic transition table; unknown version/discriminant quarantines and keeps source; compatible as new v1 journal record |
-| `MaintenanceCatalog` — new narrow port | core-facing trait; implemented by layerstack filesystem catalog adapter | signatures exactly above; snapshot/page/CAS/epoch-close only | implementation owns pages, locks, file handles; returned batches are caller-owned; cancellation drops handles/permits; daemon shutdown joins adapter users | object-safe use is not required; errors translate once to maintenance errors; catalog transaction serializes generation changes; no product API change |
-| `RootId`, `ObjectId`, `TreeManifestId`, `PackId`, `PublicationId`, `MaterializationId`, `MaterializationGeneration`, `LeaseId`, `RetentionEpoch`, `Digest32`, `ObjectSource`, `ObjectSink`, `CatalogTransaction`, `MaterializationPort`, `ResourceBudget` — unchanged/reused | existing core/port owners and existing visibility | retain their prior exact representations/contracts | retain existing allocation, persistence, and reclamation owners | no representation/default/version change; Stage 08 only consumes them |
+| `RetentionSnapshot`, `RootSeed`, `RootSeedReason`, `ReconstructionEdge` — new | core `retention`; crate/workspace-public | exact epoch/generation/ID/reason fields above; separates strong reconstruction from weak provenance; admitted transactions also contribute direct seeds even when no committed root contains the object yet | owned values; streamed pages/runs stay under budget and drop after each batch; snapshot/edge/transaction-seed encodings persist only in epoch/mark evidence | explicit closed enums, typed IDs, deterministic ordering; unknown persisted discriminant fails closed; thread-safe immutable sharing; v1 authority unchanged |
+| `GcBatch`, `GcAction`, `GcCursor` — new except shared typed cursor if introduced earlier | core `gc`; crate/workspace-public | exact batch fields/actions above; cursor references the next durable directory/run position | one owner per GC transaction; vector ≤100,000 records, queue ≤16 descriptors/64 KiB, payload permits ≤64 MiB; common transaction/epoch state persisted; drop releases permits on success/cancel/error, recovery reacquires | no implicit default; constructors validate epoch/caps/action legality; errors retain data; one mutable transaction owner, immutable worker inputs; versioned additive encoding |
+| `LocatorReplacement`, `PackLocator` — new/modified | core `evacuation`; `PackLocator` remains existing locator module owner | exact object/generation/add/remove/proof fields; prove replacement and surviving coverage | batch-owned vector under transaction caps; encoded into an immutable SST installed through `CURRENT`, then dropped | generation and typed-object match required; false/last-locator risk is an error; conflict retries from fresh `CURRENT`; no provider path in logical IDs |
+| `EvacuationState` — new | common maintenance transaction schema; crate-visible state enum | exact closed states above | one bounded state/transaction; in-memory scalar freed at terminal; recovery owns nonterminal state | no default; monotonic transition table; unknown version/discriminant quarantines and keeps source |
+| `MaintenanceStore` — new narrow port | core-facing trait; implemented by filesystem ref/locator/epoch adapters | signatures exactly above; streamed seeds, locator `CURRENT`, barrier root, and epoch close only | implementation owns iterators, locks, and file handles; sink batches are caller-owned; cancellation drops handles/permits; daemon shutdown joins adapter users | errors translate once to maintenance errors; only locator `CURRENT` installation serializes locator generations; refs remain independent; no product API change |
+| `RootId`, `ObjectId`, `TreeNodeId`, `PackId`, `PublicationId`, `MaterializationId`, `MaterializationGeneration`, `LeaseId`, `RetentionEpoch`, `Digest32`, `ObjectSource`, `ObjectSink`, `RefStore`, `LocatorStore`, `MaterializationPort`, `ResourceBudget` — unchanged/reused | existing core/port owners and existing visibility | retain their prior exact representations/contracts | retain existing allocation, persistence, and reclamation owners | no representation/default/version change; Stage 08 only consumes them |
 
 `Vec` above is not permission for unbounded allocation: constructors require the global `ResourceBudget`, at most 16 queued descriptors/64 KiB metadata, and the transaction record/payload caps. IDs are core-owned opaque typed digests; locator/provider values never enter `RootId`.
 
 ## 6. Data and compatibility design
 
-- A complete root record and its complete tree manifest are strong reconstruction truth. Tree → child tree/file/segment/object edges are strong.
-- Parent/base/provenance references are weak unless independently selected by current, retention history, pin, branch, frontier, lease, or in-flight transaction policy.
+- The durable mark seed set is complete only when it includes current roots,
+  root/carrier leases, explicit pins, active branch heads, ancestors explicitly
+  selected by configured retention, frontier roots, in-flight roots, and every
+  root or object named by a pending publication journal, hydration,
+  materialization, evacuation, or compaction transaction.
+- A complete root record and its complete tree manifest are strong
+  reconstruction truth. Root → manifest → child tree/file/metadata/segment/
+  chunk/object references are strong.
+- Parent/base/provenance references are weak. They retain nothing unless
+  independently selected by one of the seed reasons above; a configured
+  retention ancestor is retained because policy selected it, not because an
+  ancestry field names it.
 - Physical marking follows committed materialization records, carrier locators, and object locators. A root mark alone is not permission to retain every historical native carrier.
 - A record loses its last locator only after a replacement is durable and the locator catalog generation commits. Any uncertain catalog result is `keep`, never `delete`.
 - Deletion requires: unreachable in a complete mark, moved to trash, at least one *complete durable* later grace epoch, and a final roots/retention/lease/locator/materialization generation recheck.
@@ -317,8 +405,11 @@ pub trait MaintenanceCatalog {
 
 ```mermaid
 flowchart TD
-  POLICY["current + retained + pins + branches + frontiers"] --> ROOTS["root seed set"]
-  LEASES["durable root/carrier/txn leases"] --> ROOTS
+  POLICY["current + configured ancestors + pins + active branches + frontiers"] --> ROOTS["root seed set"]
+  LEASES["durable root/carrier leases"] --> ROOTS
+  INFLIGHT["in-flight roots"] --> ROOTS
+  PENDING["pending journals / hydration / materialization / evacuation / compaction"] --> ROOTS
+  PENDING --> OBJECTS
   ROOTS --> TREES["strong tree manifests"]
   TREES --> OBJECTS["strong objects / segments"]
   ROOTS --> MATS["selected materializations"]
@@ -403,9 +494,9 @@ The sentinel uses one daemon without restart. Logical gauges must return to the 
 | external merge fan-in 8, 64 KiB/run; encoding ≤256 KiB/op; 4,096×4 KiB index cache; publication ≤4 MiB excluding cache; 64 MiB global semaphore | `stage-gating` | resource-budget and recovery tests |
 | native depth ≤64 | `stage-gating` safety invariant, but Stage 09 owns proactive squash | reject maintenance behavior that increases native depth beyond 64 |
 | every individual operation ≤60 seconds | `stage-gating` POC timeout | typed cases and tiny cells |
-| sealed pack payload ≤64 MiB, records ≤100,000, total allocation ≤80 MiB; reserve/seal before crossing any cap | `stage-gating` | boundary values and next-record tests |
+| sealed pack payload ≤64 MiB (`67,108,864` B), records ≤100,000, total allocation ≤80 MiB (`83,886,080` B); reserve/seal before crossing any cap | `stage-gating` | isolated below/at/would-cross live and pure-oracle rows: payload `67,108,863/67,108,864/67,108,865`, records `99,999/100,000/100,001`, allocation `A_max-a/A_max/A_max+a`, with exact before/projected/after evidence |
 | individual async compaction at ≥20% dead; aggregate urgent trigger >5%; settled target ≤2%, hard failure >5% | triggers and ≤5% hard condition `stage-gating`; final ≤2% steady-state claim `deferred-to-stage_11` | focused synthetic pack inventory now; scale corpus final |
-| one GC/compaction txn ≤100k records or 64 MiB payload, whichever first | `stage-gating` | transaction observation and journal |
+| one GC/compaction txn ≤100k records or 64 MiB (`67,108,864` B) payload, whichever first | `stage-gating` | isolated below/at/would-cross rows for both limits; crossing persists the cursor before the record and the next transaction resumes it exactly once |
 | deletion grace ≥one complete durable epoch plus final generation/lease recheck | `stage-gating` correctness | failpoint/restart matrix |
 | unexplained unreachable unleased bytes = 0; any persistent bytes hard fail | `stage-gating` for focused corpus | post-quiescence inventory and mark explanation |
 | last-locator safety and no live leased/root data loss | `stage-gating` correctness | evacuation race cases |
@@ -428,17 +519,38 @@ The dependency, `/eos` reachability, and compaction recovery diagrams appear in 
 
 ## 10. Implementation sequence
 
-1. `layerstack-core/src/pack.rs`: add fixed codecs/cap arithmetic and boundary tests; no I/O.
-2. `layerstack-core/src/retention.rs` and `gc.rs`: add seed/edge rules, cursors, deterministic ordering, and property/golden tests.
+1. `layerstack-core/src/pack.rs`: add fixed codecs/cap arithmetic and pure
+   below/at/would-cross admission tests for payload
+   `67,108,863/67,108,864/67,108,865` bytes, records
+   `99,999/100,000/100,001`, and allocation
+   `83,886,080-a/83,886,080/83,886,080+a`; no I/O.
+2. `layerstack-core/src/retention.rs` and `gc.rs`: add complete seed rules for
+   current, root/carrier lease, pin, active branch, configured-retention
+   ancestor, frontier, in-flight, and pending-transaction roots/objects; encode
+   strong reconstruction edges separately from weak ancestry; add the
+   weak-parent negative control, cursors, deterministic ordering, and
+   property/golden tests.
 3. `layerstack-core/src/evacuation.rs`: add pure locator-coverage/state transition checks.
-4. `layerstack/src/storage/catalog.rs`: add generation-CAS pages and crash-safe catalog replacement.
-5. `layerstack/src/maintenance/pack_writer.rs`: implement reserve-before-append, seal/footer/index durability, and recovery.
-6. `retention.rs`/`gc.rs`: implement epoch close, external mark runs, trash, grace, and final recheck.
+4. `layerstack/src/storage/{ref_store.rs,locator_store.rs}`: add atomic pin refs,
+   generationed locator SST installation, and crash-safe `CURRENT` replacement.
+5. `layerstack/src/maintenance/pack_writer.rs`: implement
+   reserve-before-append, seal/footer/index durability, and recovery; run the
+   same three exact boundary triplets through the live writer while recording
+   the allocation quantum and physical allocated blocks.
+6. `retention.rs`/`gc.rs`: implement complete seed collection, strong-only
+   traversal, pending object seeding, epoch close, external mark runs, trash,
+   grace, and final recheck; implement transaction below/at/would-cross tests
+   for `67,108,864` payload bytes and 100,000 records, with cursor-before-record
+   persistence at crossing.
 7. `compaction.rs`/`evacuation.rs`: implement target copy, locator CAS, source trash, replay, and conflicts.
 8. `recovery.rs`: make all states idempotent; unknown/new format fails closed without touching legacy.
 9. `operation` worker: add a distinct bounded maintenance work item and cancellation boundary; pack pressure never enqueues squash.
 10. Observation and focused Rust tests: expose scalar/capped counts, generations, bytes, and last terminal state.
-11. External E2E cases and tiny preset: use public operations for correctness and outside inspection only for allocated bytes/residue.
+11. External E2E cases and tiny preset: implement the two separate
+    `pack-limit-boundaries` and `transaction-limit-boundaries` terminal
+    checkpoints plus the complete-root-set/weak-ancestry fixture; use public
+    operations for correctness and outside inspection only for allocated
+    bytes/residue. Keep each invocation under a five-minute watchdog.
 12. Re-capture exact dependency/system/runtime evidence; stop and redesign on any external delta.
 
 Each step is independently revertible before candidate authority. Do not begin Stage 09 until recovery tests show no live-root or last-locator loss.
@@ -450,8 +562,10 @@ Each step is independently revertible before candidate authority. Do not begin S
 | `maintenance.state` | closed enum | idle/marking/sweeping/compacting/evacuating/grace_wait/recovering | missing/unknown fails |
 | `retention.epoch` / catalog generations | `u64` scalars | durable snapshot and recheck evidence | monotonic/consistent |
 | `gc.marked_{roots,objects,materializations}` | saturating counters | batch and run totals, no ID labels | exact for fixture |
+| `gc.seed_reason_counts`, `gc.strong_edges`, `gc.weak_edges_skipped`, `gc.pending_object_seeds` | bounded counters plus run-owned fixture evidence | complete root-set and edge-semantics proof | exact for every declared fixture node |
 | `gc.trash_bytes`, `gc.unexplained_bytes` | `u64` | allocated bytes awaiting grace / unaccounted | unexplained zero |
 | `pack.{open_payload,records,allocated}` | bounded scalars | active writer cap position | never exceeds caps |
+| `limit_case`, `limit_before`, `limit_projected`, `limit_after`, `allocation_quantum`, `admission_decision`, `cursor_position` | closed case ID plus bounded integers/enums | exact pack/transaction boundary proof | all 15 cases present; exact expected decision; missing case blocks |
 | `pack.{live,dead,slack}_bytes` | `u64` totals | compaction pressure/settled evidence | dispositions above |
 | `locator.last_locator_risk_count` | monotonic counter | rejected unsafe removal attempts | zero committed losses |
 | `maintenance.{queued_items,queued_bytes,workers,buffers,permits}` | bounded gauges/high-water | logical ownership | warmed idle after quiescence |
@@ -464,9 +578,16 @@ Logs may contain opaque transaction IDs but never per-object unbounded events. H
 
 - [ ] Stage is labeled POC proof tier; no full suite or final qualification is claimed.
 - [ ] Legacy remains sole publication/read authority and every v1 artifact is untouched.
-- [ ] Pack reservation seals before 64 MiB payload, 100,000 records, or 80 MiB allocation would be crossed.
-- [ ] Marking starts from all current/retained/pinned/branched/frontier/leased/in-flight roots and follows only defined strong edges.
-- [ ] Sweep/compaction work is cursor-resumable and bounded to 100,000 records or 64 MiB payload.
+- [ ] Pack reservation passes every isolated below/at/would-cross case for
+      64 MiB payload, 100,000 records, and 80 MiB allocation; the live writer,
+      pure oracle, and physical allocated-byte evidence agree.
+- [ ] Marking starts from current roots, root/carrier leases, pins, active
+      branches, configured-retention ancestors, frontier/in-flight roots, and
+      pending-transaction roots/objects; it follows strong reconstruction
+      edges, while weak ancestry alone does not retain a root.
+- [ ] Sweep/compaction passes below/at/would-cross cases and is
+      cursor-resumable at 100,000 records or 64 MiB payload, whichever comes
+      first.
 - [ ] Deletion waits a complete durable grace epoch and repeats every generation and lease check.
 - [ ] Locator replacement cannot remove a last committed locator.
 - [ ] Focused crash states roll forward/back idempotently; corruption quarantines candidate state.

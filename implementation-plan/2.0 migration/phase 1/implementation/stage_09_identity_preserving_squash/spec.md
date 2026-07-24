@@ -1,9 +1,39 @@
 # Stage 09 — Identity-preserving materialization squash
 
-[Implementation overview](../index.md) · [Stage 09 E2E plan](e2e_test.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [Stage 09 E2E plan](e2e_test.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Squash writes one verified materialization
+> generation through the common transaction directory and atomically swaps
+> only materialization `CURRENT`. It does not rewrite roots, branch heads,
+> receipts, or checkpoint refs. All checkpoints therefore survive squash
+> without copying payload.
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+## Performance arrival checkpoint
+
+Stage 09 has not reached its exit until the tiny/sentinel run emits versioned
+`.benchmark-state/results/<run-id>/stage-09-perf-report.json` and
+`stage-09-perf-report.md` with
+`schema_version="phase1.stage09.perf-report.v1"`. Both reports must identify
+the frozen baseline actual, required pass target/cap, separately predeclared
+optimization target, candidate actual, and delta/ratio/headroom; include
+complexity/work counters, logical-resource high-water counters, memory/RSS,
+complete physical-space terms, links
+between the reports and to run/raw artifacts, and measurement provenance; and
+issue `DIAGNOSTIC_PASS` or `FAIL`—never final `QUALIFIED`. The first Markdown
+table exposes those comparison fields per stage-owned metric.
+
+After the immutable reports exist, update the append-only tracker in
+[the benchmark note](benchmark_note.md), update the
+[overall scorecard](../stage_03_11_benchmark_note.md), and append the command,
+outcome, report links, and cleanup to `e2e/test-report.md`. The healthy-run
+planning estimate is **ESTIMATED**: 30–60 s for the core tiny loop, 12–24 s
+for the fixed-`D` frozen-size sweep, 10–25 s for the serialized-`lowerdir`
+boundary and squash-builder isolation cells, 35–72 s for the 20-cycle
+sentinel, and 87–181 s for the full local bundle. Every
+operation/cell remains ≤60 s and every matched invocation ≤5 min.
 
 ## 1. Stage contract
 
@@ -11,16 +41,22 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | --- | --- |
 | Tier | **POC proof tier**; focused correctness/recovery, a 30–60 second tiny loop, and a coarse long-lived memory sentinel |
 | Branch policy | Planning creates no branch. Implementation requires the exact branch `upgrade-2.0-phase-1`, created from the newest approved immutable product revision before Phase 1 implementation begins. |
-| Depends on | Stage 08 and its Stage 00/02–07 ancestry, especially immutable logical roots, durable materialization/lease catalogs, strict candidate reads, bounded packs/GC/evacuation, and crash-safe catalog transactions. Stage 01 remains independent until Stage 10. |
+| Depends on | Stage 08 and its Stage 00/02–07 ancestry, especially immutable logical roots, durable materialization `CURRENT` and lease refs, strict candidate reads, bounded packs/GC/evacuation, and crash-safe common transactions. Stage 01 remains independent until Stage 10. |
 | Useful capability at exit | A Docker/OverlayFS native materialization can be replaced by fewer carriers while `RootId`, root-record bytes, `PublicationId`, and publication/OCC generation remain unchanged. Only `MaterializationId`, materialization generation, provider locators, and carrier leases advance. |
 | Authority | Legacy v1 remains the only publication authority and the rollback read authority. Candidate materialization squash operates on shadow candidate state; it cannot publish a root or mutate/delete legacy artifacts. |
-| Scope | Pure squash planning/invariants, provider build/verify/fsync, materialization catalog CAS, live-session remount with overlapping leases, restart recovery, depth admission, routing pack/locator pressure away from squash, bounded observations/tests |
+| Scope | Pure squash planning/invariants, provider build/verify/fsync, materialization `CURRENT` CAS, live-session remount with overlapping leases, restart recovery, depth admission, routing pack/locator pressure away from squash, bounded observations/tests |
 | Non-goals | Candidate publication/read authority (Stage 10), legacy retirement/default enablement, logical history rewrite, root republish, pack compaction (Stage 08), full time/space/RSS/portability qualification (Stage 11), another provider |
 | Entry | Stage 08 has no unexplained candidate bytes, all locator/deletion rules pass, and legacy authority is intact. |
-| Exit | Focused tests show byte-identical logical identity across squash, publication generation unchanged, materialization generation advanced, old/new carrier lease overlap across remount/restart, proactive depth control, correct pressure routing, bounded release, and zero external dependency delta. |
-| Rollback | Disable candidate squash. Before materialization CAS, delete/quarantine the private target; after CAS, finish or retry remount while old carriers remain leased. Legacy continues to serve rollback without interpreting the candidate squash journal. |
+| Exit | Focused tests show byte-identical logical identity across squash, publication generation unchanged, every checkpoint still resolves, materialization generation advanced, old/new carrier lease overlap across remount/restart, proactive depth control, correct pressure routing, bounded release, and zero external dependency delta. |
+| Rollback | Disable candidate squash. Before the `CURRENT` CAS, delete/quarantine the private target; after CAS, finish or retry remount while old carriers remain leased. Legacy continues to serve rollback without interpreting candidate transaction work. |
 
 The stage is not “republish a flattened layer.” A republish would create or race a new logical root and violate the one-publication-authority law. Squash is a provider-materialization transaction beneath an already committed root.
+
+Checkpoint refs point to `RootId`, not a materialization path or generation.
+Squash builds `generations/<new>/`, verifies/fsyncs it, atomically advances
+materialization `CURRENT`, and retains the old generation under overlapping
+leases and grace. Therefore checkpoints, branch heads, receipts, and CAS
+objects need no rewrite and remain valid before, during, and after squash.
 
 ## 2. Current evidence
 
@@ -56,7 +92,7 @@ ephemeral-sandbox/
 │   │   ├── maintenance/squash.rs                            [add] — journal + materialization catalog CAS
 │   │   ├── maintenance/recovery.rs                          [modify] — squash state recovery
 │   │   ├── materialization/port.rs                          [modify] — replacement/lease generations
-│   │   ├── materialization/catalog.rs                       [modify] — replacement/lease generations
+│   │   ├── materialization/current.rs                       [modify] — replacement generation CAS
 │   │   └── service/observe.rs                               [modify] — bounded squash observations
 │   └── tests/
 │       ├── squash_identity.rs                               [add]
@@ -79,7 +115,12 @@ ephemeral-sandbox-test/
 └── benchmark/presets/layerstack-phase1-tiny-squash-v2.yml  [add]
 ```
 
-### Complete `/eos` view after Stage 09
+### Superseded pre-simplification `/eos` inventory
+
+This inventory is retained only for requirement traceability. Stage 09 adds no
+new durable storage family: squash publishes a materialization generation and
+atomically replaces only that root/backend `CURRENT`, as defined by the
+[simplified storage contract](../layerstack_storage_contract.md#stage-ownership).
 
 Bracket order is
 `[change; class; owner; create→visible→durable→recover→delete; identity; access/authority; bound; space; exposure]`.
@@ -195,9 +236,9 @@ New dependencies point inward and remain acyclic: operation/workspace adapters d
 | --- | --- | --- | --- | --- | --- |
 | Identity | current-host materialization implementation | explicit-width typed IDs/generations and deterministic byte order; provider locator excluded from `RootId` | portable core | scalar identity golden | cross-host/CPU release triples `deferred-to-stage_11` |
 | Planning | Docker carrier paths visible to orchestration | carrier ordinals/counts only; no host paths, inodes, or times | portable core plan + provider adapter | pure contract tests | future providers are designed-compatible, unverified |
-| Build/verify | Docker/OverlayFS is the only live implementation | immutable-root materialization port owns native copy/flatten/fsync/metadata verification | Docker provider adapter | sole pinned Ubuntu 24.04 POC | required hosts use that same image in Stage 11 |
+| Build/verify | Docker/OverlayFS is the only live implementation | immutable-root materialization port owns native copy/flatten/fsync/metadata verification | Docker provider adapter | pinned Ubuntu 24.04 Stage 09 POC | Stage 11 repeats the capability profile over every required host×image row |
 | Activation | provider mechanics and logical switch are coupled | versioned handle/lease law in core-facing contract; quiesce/mount/remount in adapter | orchestration + Docker provider adapter | focused session recovery | release triples `deferred-to-stage_11` |
-| Target image | Ubuntu image available during POC | no target-image command, helper, shell, userland, or libc dependency | provider adapter runs outside sandbox | public API correctness on Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | cross-image portability after Phase 1; not an acceptance or retirement gate |
+| Target image | Ubuntu image available during POC | no target-image command, helper, shell, userland, or libc dependency | provider adapter runs outside sandbox | public API correctness on Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | Stage 11 Phase 1 matrix: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root rows |
 
 ## 5. Type, class, and field design
 
@@ -288,7 +329,7 @@ pub trait MaterializationCatalog {
 | --- | --- | --- | --- | --- |
 | `PublishedRootVersion` — new view | `sandbox-runtime-layerstack-core::squash`; workspace-public internal | exact root/publication/generation/digest fields above; immutable logical fence | owned fixed-size value; persisted values remain owned by roots/publication catalogs; no heap; dropped with plan/receipt | no default; all fields must match committed record; mismatch is conflict; immutable `Send + Sync`; no wire-format mutation |
 | `MaterializationVersion` — new view | core `squash`; workspace-public internal | exact materialization ID/generation/base-inclusive carrier count | fixed-size value; source/after values persist in materialization catalog; leases own carrier lifetime | count must be `1..=64`; after generation strictly advances; errors preserve old generation; provider locator excluded |
-| `SquashPlan`, `CarrierRange`, `SquashAdmission` — new | core `squash`; workspace-public internal | exact plan fields/closed admission variants above; pure depth/benefit/source classification | one operation owner; fixed-size descriptors only; plan is transient, journal records durable intent; drop releases no carrier itself | no default; validate depth 48/64 and benefit 8/2, ranges, generations, IDs; stale values conflict; immutable after admission; additive internal API |
+| `SquashPlan`, `CarrierRange`, `SquashAdmission` — new | core `squash`; workspace-public internal | exact plan fields/closed admission variants above; pure depth/benefit/source classification | one operation owner; fixed-size descriptors only; plan is transient, journal records durable intent; drop releases no carrier itself | no default; validate depth 48/64, routine benefits 7/8, manual selected-run widths 1/2, ranges, generations, IDs; stale values conflict; immutable after admission; additive internal API |
 | `SquashState` — new | layerstack squash journal; crate-visible | exact closed transaction states above | one durable state/transaction and one in-memory scalar; terminal recovery deletes journal after catalog/manager proof | monotonic transition table; unknown state/version fails closed and retains both sources; one transaction writer |
 | `SquashCommitReceipt` — new | layerstack squash service; internal response/evidence | exact before/after root/materialization and session/lease counters | fixed-size owned receipt; persisted in journal/evidence until terminal, then bounded evidence retention/eviction | validates root equality, generation advance, bounded counts; impossible postcondition is integrity error; safe immutable sharing |
 | `MaterializationPort::Prepared` / `MaterializationDescriptor` / `MaterializationError` — modified narrow provider port | existing port owner in layerstack contracts; implemented by Docker adapter | signatures above; prepare, verify+sync, discard private replacement only | provider owns file descriptors/staging/carrier until descriptor or discard; cancellation/error invokes discard; recovery reconciles journal | no generic default; verified descriptor required before CAS; provider errors translate once; one mutable prepared owner; future providers implement same contract |
@@ -300,6 +341,13 @@ pub trait MaterializationCatalog {
 ## 6. Data and compatibility design
 
 - `D` counts the base carrier. Asynchronous work enqueues when projected `D ≥ 48`; a publication that would produce `D > 64` must first compact successfully or be rejected.
+- Mount admission computes the exact serialized OverlayFS `lowerdir=` option
+  from the provider-resolved absolute carrier paths. It admits only when both
+  `D≤64` and `serialized_lowerdir_bytes≤declared_lowerdir_limit`; otherwise it
+  compacts or returns `NeedCompaction` before the mount syscall and before any
+  catalog/session visibility change. Tests freeze colon-safe paths at
+  `L_limit-1`, `L_limit`, and `L_limit+1` bytes so the byte boundary is not
+  conflated with the carrier-count boundary.
 - Routine autosquash requires `source carriers - replacement carriers ≥ 8`. Manual squash accepts any range of at least two lowers only when it reduces depth.
 - Pack dead/slack, locator debt, or CAS object pressure is not squash pressure; it invokes Stage 08 compaction/evacuation.
 - The squash input is one committed root plus one expected materialization generation. It never selects multiple logical roots or changes retention/provenance.
@@ -332,7 +380,12 @@ flowchart TD
 5. Journal `CommitIntent`; materialization catalog CAS advances only materialization ID/generation.
 6. Acquire target lease before exposing it to each workspace. Quiesce a session, switch lowers, persist manager generation, then release that session's old lease.
 7. Crash/cancel resumes from catalog generation and per-session manager state. A failed session remains safely on leased old carriers and is retried.
-8. When no session/transaction lease names old carriers, Stage 08 moves them through grace and recheck. Journal becomes terminal and is reaped.
+8. When no session/transaction lease names old carriers, Stage 08 moves them
+   through evacuation, grace, and recheck. Record `evacuation_ns` from release
+   of the last protecting old-carrier lease (when final-locator movement can
+   begin) until replacement locators are durable and the source is eligible
+   for grace. If no locator must move, record zero plus a closed
+   `evacuation_not_required_reason`. Journal becomes terminal and is reaped.
 
 ```mermaid
 sequenceDiagram
@@ -380,7 +433,7 @@ One daemon stays alive for the sentinel. Every logical owner must return to warm
 | plan/source selection | native depth `D≤64`, active sessions `A` | `O(D+A)` | `O(D+A)` and ≤60 s | capped descriptors; no payload | one ≤256 KiB journal | none beyond journal metadata | bounded catalog/lease page reads |
 | replacement build/verify | selected carrier bytes `S`, entries `E_s` | `O(S+E_s)` | `O(S+E_s)` and ≤60 s per resumable transaction | 256 KiB worker buffers, four workers, 16/64 KiB queue, shared 16 MiB cache, 64 MiB semaphore | one replacement native carrier plus journal | replacement carrier; old source remains only while leased/grace-protected | streaming carrier reads/writes, metadata verify, fsync |
 | materialization CAS | affected catalog pages `P`, one expected generation | `O(P)` | bounded CAS retry/recovery and ≤60 s | ≤256 KiB encoding plus shared cache | catalog page staging + squash journal | one materialization record/generation | bounded pages, fsync, atomic rename |
-| session remount | active sessions `A` | `O(A × provider_switch)` | serial one-session switches; ≤60 s per operation | one session handle plus old/new leases | provider mount staging only | one active materialization per session plus grace-protected old carrier | quiesce, mount/remount, manager state fsync |
+| session remount | native depth `D≤64`, active tasks, verified FDs; `A` sessions total | frozen interval `O(D+tasks+verified FDs)` per switch, with no `U/R/K/S` work; all-session orchestration is the sum of bounded switches | serial one-session switches; ≤60 s per operation | one session handle plus old/new leases | provider mount staging only | one active materialization per session plus grace-protected old carrier | quiesce, verified-FD mount/remount, manager state fsync; zero payload read/hash/copy during freeze |
 | recovery | one journal, affected sessions `A`, pages `P` | `O(A+P)` | no global payload rescan; ≤60 s | bounded journal/page buffers | private unfinished target or none | old-or-new complete generation only | journal/catalog reads and idempotent remount |
 | native command/file/PTY/stdin | native carrier depth `D≤64` | existing native cost | existing provider bound and ≤60 s harness timeout | existing native route only | none from squash/CAS | unchanged `L_hot + H_cold + ΣU_active + P_staging + M` envelope | zero CDC/CAS/pack/manifest lookup |
 
@@ -389,16 +442,19 @@ One daemon stays alive for the sentinel. Every logical owner must return to warm
 | `RootId`, root-record bytes, `PublicationId`, publication/OCC generation unchanged across squash | `stage-gating` correctness | exact before/after receipt and restart cases |
 | new `MaterializationId`; materialization generation strictly advances | `stage-gating` correctness | catalog CAS/receipt |
 | depth includes base; enqueue projected `D≥48`; compact/reject before `D>64` | `stage-gating` | boundary policy/admission cases |
-| routine carrier benefit ≥8; manual run ≥2 and lowers depth | `stage-gating` | pure plan and live fixture |
+| routine carrier benefit ≥8; manual selected run contains ≥2 lowers and the plan lowers depth | `stage-gating` | pure plan and live fixture |
 | pack/locator pressure never triggers squash | `stage-gating` | queue/action counters |
+| mount preflight checks both `D≤64` and the serialized `lowerdir=` byte limit | `stage-gating` | same-depth long-path cells at `L_limit-1`, `L_limit`, and `L_limit+1`; above-limit decision occurs before a mount syscall or visibility |
 | one replacement target may coexist with old leased source | `stage-gating` bounded-peak shape; percentage/scale claim `deferred-to-stage_11` | allocated category series now; full corpus final |
 | squash live-remount frozen p50/p95 ≤baseline+5%+2ms | `deferred-to-stage_11` | final paired benchmark |
+| frozen remount work `O(D+tasks+verified FDs)` with no `U/R/K/S` work | `stage-gating` structural proof | fixed `D=8`, four-session, fixed-task/FD sweep over prebuilt 16/64/256 MiB targets; identical work counters and zero frozen payload bytes |
 | full squash plan/build/commit p50/p95 ≤baseline+10%+5ms | `deferred-to-stage_11` | final paired benchmark |
 | every operation ≤60s | `stage-gating` POC timeout | focused cases/tiny cells |
 | matched candidate/baseline pair ≤5min | `deferred-to-stage_11` | final matrix |
 | fixed memory limits: 256 KiB worker buffers, four workers, 16/64KiB queue, ≤256KiB encoding, 16MiB cache, ≤4MiB/publication, 64MiB semaphore | `stage-gating` | gauges/cap tests |
 | native depth preemptively below 64; >64 hard failure | `stage-gating` | admission and settled observation |
 | normal native hot paths have zero CAS payload reads/lookups | `stage-gating` | command/file/PTY/stdin route |
+| background squash build does not enter command/PTY critical paths | `stage-gating` structural proof; numeric p50/p95 `deferred-to-stage_11` | synchronized idle-versus-builder-active command and PTY create/drain cells; maintenance-owned wait/lock/permit/CDC/CAS/manifest/pack counters remain zero |
 | sealed pack ≤64 MiB payload/100,000 records/80 MiB allocation; GC/compaction transaction ≤100,000 records or 64 MiB; individual compaction at ≥20% dead; aggregate urgent >5%; settled dead/slack target ≤2%, hard >5%; deletion grace ≥one complete durable epoch plus generation/lease recheck; last-locator safety | hard bounds/triggers/safety `stage-gating`; ≤2% settled corpus claim `deferred-to-stage_11` | focused coexistence/reclaim case now; final corpus later |
 | final memory matrix 64/256MiB/1GiB × roots1/16/64 ×3; adjusted final/peak ≤16MiB and 4× size/history ≤8MiB | `deferred-to-stage_11` | final qualification |
 | qualification RSS ≤384MiB and ≤128MiB above idle | `deferred-to-stage_11` | final long-lived process |
@@ -408,8 +464,8 @@ One daemon stays alive for the sentinel. Every logical owner must return to warm
 | SIMD acceleration | `not-applicable` | scalar remains sole implementation |
 | candidate publication/read authority and legacy retirement | `deferred-to-stage_10` / `deferred-to-stage_11` | later authority/final stages |
 
-No time percentile, scale, RSS, settled amplification, or required-host row
-using the sole pinned Ubuntu image becomes qualified here.
+No time percentile, scale, RSS, settled amplification, or required host×image
+row becomes qualified here.
 
 ## 9. Diagrams
 
@@ -424,7 +480,9 @@ Sections 4, 6, and 7 contain the required dependency, identity/data-flow, and fa
 5. Version workspace manager materialization handles and add old/new lease-overlap remount tests.
 6. Refactor autosquash policy/action: policy decides; action orchestrates; pack/locator pressure routes to Stage 08.
 7. Add bounded observations and exact postcondition receipt.
-8. Run focused Rust contract/recovery tests, then typed E2E identity/remount/depth cases, then the tiny preset.
+8. Run focused Rust contract/recovery tests, then typed E2E
+   identity/remount/depth/serialized-`lowerdir` cases, then the tiny preset and
+   synchronized idle-versus-squash-builder command/PTY isolation cell.
 9. Re-capture exact dependency/runtime evidence; any external delta is a blocker.
 10. Do not enable candidate authority or delete legacy code/data; hand Stage 10 a proven materialization transaction.
 
@@ -441,9 +499,12 @@ Sections 4, 6, and 7 contain the required dependency, identity/data-flow, and fa
 | `materialization_generation_before/after` | explicit-width | after > before |
 | `depth_before/projected/after`, `carrier_reduction` | `u8` scalars | policy limits/benefit |
 | `remount.{pending,completed,old_lease,new_lease}` | bounded counters | pending zero at terminal; no unleased interval |
+| `lowerdir.{serialized_bytes,declared_limit,preflight_decision,mount_syscalls}` | exact scalars/closed enum | admit iff both byte and depth limits pass; rejected preflight has zero mount syscalls |
+| `squash.evacuation_ns`, `squash.evacuation_not_required_reason` | monotonic interval or exact zero with closed reason | present for every squash result; ≤60 s operation bound |
 | `source/target/grace_allocated_bytes` | category totals, no path labels | one bounded replacement shape |
 | `workers/buffers/queues/permits/leases/transactions` | current/high-water gauges | warmed idle after quiescence |
 | `native_hot_path_cas_lookups/payload_reads` | monotonic route counters | zero |
+| `native_hot_path_maintenance_waits/locks/permits` by squash-builder owner | monotonic route counters | zero during synchronized command/PTY isolation cells |
 | Stage 00 authority/fallback/mismatch | closed enums/counters | legacy/legacy/0/0 |
 
 Per-session IDs belong only in bounded run evidence, not metric labels/log storms. Missing identity, generation, lease, or hot-path route evidence fails; unavailable optional RSS sources remain explicit.
@@ -457,10 +518,18 @@ Per-session IDs belong only in bounded run evidence, not metric labels/log storm
 - [ ] Catalog CAS fences root/publication/materialization/locator/lease generations.
 - [ ] Existing sessions keep old leases until a verified target lease and remount persist.
 - [ ] Every crash/cancel state resumes or aborts idempotently without republishing.
-- [ ] Projected depth 48/64 and routine/manual benefit rules are exact; depth includes base.
+- [ ] Projected depth 48/64, routine benefit ≥8 carriers, and manual selected-run width ≥2 lowers are exact; depth includes base.
+- [ ] Serialized `lowerdir=` bytes are checked independently at
+      `L_limit-1/L_limit/L_limit+1`; an over-limit mount never reaches the
+      kernel or becomes partially visible.
 - [ ] Pack/locator pressure invokes Stage 08, never squash.
 - [ ] Old carriers pass through Stage 08 grace/recheck only after all leases release.
 - [ ] Legacy authority/artifacts remain untouched and usable for rollback.
 - [ ] Native execution has zero CAS/pack/manifest lookup.
+- [ ] Command and PTY create/drain remain behaviorally exact while the squash
+      builder is active, with zero maintenance-owned wait/lock/permit or
+      storage-transform work in their critical paths.
+- [ ] Every squash report includes the defined evacuation interval or an exact
+      zero with a closed no-evacuation reason.
 - [ ] Logical resources quiesce in one long-lived daemon and the coarse physical sentinel is within rule.
 - [ ] External dependency, feature, edge, helper, package, service, socket, and download delta is zero.

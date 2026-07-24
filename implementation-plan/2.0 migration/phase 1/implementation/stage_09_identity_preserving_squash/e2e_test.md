@@ -1,9 +1,32 @@
 # Stage 09 E2E — Identity-preserving squash
 
-[Implementation overview](../index.md) · [Stage 09 specification](spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Stage 09 specification](spec.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
+
+## Performance arrival checkpoint
+
+Stage 09 has not reached its exit until the focused test runner writes versioned
+`.benchmark-state/results/<run-id>/stage-09-perf-report.json` and
+`stage-09-perf-report.md` with
+`schema_version="phase1.stage09.perf-report.v1"`, the frozen baseline actual,
+required pass target/cap, separately predeclared optimization target,
+candidate actual, delta/ratio/headroom, complexity/work counters,
+logical-resource high-water counters, memory/RSS,
+complete allocated-space accounting, links between the reports and to
+immutable run/raw artifacts, provenance, and a `DIAGNOSTIC_PASS` or `FAIL`
+verdict. The first Markdown table exposes those comparison fields per
+stage-owned metric. It must then update the append-only
+[benchmark tracker](benchmark_note.md) and
+[overall scorecard](../stage_03_11_benchmark_note.md), and append the exact
+command, outcome, report links, and cleanup to `e2e/test-report.md`.
+
+The full Stage 09 local cycle is **ESTIMATED** at 87–181 s: the existing
+65–132 s core-plus-sentinel schedule, a 12–24 s fixed-`D` frozen-size sweep,
+and 10–25 s for serialized-`lowerdir` boundary and squash-builder isolation
+cells. Its core developer loop remains 30–60 s. These are planning numbers;
+the ≤60 s operation/cell and ≤5 min invocation limits remain hard.
 
 ## 1. Stage-local test objective
 
@@ -26,9 +49,11 @@ At the focused exit boundary:
 - all case-owned logical resources release in one long-lived daemon with zero external dependency delta.
 
 The stage runs focused cases and one tiny loop only. Final p50/p95, space
-amplification, memory/RSS scale, full soak/regression, and required
-host/release-runner qualification using the sole pinned Ubuntu target remain
-Stage 11. Cross-image portability is outside Phase 1 and is not a gate.
+amplification, memory/RSS scale, full soak/regression, and the complete
+required host×image capability matrix remain Stage 11. The final Phase 1
+matrix includes pinned Ubuntu and Debian glibc, Alpine musl,
+minimal/distroless, and shell-less fixtures plus read-only and non-root
+variants; an unpinned or unexecuted required row is a no-go.
 
 ## 2. Existing assets to reuse
 
@@ -150,7 +175,8 @@ All correctness and authority assertions use public CLIs/observability. Outside 
 | `layerstack.phase1.squash.remount-lease-recovery` | hard / `run-now-focused` | remount/lease crash recovery | active sessions and commands; failpoints before/after target durability, catalog CAS, and session persistence | squash, concurrently execute/read, cancel/restart/remount | every session has old-or-new valid carrier and continuous lease; failed switch remains old; source reclaim waits for lease+grace | per-boundary recovery/remount duration | target/source/mount staging/residue | old/new lease overlap bounded; all session and worker owners quiesce | no target-image helper; provider adapter boundary evidence | `60000` ms | lease generations, remount timeline, manager state, journals, allocation inventory, logs |
 | `layerstack.phase1.squash.depth-admission` | medium / `run-now-focused` | autosquash admission policy | projected depths 47/48/63/64/65; routine benefit 7/8; manual 1/2; pack/locator pressure | publish/request manual squash and inspect bounded public maintenance state | enqueue at 48; prevent >64; exact benefit boundaries; pack/locator pressure never enqueues squash | decision/queue latency | no unexpected target/staging allocation on rejection | queue/permit/operation gauges return to baseline | pure portable-plan evidence plus zero graph delta | `60000` ms | admission observations, operation receipts, disk diff, gauges, logs |
 | `layerstack.phase1.squash.tiny` | bench / `run-now-tiny-bench` | diagnostic squash loop | fixed ~16 MiB carriers/depths; one warmup; ≥5 alternating legacy/candidate pairs | public publish, squash, read/execute, clean up | exact tree and identity receipt on every repetition; hard depth/resource invariants | raw paired phases and diagnostic threshold | peak source+target and settled categorized allocation | logical final/high-water gauges and explicit cgroup/RSS availability | frozen dependency evidence and pinned-environment manifest | `60000` ms | plan/result JSON, raw samples, environment, disk/memory series, logs |
-| `layerstack.phase1.squash.qualification` | release / `planned-final` | cumulative final squash qualification | Stage 11 scale/time/RSS/space/soak/required-host matrix using the sole pinned Ubuntu 24.04 target image | Stage 11 public benchmark and affected suite | all normative identity, latency, space, memory, restart, and required-runner gates | paired p50/p95 and ≤5 min pair | full peak/settled envelope | full scale and repeated-cycle stability | required release runners use the pinned Ubuntu 24.04 target; cross-image acceptance is deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle only |
+| `layerstack.phase1.squash.frozen-independence` | bench / `run-now-tiny-bench` | prove frozen remount work is independent of selected payload bytes | prebuilt verified 16/64/256 MiB targets at fixed `D=8`, four sessions, identical tasks/FDs; one warmup+3 remounts/size | counterbalanced size order; start timing only after target verification; remount and restore exact run-owned sessions | lower/task/verified-FD counter tuple identical at all sizes; frozen payload read/hash/copy each zero; exact tree and leases | raw frozen interval and structural counters; elapsed diagnostic only | no build or payload staging during freeze | sessions/FDs/leases return to warmed bounds after every switch | same pinned environment and dependency evidence | `60000` ms | raw per-size samples, counter tuples, remount timeline, resource/cleanup evidence |
+| `layerstack.phase1.squash.qualification` | release / `planned-final` | cumulative final squash qualification | Stage 11 scale/time/RSS/space/soak plus required host×image capability matrix | Stage 11 public benchmark and affected suite | all normative identity, latency, space, memory, restart, lowerdir-boundary, and required portability rows | paired p50/p95 and ≤5 min leaf invocation | full peak/settled envelope | full scale and repeated-cycle stability | exact OCI index/platform manifests for Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less fixtures; read-only/non-root variants | `300000` ms artifact-validator timeout | completed Stage 11 qualification bundle only |
 
 Each live case emits exactly one terminal validation checkpoint after tracked cleanup.
 
@@ -200,7 +226,7 @@ Each live case emits exactly one terminal validation checkpoint after tracked cl
 @e2e_test(
     id="layerstack.phase1.squash.depth-admission",
     title="Projected depth and squash benefit admission are exact",
-    description="Exercises base-inclusive projected-depth, routine/manual benefit, hard admission, and pressure-source boundaries through public publication and bounded maintenance observations.",
+    description="Exercises base-inclusive projected-depth, routine benefit, manual selected-run width, hard admission, and pressure-source boundaries through public publication and bounded maintenance observations.",
     features=("workspace-session", "layerstack", "phase1-cas", "squash", "autosquash", "admission-control"),
     validations={
         "terminal": "Projected D at 48 enqueues, work prevents D above 64, routine benefit 8 and manual range 2 are exact boundaries, pack or locator pressure never enqueues squash, and all rejected/admitted operations clean up.",
@@ -220,7 +246,7 @@ Each live case emits exactly one terminal validation checkpoint after tracked cl
 @e2e_test(
     id="layerstack.phase1.squash.qualification",
     title="Identity-preserving squash release qualification",
-    description="Stage 11-only cumulative matrix for normative squash timing, peak/settled space, memory, restart soak, regression, and required release runners using the sole pinned Ubuntu 24.04 target image; cross-image acceptance is deferred beyond Phase 1.",
+    description="Stage 11-only artifact validator for completed normative squash timing, peak/settled space, memory, restart soak, regression, and the full required host-by-image capability matrix; benchmark leaves are dispatched separately and each remains at most five minutes.",
     features=("layerstack", "phase1-qualification", "squash", "materialization", "portability"),
     validations={
         "terminal": "Every Stage 11 normative gate and required-release row has executed evidence while identity and lease invariants remain exact.",
@@ -267,6 +293,7 @@ Plan metadata: existing plan schema; fixed seed/corpus; factors `route × depth 
 | manual source 1/2 lowers | reject at 1; accept 2 only if depth decreases | `run-now-focused` |
 | base-inclusive projected D 47/48 | no async depth trigger / enqueue at 48 | `run-now-focused` |
 | projected D 64/65 | 64 admitted; 65 requires completed compaction or publication rejects | `run-now-focused` |
+| same valid depth with serialized `lowerdir=` bytes at `L_limit-1/L_limit/L_limit+1` | admit exactly through the declared inclusive limit; over-limit compacts or returns `NeedCompaction` before any mount syscall or visibility change | `run-now-focused` |
 | pack dead/slack or last-locator debt, low native pressure | Stage 08 compaction/evacuation counter advances; squash counter does not | `run-now-focused` |
 | crash/cancel during private target build | target absent/quarantined; catalog remains old `M@g` | `run-now-focused` |
 | crash after target fsync, before commit intent/CAS | same logical root and old materialization active; private target reaped | `run-now-focused` |
@@ -279,8 +306,9 @@ Plan metadata: existing plan schema; fixed seed/corpus; factors `route × depth 
 | corruption in replacement tree/metadata | verification rejects before CAS; legacy and old candidate carrier readable | `run-now-focused` |
 | mode/symlink/hardlink/sparse/xattr/whiteout/opaque/ownership fixture | exact supported semantics before/after | `run-now-focused` |
 | active command/file/PTY/stdin during switch | documented quiesce semantics; native operations only, no CAS lookup | `run-now-focused` |
+| command and PTY create/drain while the squash builder actively streams a deterministic target | exact behavior and zero squash-builder-owned wait/lock/permit/CDC/CAS/manifest/pack work in the command/PTY critical path | `run-now-tiny-bench`; numeric final gate `planned-final` |
 | restart after terminal before journal reap | idempotent no-op plus bounded reap | `run-now-focused` |
-| normative time/space/RSS and required-host matrix using the sole pinned Ubuntu target | no Stage 09 qualification claim | `planned-final` |
+| normative time/space/RSS and full required host×image matrix | no Stage 09 qualification claim | `planned-final` |
 
 Every row records root and root-record digests, publication/materialization generations, carrier/lease sets, manager generation, journal phase, exact tree digest, authority/fallback counters, and ownership cleanup.
 
@@ -291,12 +319,43 @@ Preset `layerstack-phase1-tiny-squash-v2` uses:
 - a deterministic ~16 MiB mixed tree with localized edit, incompressible file, repeated object, 256 small files, and supported metadata edge fixtures;
 - depths 8, 47, 48, and 63 plus synthetic pure-policy tests for 64/65;
 - one and four active sessions; one command remains quiesce-safe during the remount case;
-- routine source reductions 7 and 8 and one valid manual two-lower reduction;
+- routine benefits 7 and 8, plus manual selected-run widths 1 and 2;
 - one warmup and at least five alternating legacy-control/candidate-shadow pairs; prefer 3–5 warmups and 10 samples only inside the total 30–60 second developer loop.
 
 Per pair: publish fixture → snapshot identity/generations → create sessions/read/exec → trigger squash → exact before/after oracle → destroy → poll quiescence. Inputs, seed, operation order, image, config, filesystem, cache class, and host allocation are identical.
 
-Capture raw plan/build/verify/fsync/CAS/frozen-remount/end-to-end time, but with this sample count report no p95 claim. Capture source/target/grace logical+allocated bytes, depth/carrier counts, metadata/object/pack bytes, bytes read/written, session remount and lease counts, resource gauges, route counters, and explicit memory-source availability. Every operation/cell must finish in ≤60 seconds.
+Separately prebuild verified 16/64/256 MiB replacement targets and, at fixed
+`D=8`, four sessions, identical tasks and verified-FD count, run one excluded
+warmup plus three remounts per size in counterbalanced size order. The timed
+freeze must report an identical tuple of lower-descriptor visits, task
+transitions, and verified-FD operations at every size, with payload
+read/hash/copy bytes each exactly zero.
+
+Also construct colon-safe absolute carrier paths whose serialized OverlayFS
+`lowerdir=` values are exactly `L_limit-1`, `L_limit`, and `L_limit+1` bytes
+at the same valid `D`. Record the provider-declared limit, actual option bytes,
+preflight decision, and mount-syscall count. Admission is inclusive at the
+declared limit; the over-limit case compacts or returns `NeedCompaction`
+before a mount syscall.
+
+For the Stage 09 isolation diagnostic, prebuild a deterministic pending
+squash target, synchronize on the builder-active event, and interleave matched
+idle/builder-active no-op command and PTY create/drain cells after at least
+three warmups. Freeze `N` before candidate data (minimum five pairs). The
+builder remains outside the remount freeze. Record maintenance-owned
+wait/lock/permit/CDC/CAS/manifest/pack counters; each must be zero on the
+command/PTY critical paths. Stage 11 owns the numeric p50/p95 decision and the
+equivalent packer/GC cells.
+
+Capture raw plan/build/verify/fsync/CAS/frozen-remount/evacuation/end-to-end
+time, but with this sample count report no p95 claim. Evacuation starts at
+release of the final protecting old-carrier lease and ends when replacement
+locators are durable and the source is grace-eligible; when unnecessary,
+record zero plus a closed reason. Capture source/target/grace
+logical+allocated bytes, depth/carrier counts, metadata/object/pack bytes,
+bytes read/written, session remount and lease counts, frozen work counters,
+resource gauges, route counters, and explicit memory-source availability.
+Every operation/cell must finish in ≤60 seconds.
 
 The loop proves identity and boundedness. It does not pass the final `baseline+5%+2ms` remount or `baseline+10%+5ms` full squash percentile gates.
 
@@ -328,14 +387,16 @@ Re-capture before/after canonical external package identities/checksums, externa
 
 No target-image shell, libc, `tar`, coreutils, checksum program, Python, package manager, static helper, sidecar, or network service may build or verify the target. Docker/OverlayFS adapter code performs native carrier work outside the image. Core golden plans must be independent of path separator, inode, host order, endianness, word size, time, locale, CPU feature, Docker VM path, and provider locator.
 
-The focused environment uses the sole Phase 1 target,
+The focused environment uses the Stage 09 POC target,
 `ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`,
 and records the resolved platform manifest. This is POC evidence for one
 required-host row only. Read-only and non-root runtime variants use the same
-image identity. Stage 11 executes every required host/architecture/Docker
-release-runner row using this same OCI index and records the resolved platform
-manifest; unexecuted required rows remain unverified. Cross-image portability
-is deferred beyond Phase 1 and is neither an acceptance nor a retirement gate.
+image identity. Stage 11 executes the complete required host×image matrix and
+records the exact OCI index and resolved platform manifest for pinned Ubuntu
+and Debian glibc, Alpine musl, minimal/distroless, and shell-less fixtures.
+Read-only and non-root variants are required. Digest fields still marked
+`OPEN` in the Stage 11 plan must be frozen before execution; an unexecuted or
+unpinned required row remains unverified and blocks qualification.
 
 ## 9. Focused and final-stage commands
 
@@ -435,11 +496,13 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 09 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 09 — Stage 11 required host×image matrix
 
-Stage 11 runs this single-image matrix once per applicable required host.
-Pinned Ubuntu 24.04 is the only Phase 1 target image; cross-image portability
-is deferred beyond Phase 1 and is not an acceptance gate.
+Stage 11 repeats this capability test for every compatible row in its frozen
+host×image manifest. The command below shows the already-pinned Ubuntu row;
+the scheduler substitutes each remaining exact digest from
+`e2e/fixtures/layerstack_phase1/images/pinned-images.json`. A tag-only or
+missing digest never counts.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -489,7 +552,9 @@ done
 | old/new carrier leases and remount state | catalog/manager/observation per session boundary | no lease gap; terminal pending zero |
 | source/target/grace allocated bytes | filesystem allocated inventory | at most one replacement shape; every byte has owner |
 | native hot-path CAS/pack lookup/read | bounded route counter before/after command/file/PTY/stdin | zero |
-| plan/build/verify/fsync/CAS/frozen/full elapsed ns | monotonic clock, raw each iteration | ≤60 seconds POC; normative percentiles deferred |
+| plan/build/verify/fsync/CAS/frozen/evacuation/full elapsed ns | monotonic clock, raw each iteration; defined evacuation interval or exact zero with closed no-op reason | ≤60 seconds POC; normative percentiles deferred |
+| serialized `lowerdir=` bytes/limit/preflight/mount-syscall count | provider observation at `L_limit-1/L_limit/L_limit+1` | exact inclusive admission; over-limit reaches zero mount syscalls and zero visibility |
+| idle/builder-active command and PTY critical-path maintenance counters | synchronized route/lock/wait/permit observations | exact behavior; all squash-builder-owned counters zero; numeric percentile gate deferred |
 | workers/buffers/queues/permits/tasks/transactions/FDs/cache | product gauges at boundary + 100 ms | fixed caps and warmed-idle return ≤5 s |
 | process/cgroup/container memory | declared source, 100 ms bounded | coarse control-band sentinel; unavailable explicit |
 | dependency/environment fingerprint | exact immutable artifacts | zero external delta; all comparability fields present |

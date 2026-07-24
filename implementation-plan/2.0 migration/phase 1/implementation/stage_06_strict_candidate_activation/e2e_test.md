@@ -1,6 +1,6 @@
 # Stage 06 E2E — Strict candidate activation
 
-Links: [implementation overview](../index.md) · [stage specification](spec.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+Links: [implementation overview](../index.md) · [stage specification](spec.md) · [benchmark note](benchmark_note.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Tier: **POC proof tier**. The mandatory live set is one warm/cold strict activation case, one no-fallback corruption/rollback case, and one sub-minute tiny benchmark/memory sentinel.
 
@@ -14,6 +14,38 @@ planning stage creates or switches no branch; any mismatch is a hard blocker.
 
 Prove through the packaged public route that an explicitly opted-in workspace is actually served from the verified v2 materialization, not from a successful legacy fallback, while the non-opted-in default and all publication remain legacy. The tests target route ambiguity, fallback hidden in error handling, an unverified/partial carrier mount, carrier deletion while mounted, cleanup ordering, and activation overhead/resource retention.
 
+> **Performance arrival checkpoint.** Stage 06 is not reached until its
+> [benchmark note](benchmark_note.md) tracker has a new append-only row and the run emits
+> versioned `.benchmark-state/results/<run-id>/stage-06-perf-report.json` and
+> `stage-06-perf-report.md` with
+> `schema_version="phase1.stage06.perf-report.v1"`. Each report contains the
+> frozen raw baseline actual, required pass target/cap, separately predeclared
+> optimization target, candidate actual, delta, ratio, and headroom,
+> complexity/work counters, logical-resource high-water counters, memory/RSS,
+> physical space, complete supported/unsupported PTY and fail-closed matrices,
+> the 64/256/1,024 MiB × 1/8/32 clean-session space sweep, run/raw-artifact
+> links, provenance, missing values, and a
+> `DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes those
+> comparison fields per stage-owned metric.
+> Append the command and
+> `Good`/`Defect`/`Fix` plus cleanup to `e2e/test-report.md`. These reports are
+> diagnostic; only Stage 11 qualifies the Prep gates.
+> Freeze the no-op control as direct `docker exec <container-id> ls` with no
+> shell in a fresh ordinary container created for each matched invocation
+> from the pinned OCI/platform digest. Its pristine root contents match the
+> candidate view, but it has no LayerStack-owned `/eos` root, candidate
+> materialization/mount, root lease, session/namespace-holder setup, or API
+> wrapper. Pull/create/start/health/setup are untimed and recorded separately;
+> time the ready control only from the Docker exec request through complete
+> exit/status/stdout/stderr drain. Pair it to candidate public
+> `exec_command(["ls"])` on matched host/filesystem/root contents/cwd/env/
+> allocation/cache class/order/output drain. This is raw Docker execution,
+> not bare-host `fork/exec`. Keep the normative
+> Prep cap `candidate<=docker_exec_ls*1.03+0.5 ms` separate from the
+> predeclared non-normative stretch target of at least 80 ms saved at both p50
+> and p95. A control below 80 ms makes the stretch target missed/impossible;
+> it never authorizes rebasing.
+
 Invariants:
 
 1. Strict selection is explicit and immutable before workspace creation.
@@ -23,6 +55,8 @@ Invariants:
 5. Missing/corrupt/unsupported candidate, mount failure, cancellation, and disk full fail the public create/activation; none retries legacy.
 6. Default sessions still report legacy and legacy publication remains the sole writer.
 7. Destroy joins commands, unmounts, then releases the carrier guard; logical and physical resource gates hold.
+8. Supported PTY control-C/control-D is exact; resize, arbitrary signal, and literal EOF preserve the frozen deterministic unsupported response with no side effect or fallback.
+9. Clean sessions add exactly zero payload/carrier-copy bytes and metadata remains `M0+N*m_cap`, independent of workspace bytes.
 
 The route is runnable now because Stage 05 supplies real packaged candidate carriers and current workspace/namespace execution consumes native lower directories. The exact feature seam is generated typed configuration/allowlist for `candidate_read_strict` plus existing public workspace create/execute/destroy and structured activation observation. Candidate publication/OCC/durable leases, pack/GC, candidate squash, mixed-root authority, default enablement, soak, and full qualification are deferred.
 
@@ -157,16 +191,18 @@ Outside inspection proves the final lower carrier, allocated bytes, and absence 
 
 ## 4. Typed E2E case catalog
 
-Every row below uses only the Phase 1 pinned Ubuntu 24.04 target image.
-Required host and release-runner coverage remains mandatory at each row's
-listed disposition, while cross-image acceptance is deferred beyond Phase 1.
+Run-now rows below use the stage-local pinned Ubuntu 24.04 target image and do
+not qualify portability. Stage 11 must execute the full Prep 04 Phase-1 image
+matrix: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless,
+shell-less, read-only, and non-root, together with required host and release
+runners.
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `phase1.stage06.strict.activation` | POC; `run-now-focused` | strict v2 cold/warm plus legacy default control | paired Stage 05 root, generated allowlist, candidate-distinguishing metadata | public create, execute, file, destroy in strict/default sessions | actual candidate source/root/generation, fallback zero, legacy default preserved, warm zero payload | diagnostic select/hydrate/prepare/mount/execute/destroy phases | all categories with no per-session carrier copy | guards, mounts, FDs, tasks, permits quiesce | scalar identity and helper-independence proof on pinned Ubuntu 24.04 | `120000` ms | route, tree, mount, resource evidence |
 | `phase1.stage06.strict.no-fallback` | POC; `run-now-focused` | strict corruption/mount failure and rollback | corrupt copy-on-write locator/object and mount failpoint | public strict create, remove opt-in, create default | strict typed failure, legacy resolver never called, fallback zero, rollback affects only new sessions | diagnostic failure and rollback phases | no visible partial or new legacy bytes | no leaked session, guard, mount, hydration owner | no target-image helper | `120000` ms | failure call trace and trees |
 | `phase1.stage06.strict.tiny` | POC; `run-now-tiny-bench` | legacy control versus strict candidate | frozen tiny corpus, warm/cold labels, one daemon | benchmark lab public lifecycle, command, PTY sentinel | exact output, metadata, route, and zero strict fallback | two warmups and six raw pairs | complete envelope and carrier reuse | twelve cycles including cancellation | graph snapshots | `60000` ms | raw and summary JSON |
-| `phase1.final.strict.qualification` | final; `planned-final` | release candidate full matrix | frozen Stage 11 corpus and required runners using one pinned Ubuntu 24.04 target image | affected regression and qualification | all strict route, failure, rollback, resource, and required-runner cases | normative matched metrics | complete physical envelope | full memory/history matrix | every required release runner, one pinned target image; cross-image deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle |
+| `phase1.final.strict.qualification` | final; `planned-final` | release candidate full matrix | frozen Stage 11 corpus, required runners, and full Prep 04 Phase-1 image matrix | affected regression and qualification | all strict route, failure, rollback, resource, image, and required-runner cases | normative matched metrics | complete physical envelope | full memory/history matrix | pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, non-root, and every required release runner | `300000` ms | Stage 11 qualification bundle |
 
 Complete `@e2e_test` metadata:
 
@@ -175,7 +211,7 @@ Complete `@e2e_test` metadata:
 | `phase1.stage06.strict.activation` | `Stage 06 strict cold and warm candidate activation` | `Activates the paired v2 root through public workspace APIs, proves actual candidate bytes and generation, and confirms warm zero-read behavior with unchanged legacy default and publication.` | `("storage.candidate_activation","migration.candidate_read_strict","runtime.workspace_session")` | `{"strict-route":"The opted-in session selects candidate_v2 strict read authority.","candidate-tree-visible":"Public file, command, and PTY operations observe the exact candidate materialization tree and generation.","fallback-zero":"The strict route never calls or selects a legacy resolver.","warm-zero-payload":"A warm activation reuses the durable carrier without candidate payload reads.","legacy-default-preserved":"Unselected sessions and public publication remain legacy-authoritative.","guard-order":"Carrier and mount guards outlive every dependent session operation.","cleanup-complete":"Sessions, guards, mounts, workers, permits, tasks, and file descriptors quiesce."}` | `{"strict-route":("storage.candidate_activation","migration.candidate_read_strict"),"candidate-tree-visible":("storage.candidate_activation","runtime.workspace_session"),"fallback-zero":("migration.candidate_read_strict",),"warm-zero-payload":("storage.candidate_activation","observability.resource_efficiency"),"legacy-default-preserved":("migration.candidate_read_strict","runtime.workspace_session"),"guard-order":("storage.candidate_activation","runtime.workspace_session"),"cleanup-complete":("storage.candidate_activation","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `120000` | `("smoke","phase1","config")` |
 | `phase1.stage06.strict.no-fallback` | `Stage 06 strict failure has no legacy fallback` | `Injects candidate integrity and mount failures, proves the legacy resolver is never invoked, and verifies configuration rollback for later sessions.` | `("storage.candidate_activation","storage.integrity","migration.rollback")` | `{"strict-failure":"Candidate corruption and mount faults return the declared strict typed error.","legacy-call-count-zero":"The legacy resolver call count remains exactly zero for every strict failure.","fallback-zero":"No route or diagnostic records a fallback attempt or completion.","partial-not-mounted":"No partial candidate carrier becomes mounted or visible.","rollback-new-session-legacy":"Removing opt-in changes only later sessions, which return to explicit legacy authority.","logical-release":"Failed and rolled-back sessions release guards, mounts, hydration owners, tasks, and file descriptors."}` | `{"strict-failure":("storage.candidate_activation","storage.integrity"),"legacy-call-count-zero":("migration.candidate_read_strict","migration.rollback"),"fallback-zero":("migration.candidate_read_strict",),"partial-not-mounted":("storage.candidate_activation","storage.integrity"),"rollback-new-session-legacy":("migration.rollback","runtime.workspace_session"),"logical-release":("storage.candidate_activation","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `120000` | `("medium","phase1","config")` |
 | `phase1.stage06.strict.tiny` | `Stage 06 strict activation tiny sentinel` | `Alternates legacy and strict public lifecycles over the deterministic tiny corpus and records route, time, disk, and memory evidence.` | `("benchmark.activation","observability.resource_efficiency","migration.candidate_read_strict")` | `{"paired-result-equal":"Every legacy control and strict candidate pair returns identical output and metadata.","strict-fallback-zero":"Every strict sample reports candidate_v2 authority and zero fallback calls.","all-ops-under-60s":"Every lifecycle, command, PTY, and cleanup operation finishes within sixty seconds.","logical-release":"Sessions, guards, mounts, workers, permits, and tasks return to settled values after every repetition.","memory-cap":"Physical memory remains within the declared diagnostic cap or is explicitly unavailable.","artifact-complete":"Raw pairs, route, disk, memory, environment, correctness, and cleanup evidence validate."}` | `{"paired-result-equal":("benchmark.activation","migration.candidate_read_strict"),"strict-fallback-zero":("migration.candidate_read_strict",),"all-ops-under-60s":("benchmark.activation",),"logical-release":("storage.candidate_activation","observability.resource_efficiency"),"memory-cap":("benchmark.activation","observability.resource_efficiency"),"artifact-complete":("benchmark.activation","observability.resource_efficiency")}` | `"cli"` | `"phase1-storage"` | `60000` | `("smoke","benchmark","phase1","config")` |
-| `phase1.final.strict.qualification` | `Final strict activation qualification` | `Executes the frozen full correctness, failure, performance, memory, soak, rollback, and required host/release-runner matrix using the one pinned Ubuntu 24.04 target image in Stage 11; cross-image qualification is deferred beyond Phase 1.` | `("phase1.qualification","storage.candidate_activation","portability","ubuntu-24.04")` | `{"terminal":"All strict activation route, no-fallback, corruption, mount, rollback, correctness, time, space, memory, soak, and required-runner gates execute successfully against the pinned Ubuntu 24.04 target image with complete evidence; no cross-image acceptance is claimed."}` | `{"terminal":("phase1.qualification","storage.candidate_activation","observability.resource_efficiency","portability","ubuntu-24.04")}` | `"cli"` | `"phase1-storage"` | `300000` | `("release","phase1","config")` |
+| `phase1.final.strict.qualification` | `Final strict activation qualification` | `Executes the frozen full correctness, failure, performance, memory, soak, rollback, required host/release-runner, and Prep 04 Phase-1 image matrix in Stage 11.` | `("phase1.qualification","storage.candidate_activation","portability")` | `{"terminal":"All strict activation route, no-fallback, corruption, mount, rollback, correctness, time, space, memory, soak, required-runner, and pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root gates execute with complete evidence."}` | `{"terminal":("phase1.qualification","storage.candidate_activation","observability.resource_efficiency","portability")}` | `"cli"` | `"phase1-storage"` | `300000` | `("release","phase1","config")` |
 
 Every declared checkpoint emits exactly one terminal `ValidationReporter`
 record.
@@ -198,24 +234,62 @@ record.
 | Pack/GC lease interactions | deferred-to-stage_08 | absent |
 | Squash build/commit/remount | deferred-to-stage_09 | absent |
 | Mixed roots/authority/default/soak | deferred-to-stage_10 and planned-final | not current authority |
-| Full required host/release-runner matrix using the sole pinned Ubuntu target | planned-final | Stage 11; unavailable required rows are unverified |
+| Full required host/release-runner and Prep 04 Phase-1 image matrix | planned-final | Stage 11: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root; unavailable rows are unverified |
 
 No generic successful command is accepted. Every strict assertion needs structured route, root/generation, actual candidate-distinguishing bytes, and `fallback_count=0`.
 
 ## 6. Tiny correctness and benchmark loop
 
-`strict-activation-tiny.yml` uses seed `0x5A06`, the sole Phase 1 target
+`strict-activation-tiny.yml` uses seed `0x5A06`, the stage-local target
 `ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`
 and its resolved platform manifest, the same
 daemon/filesystem/cache protocol/corpus for control and candidate, and
 alternating order. Corpus: empty/no-op; 1 KiB edit in deterministic 1 MiB;
 1 MiB incompressible; 256 metadata-rich small files (~1 MiB); histories
-1/8/32. Include a short PTY create/write/read/control-D path and a cancellation
-path.
+1/8/32. Include PTY create/write/read/control-C/control-D, and invoke resize,
+arbitrary signal, and literal EOF exactly once each to prove the frozen
+deterministic unsupported code/status/body with no side effect or fallback.
+Include a cancellation path.
 
 Use two warmup pairs and six measured alternating pairs. Candidate cycles alternate one forced cold generation and warm reuse; every pair records route and digest. Preserve raw samples and ratios; do not claim normative p95.
 
-Hard/candidate diagnostics: whole loop ≤60 s; every operation ≤60 s; fallback 0; warm CAS payload reads 0; lower depth ≤64; exact output/metadata; Stage 05 buffers/workers/queue/64 MiB semaphore/shared 16 MiB cache; managed ≤4 MiB/op excluding cache; RSS ≤384 MiB and ≤128 MiB above idle. Alert lines use root/session and mount `baseline+5%+2 ms`, no-op `+3%+0.5 ms`, throughput ≥97%, PTY create `+3%+1 ms`, other PTY actions `+3%+0.5 ms`, cold ≥70% copy and `1.5× copy + warm allowance`. The focused route/caps are gates; normative sample-size p50/p95 remains Stage 11.
+The no-op comparator is exactly direct `docker exec <container-id> ls`
+without a shell in the already-running ordinary non-LayerStack control versus
+candidate public `exec_command(["ls"])`, under the matched protocol above.
+Container setup is outside the command timer. Record both the Prep cap
+`candidate<=docker_exec_ls*1.03+0.5 ms` and the separately frozen ≥80 ms
+p50/p95 saving stretch target. Never silently rebase the latter if the Docker
+control is under 80 ms.
+
+Run the fail-closed extension once per missing root/materialization, stale
+generation, root mismatch, quarantine, corrupt/truncated locator/index/object,
+verification failure, hydration failure, ENOSPC at preflight/mid-hydration/
+post-carrier-visible-before-catalog, cancellation, mount failure, and restart
+recovery cell. Every cell requires its typed error,
+`legacy_resolver_calls=0`, `fallback_count=0`, no partial public state, and
+quiescence within 5 s.
+
+Run a separate clean-session sweep over prebuilt immutable 64, 256, and
+1,024 MiB fixtures at concurrency 1, 8, and 32. Use one excluded setup/warmup
+per size and exactly three measured repetitions per cell (27 measured cells);
+each repetition is create → public no-op exec → destroy with no file write.
+Freeze raw-control `M0_bytes` and `m_cap_bytes` before candidate work. Require
+`payload_allocated_delta_bytes=0`, `carrier_copy_bytes=0`, and
+`M_delta(size,N)<=M0_bytes+N*m_cap_bytes` with the same coefficients in all
+nine cells.
+
+Schedule four separate invocations, each estimated below five minutes:
+core 31–55 s, fail-closed 75–180 s, lifecycle/recovery 60–150 s, and
+clean-space 75–180 s (aggregate 241–565 s). Hard/candidate diagnostics: core
+loop ≤60 s; every operation ≤60 s; fallback 0; warm CAS payload reads 0; lower
+depth ≤64; exact output/metadata; Stage 05 buffers/workers/queue/64 MiB
+semaphore/shared 16 MiB cache; managed ≤4 MiB/op excluding cache; RSS ≤384 MiB
+and ≤128 MiB above idle. Alert lines use root/session and mount
+`baseline+5%+2 ms`, throughput ≥97%, PTY create `+3%+1 ms`, supported PTY
+drain/stdin/control-C/control-D `+3%+0.5 ms`, cold ≥70% copy and
+`1.5× copy + warm allowance`. Unsupported PTY operations are correctness-only.
+The focused route/caps are gates; normative sample-size p50/p95 remains
+Stage 11.
 
 ## 7. Memory-stability and reclamation test
 
@@ -238,14 +312,15 @@ Canonical before/after `cargo metadata --locked --all-features --format-version 
 
 Re-run one scalar SeqCDC/root/object golden to prove identity stability;
 acceleration is explicitly absent, so its differential is not applicable.
-Focused portability uses public file/command APIs with the sole pinned Ubuntu
+Focused portability uses public file/command APIs with the stage-local pinned Ubuntu
 OCI index and proves no target shell, libc utility, tar, cp, package manager,
 or helper invocation. Read-only and non-root runtime variants use that same
-target identity. Current host/CPU evidence qualifies only that row. Stage 11
-executes every required arm64/amd64 host/release-runner row using the same OCI
-index and records the resolved platform manifest; unavailable required final
-rows remain unverified/no-go. Cross-image portability is deferred beyond
-Phase 1 and is neither an acceptance nor a retirement gate.
+target identity, but do not qualify the final matrix. Current host/CPU evidence
+qualifies only that local row. Stage 11 executes every required
+arm64/amd64 host/release-runner row and the full Prep 04 Phase-1 matrix:
+pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less,
+read-only, and non-root; unavailable required final rows remain
+unverified/no-go.
 
 ## 9. Focused and final-stage commands
 
@@ -345,11 +420,12 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 06 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 06 — Stage 11 host/image matrix
 
-Stage 11 runs this command once per applicable required host. Pinned Ubuntu
-24.04 is the only Phase 1 target image; cross-image portability is deferred
-beyond Phase 1 and is not an acceptance gate.
+The command below is the pinned-Ubuntu representative and runs once per
+applicable required host. The Stage 11 scheduler must additionally cover
+pinned Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only,
+and non-root rows; this Stage 06 command alone cannot qualify the matrix.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -396,20 +472,25 @@ done
 | `root_id`, `materialization_generation` | selected candidate identity/carrier | result + catalog cross-check | Stage 05 expected | exact | blocker |
 | `public_tree_digest_equal` | public candidate view vs golden | file APIs/tree digest | paired legacy/candidate | true | blocker |
 | `activation_component_ns` | selection/hydrate/prepare/mount/unmount | monotonic timer, raw per pair | legacy same host/order | each <60 s; diagnostics §6 | absent blocks |
+| `exec_ls_ns` | direct no-shell Docker `ls` in a ready ordinary non-LayerStack control and candidate public `exec_command(["ls"])` | raw paired samples with setup exclusion plus exact command/image/root/cwd/env/allocation/cache/order/stdout-drain identity | `docker exec <container-id> ls` | Prep p50/p95 cap `candidate<=control*1.03+0.5 ms`; separate frozen stretch saving ≥80 ms at p50/p95 | blocker if isolation/protocol/cap absent; stretch miss is explicit, not rebased |
+| `pty_case` | supported control-C/D and unsupported resize/signal/literal-EOF result | one structured record per action | frozen legacy code/status/body | supported exact and within Prep alert; unsupported exact/no side effect/no fallback and unscored | blocker |
 | `cas_payload_reads` | verified payload reads | per activation | warm candidate | warm 0 | blocker |
 | `allocated_bytes.<category>` | full filesystem allocated blocks | boundaries/peak/settled | control | no per-session carrier duplication; full envelope | unknown blocks |
+| `clean_session_space` | `size_bytes`, `concurrency`, `payload_allocated_delta_bytes`, `carrier_copy_bytes`, `metadata_delta_bytes`, `M0_bytes`, `m_cap_bytes` | 64/256/1,024 MiB × 1/8/32 × 3 measured reps | frozen raw clean-session control | payload/carrier copy exactly 0; `metadata_delta<=M0+N*m_cap` with size-independent constants | blocker |
+| `fail_closed_case` | injection, typed status, visibility and cleanup | one record per mandatory cell | no fault | legacy/fallback exactly 0, no partial state, quiescence ≤5 s | blocker |
 | `active_plans/guards/mounts/fds/tasks/permits` | product live gauges | 100 ms ring, peaks/settled | warmed idle | zero for destroyed session; inherited caps | blocker |
 | `rss_total/anon/file`, `cgroup_current/peak` | daemon/cgroup scopes | 100 ms; peak/windows/slope | equal warmup | ≤384 MiB, idle +128 MiB | required missing blocks |
 | `quiescence_ms`, `settled_slope` | poll to all idle / Theil–Sen | each cycle, n=12 | frozen band | ≤5 s, not beyond band | blocker |
-| `external_graph_delta` | canonical graph/features/edges symmetric diff | once | Stage 05 | empty | blocker |
+| `external_graph_delta` | canonical graph/features/edges plus environment symmetric diff | once | Stage 05 | `resolved_external_package_delta=[]`, `enabled_external_feature_delta=[]`, `direct_external_edge_delta=[]`, `cargo_lock_delta=[]`, `python_environment_delta=[]`, `system_tool_delta=[]`, `runtime_service_delta=[]`, `target_image_helper_delta=[]` | blocker |
 
 All values include units, numerator/denominator where ratios exist, scope, and `measured|derived|estimated|unknown`. Raw high-frequency samples stream to bounded artifacts; the test retains only fixed windows/reservoir summaries.
 
 ## 11. Stage exit verdict
 
 Pass requires all three run-now cases, focused Rust/static/golden checks,
-artifacts, exact graph equality, current-host single-image/no-helper proof, and
-cleanup. Every strict success and failure must have the intended v2
+artifacts, exact graph equality, current-host stage-local image/no-helper
+proof, PTY/fail-closed matrices, clean-session space sweep, and cleanup. Every
+strict success and failure must have the intended v2
 root/source and fallback/legacy-call counts of zero. Candidate public view must
 be exact; default/publication must remain legacy. Logical resources must
 release in order and physical caps/trend must pass.

@@ -4,7 +4,9 @@
 [Preparation 01](../prep/01-cdc-cas-space-time-materialization-spec.md) ·
 [Preparation 02](../prep/02-storage-solution-examination-review.md) ·
 [Preparation 03](../prep/03-seqcdc-cas-and-squash-decision.md) ·
-[Preparation 04](../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Preparation 04](../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md) ·
+[simplified LayerStack storage contract](layerstack_storage_contract.md) ·
+[Stage 03–11 benchmark scorecard](stage_03_11_benchmark_note.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -24,9 +26,11 @@ deployment, branch, commit, worktree, or remote state.
 | Chunker | Selected, gated scalar `seqcdc-scalar-author-v1`, Increasing mode: min 8 KiB, effective average 16 KiB, max/window 32 KiB, threshold 5, opposing trigger 50, jump 512. StreamCDC remains an algorithm-only qualification control, never a storage format or fallback. |
 | Logical truth | Typed, domain-separated SHA-256 `RootId` over a canonical root record naming a complete tree manifest, versioned profile/features, parent/base provenance, and publication identity. |
 | Provider truth | `MaterializationKey=(RootId,backend_kind,backend_format_version,target_profile)`; locator and materialization generation are excluded from `RootId`. |
+| Physical metadata | Filesystem-native only: immutable objects/SSTs, atomic ref and `CURRENT` files, and one common transaction directory shape. No SQLite, embedded database, separate catalog families, or operation-specific journal/staging families. |
+| Checkpoints | Every successful publication creates an immutable recoverable root. A named checkpoint is an `O(1)` retention ref when clean; it survives squash because squash changes only materialization `CURRENT`. |
 | Execution path | Warm and hydrated roots expose ordinary native lower carriers to existing OverlayFS. Command, file, PTY, and stdin paths do no CDC or CAS payload work. |
 | Dependency contract | Exact external package/version set, enabled external feature set, and direct external manifest-edge multiset remain identical. New code uses `std`, an internal workspace crate, and existing adapter dependencies only. |
-| Qualification | Correctness first; normative performance/space on macOS arm64 Docker Desktop 4.76.0/Engine 29.5.2; required release contract rows on Ubuntu 24.04 amd64 and Windows 11 24H2 amd64. Every applicable host uses the same sole Phase 1 target image, pinned by Ubuntu 24.04 OCI index digest; cross-image portability is deferred beyond Phase 1 and is not an acceptance or retirement gate. |
+| Qualification | Correctness first; normative performance/space on macOS arm64 Docker Desktop 4.76.0/Engine 29.5.2; required release contract rows on Ubuntu 24.04 amd64 and Windows 11 24H2 amd64. Stages 00–10 may use the pinned Ubuntu 24.04 cell for focused diagnostics only. Stage 11 qualifies every frozen required-release host/image row over pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root cases; any unverified required row blocks acceptance and retirement. |
 | Production status | Proposed and unexecuted. No stage, host, image, dependency comparison, or performance value is passed by this plan. |
 | Implementation branch mandate | Phase 1 implementation must use the dedicated Git branch `upgrade-2.0-phase-1`. The implementer creates it from the newest approved immutable product revision, records that base and upstream before edits, and keeps the planning task branch-free. |
 
@@ -39,6 +43,28 @@ Evidence vocabulary:
 - **open**: a decision with a named owner and explicit blocking effect;
 - **qualified**: reserved for executed required evidence; there are no
   qualified rows at planning time.
+
+### Normative storage simplification
+
+The [simplified LayerStack storage contract](layerstack_storage_contract.md)
+is normative for Stages 03–11. It replaces the earlier implementation sketch
+of multiple catalogs, per-operation journal/staging families, flat
+complete-tree manifests, reserved future directories, and eager
+per-root native materializations. If an older table or preparation document
+uses those terms, interpret it through the explicit mapping below; do not
+implement both forms.
+
+| Earlier planning term | Normative implementation |
+| --- | --- |
+| root/retention/lease catalogs | independent atomic files under `refs/` |
+| materialization catalog | generation directories plus one atomic `CURRENT` |
+| locator/index catalogs | immutable locator SSTs plus one atomic `CURRENT` |
+| publication/hydration/squash/compaction/migration journals and staging | `transactions/<TransactionId>/{intent,ready,work/}` |
+| complete flat tree manifest | persistent Merkle radix tree and segment-page DAG in `objects/` |
+| empty directories reserved for later stages | absent until the owning stage writes the first durable entry |
+
+The simplification changes physical machinery, not the frozen identity,
+durability, compatibility, recovery, performance, or portability gates.
 
 ## 2. Authority and evidence
 
@@ -97,7 +123,7 @@ branch.
 | v1 manifest identity | `crates/sandbox-runtime/layerstack/src/model/mod.rs`: `MANIFEST_SCHEMA_VERSION`, `Manifest`, `manifest_root_hash` | Schema v1 hashes serialized physical `LayerRef` paths. | It is not a portable logical root; retain a compatibility reader only through Stage 11. |
 | Publication | `crates/sandbox-runtime/layerstack/src/stack/ops/publish.rs`: publication transaction | Builds native staging, fsyncs, renames, rechecks active head, atomically replaces manifest. | Preserve visibility/OCC behavior while adding durable request identity and object/root commit. |
 | Layer write | `crates/sandbox-runtime/layerstack/src/stack/layer/write.rs` | Whole-file native immutable layer. | Historical identity and retention must move to manifests/objects without disrupting current native carrier. |
-| Storage durability | `crates/sandbox-runtime/layerstack/src/storage/fs.rs`: `write_atomic`, `syncfs_storage_root` | Same-filesystem temp/fsync/rename/parent-fsync; Linux `syncfs`. | Reuse primitives behind journals/catalog transactions. |
+| Storage durability | `crates/sandbox-runtime/layerstack/src/storage/fs.rs`: `write_atomic`, `syncfs_storage_root` | Same-filesystem temp/fsync/rename/parent-fsync; Linux `syncfs`. | Reuse primitives behind ref, `CURRENT`, immutable-object, and common-transaction commits. |
 | Leases/substitutions | `crates/sandbox-runtime/layerstack/src/stack/mod.rs`, `crates/sandbox-runtime/layerstack/src/stack/lease/registry.rs`, `crates/sandbox-runtime/layerstack/src/stack/lease/rewrite.rs` | Primarily process-resident. | Durable lease/catalog generations are required for restart-safe GC and squash. |
 | Projection | `crates/sandbox-runtime/layerstack/src/stack/projection/mod.rs` | Resolves newest-first native lower paths; current projection materializes whole maps/bytes in places. | Provider adapter remains native; canonical enumeration/indexing becomes streamed/disk-backed. |
 | Upper capture | `crates/sandbox-runtime/workspace/src/service/impls/capture_changes.rs`, `workspace/src/overlay/capture.rs`: `capture_upperdir` | Walks only private upper, but accumulates/sorts captured metadata and uses `PathBuf` whole-file sources; invalid path bytes receive a lossy substitute. | Replace with fd-relative byte-path streaming and bounded external ordering. |
@@ -133,7 +159,7 @@ build-before-remount; public management/observability surfaces.
 Current defects that justify disruptive internal changes:
 
 1. physical provider paths participate in v1 identity;
-2. publication lacks a durable idempotency/request journal;
+2. publication lacks a durable idempotency receipt and restart transaction;
 3. leases and squash substitutions cannot safely govern restart-time GC;
 4. capture/projection/read/blame paths contain full-tree/full-file/resident
    structures incompatible with the fixed memory contract;
@@ -154,8 +180,8 @@ Docker/OverlayFS adapters:
 flowchart TB
   P2["Phase 2 checkpoint graph<br/>RootId · parent/base · pins"] --> CORE
   CORE["sandbox-runtime-layerstack-core<br/>identity · manifests · publication laws<br/>leases · retention · bounded maintenance"]
-  CORE --> PORTS["Digest32 · ObjectSource/Sink<br/>CatalogTransaction · MaterializationPort<br/>ResourceBudget"]
-  FS["LayerStack filesystem adapter<br/>/eos journals/catalogs/objects/packs"] --> PORTS
+  CORE --> PORTS["Digest32 · ObjectSource/Sink<br/>RefStore · TransactionStore<br/>MaterializationPort · ResourceBudget"]
+  FS["LayerStack filesystem adapter<br/>objects · refs · transactions · packs"] --> PORTS
   DOCKER["Docker/OverlayFS materializer<br/>native carriers · mounts · xattrs"] --> PORTS
   FC["future Firecracker adapter"] -. same ports/contract tests .-> PORTS
   WASM["future WASM adapter"] -. same ports/contract tests .-> PORTS
@@ -175,14 +201,14 @@ the ports with current filesystem primitives and existing dependencies such as
 
 | Concept | Identity-bearing | Strong reconstruction edge | Durable owner | Rule |
 | --- | --- | --- | --- | --- |
-| `RootId` | canonical root record | tree manifest | portable core/catalog | Stable across location, host, packing, hydration, and squash. |
-| parent/base/provenance | yes | weak unless pinned | root/retention catalogs | Preserves publication graph without retaining all ancestry. |
-| tree manifest | yes, named by root | all metadata/content/segment descriptors | manifest store | Names the complete logical tree, not a provider delta. |
+| `RootId` | canonical root record | persistent tree root | portable core/root store | Stable across location, host, packing, hydration, and squash. |
+| parent/base/provenance | yes | weak unless pinned | root/ref stores | Preserves publication graph without retaining all ancestry. |
+| persistent tree/segment DAG | yes, named by root | all metadata/content/segment descriptors | object store | Names the complete logical tree while rewriting only affected paths/pages. |
 | object/chunk | typed content ID | payload | object/pack stores | Locator may move only after verified transactional replacement. |
-| publication generation | publication concurrency | active root mapping | root catalog | Advances only for publication. |
-| materialization key | exact `(RootId, backend_kind, backend_format_version, target_profile)` tuple | none in logical graph | materialization catalog | Excludes provider locator and deterministically yields `MaterializationId`. |
-| materialization generation | no | current verified carriers | provider adapter | Advances for hydration/squash/relocation; never changes `RootId`. |
-| lease/pin | no | protects named roots/carriers | lease/retention stores | Durable, expiry/recovery-aware, checked again before deletion. |
+| publication generation | publication concurrency | active root mapping | branch head ref | Advances only for publication or explicit reset/revert semantics. |
+| materialization key | exact `(RootId, backend_kind, backend_format_version, target_profile)` tuple | none in logical graph | materialization path + manifest | Excludes provider locator and deterministically yields `MaterializationId`. |
+| materialization generation | no | current verified carriers | provider adapter `CURRENT` | Advances for hydration/squash/relocation; never changes `RootId`. |
+| lease/pin/checkpoint | no | protects named roots/carriers | independent ref files | Durable, expiry/recovery-aware, checked again before deletion. |
 
 ### Native hot path and cold history
 
@@ -191,7 +217,7 @@ flowchart LR
   ROOT["RootId + manifest"] --> RES["resolve materialization"]
   RES -->|"warm O(D), D≤64<br/>zero CAS payload"| NATIVE["leased native carriers"]
   RES -->|"cold O(R+E)"| HYD["private bounded hydration"]
-  HYD --> VER["verify + fsync + catalog swap"]
+  HYD --> VER["verify + fsync + CURRENT swap"]
   VER --> NATIVE
   NATIVE --> OVER["OverlayFS + private upper/work"]
   OVER --> EXEC["native command/file/PTY/stdin"]
@@ -206,6 +232,36 @@ objects, transactionally switch locators, wait for leases and a durable grace
 epoch, then become reclaimable. Inactive Phase 2 nodes retain roots/pins, not
 resident sandboxes or permanent materializations.
 
+### Phase 2 branch/MCTS CoW contract
+
+Phase 1 supplies the immutable-root, publication, materialization, lease, and
+retention mechanics. Phase 2 owns graph selection, rollout scheduling,
+evaluation, trajectories, and exactly-once backpropagation. Their boundary is
+the following CoW contract:
+
+| State transition | Required behavior |
+| --- | --- |
+| clean `branch(parent)` | Add one bounded graph/policy record and a durable reference/pin to the sealed parent `RootId`. Do not copy its manifest payload, chunks, carriers, or merged workspace. Fork cost is `O(1)` in parent payload size and newly allocated filesystem payload is zero; the pin may still extend the retention lifetime of existing bytes. |
+| activate | Resolve the selected `RootId` to at most `D≤64` leased native lowers, then create one private upper/work pair and one flat OverlayFS mount for that rollout. |
+| expand an expanded node | Admit another independent child attempt from the immutable selected root. Never mount a child over a live parent merged mount, mutate the parent, or encode MCTS graph depth as native lower depth. |
+| dirty checkpoint | Publish the frozen upper through the normal incremental path, rewrite only affected persistent-tree/segment nodes, create an immutable child `RootId`, then add the requested checkpoint ref. |
+| clean checkpoint | Reuse the current immutable `RootId` and atomically add one checkpoint ref; `O(1)` metadata and zero payload copy. |
+| rollback | Checkout leaves the head unchanged; revert creates a new publication reusing the checkpoint tree; reset uses a generation-checked branch-head CAS. |
+| complete/prune | Unmount and release attempt resources. Retain only roots/pins and required search/evaluation records; let bounded lease-safe maintenance reclaim unpinned history and unnecessary materializations. |
+
+Deep or wide graph structure therefore does not multiply ancestor filesystem
+payload and does not create recursively nested OverlayFS mounts. It does still
+consume bounded metadata per node/edge, private upper bytes per active
+rollout, compute/memory/mount resources, publication work, unique new history,
+and any retained evaluation artifacts. OverlayFS remains file-granular:
+first-write copy-up of a lower-only `F`-byte file may allocate and scan
+`O(F)` even for a tiny logical edit. CDC/CAS reduces shared cold-history
+retention after safe evacuation; it does not erase active copy-up or required
+hot-materialization cost.
+
+This subsection is a downstream compatibility constraint, not a claim that
+Phase 1 implements or qualifies MCTS.
+
 ## 5. Software architecture quality
 
 ### Responsibility and dependency audit
@@ -214,10 +270,10 @@ resident sandboxes or permanent materializations.
 | --- | --- | --- | --- | --- |
 | core canonical values/codecs | Backend-neutral validation and bytes | `std`, `Digest32` | all core policies/adapters | persistence, clocks, Docker |
 | scalar SeqCDC | Deterministic cut selection for one fixed profile | byte stream + bounded window | publication stream | hashing, object I/O, policy |
-| publication coordinator | Stream one captured change set into an atomic root | change stream, object/catalog ports, budget | LayerStack service | filesystem paths, materialization |
-| lease/retention policy | Define protected roots and deletion eligibility | IDs, clock/epoch/catalog ports | activation, GC, squash | mount operations, object encoding |
-| maintenance planner | Admit bounded GC/pack/squash slices | catalog summaries, budgets | background supervisor | unbounded live sets, worker threads |
-| filesystem stores | Persist objects, packs, indexes, catalogs, journals | existing LayerStack fs/digest crates | core ports | logical policy, rollout |
+| publication coordinator | Stream one captured change set into an atomic root | change stream, object/ref/transaction ports, budget | LayerStack service | filesystem paths, materialization |
+| lease/retention policy | Define protected roots and deletion eligibility | IDs, clock/epoch/ref ports | activation, GC, squash | mount operations, object encoding |
+| maintenance planner | Admit bounded GC/pack/squash slices | ref/locator summaries, budgets | background supervisor | unbounded live sets, worker threads |
+| filesystem stores | Persist objects, packs, refs, transactions, locator tables | existing LayerStack fs/digest crates | core ports | logical policy, rollout |
 | Docker materializer | Build/verify/swap native OverlayFS carriers | core manifests, existing provider mechanics | workspace resolution | RootId/publication/GC policy |
 | workspace scratch owner | Own session upper/work/execution scratch lifecycle | LayerStack leases, overlay adapter | operation orchestration | immutable storage truth |
 | operation services | Orchestrate public operations and observations | narrow service traits | daemon/CLI | storage/provider implementation |
@@ -280,7 +336,7 @@ WASM remain designed-compatible until independently implemented and executed.
 | --- | --- | --- | --- | --- | --- |
 | Physical v1 root → canonical v2 root | portable stable checkpoint truth | v1 reader + verified v1→v2 mapping | legacy authority | `legacy_v1` codecs/read selector | Stage 11 after target-only gate |
 | Whole-tree capture → streamed byte-path capture | fixed memory and correct non-UTF-8 identity | legacy publication remains authoritative while comparing | legacy capture | comparison adapter/old capture | Stage 10, code removal Stage 11 |
-| No durable request journal → publication journal/OCC generation | idempotent restart and Phase 2 publication | shadow write then strict opt-in | ignore/reap candidate txn | shadow journal/dual route | Stage 10/11 |
+| No durable request record → common transaction/receipt and per-head OCC generation | idempotent restart and Phase 2 publication | shadow write then strict opt-in | ignore/reap candidate txn | shadow transaction/dual route | Stage 10/11 |
 | Process leases/substitutions → durable catalogs | restart-safe GC/squash | mirror process and durable state, compare | process-only legacy route | mirror/comparison fields | Stage 11 |
 | Physical squash identity → materialization generation | stable `RootId` and OCC | existing native switch behind compatibility route | legacy squash | v1 substitution adapter | Stage 11 |
 | Whole native history → object/pack history | shared history and bounded retention | native carriers can remain authoritative locators | retain native source | loose-object/shadow-locator bridge | loose objects may persist by policy; shadow bridge Stage 10 |
@@ -333,46 +389,32 @@ route; bound; physical category; exposure]`. Categories are `L_hot`,
 
 ```text
 /eos/
-├── layer-stack/ [target; truth root; filesystem adapter; install→open→dir fsync→catalog recovery→uninstall; none; candidate R/W; one; M; 0700/masked]
-│   ├── .storage-writer.lock [retained; coordination; catalog adapter; open→lock→kernel durable→reacquire→close; none; candidate R/W; one FD; M; daemon]
-│   ├── format-v2.json [new; format truth; adapter; migrate→atomic visible→fsync→validate→format retirement; none; candidate R; one≤4KiB; M; daemon]
-│   ├── roots/v2/<prefix>/<RootId>.root [new; logical truth; root store; publication→catalog visibility→fsync→hash/recovery→retention GC; RootId; candidate R/W; retained roots; H_cold metadata; 0440 daemon]
-│   ├── manifests/v2/<prefix>/<TreeManifestId>.manifest [new; logical truth; manifest store; publication→root edge→fsync→hash/recovery→reachability GC; RootId strong edge; candidate R/W; streamed E; H_cold/M; daemon]
-│   ├── objects/v1/loose/<prefix>/<ObjectId>.obj [new; truth/temporary locator; object store; ingest→locator commit→fsync→verify→pack/GC; ObjectId; candidate R/W; 1..32768B; H_cold; daemon]
-│   ├── packs/v1/
-│   │   ├── open/<PublicationId>.pack [new; txn; pack writer; publication→private→fsync/seal→journal replay→promote/delete; none before commit; candidate W; ≤64MiB/100k records/80MiB allocation; P_staging; 0600]
-│   │   └── sealed/<PackId>.pack [new; truth locator; pack store; seal→locator commit→fsync→index recovery→GC/compact; object IDs; candidate R/W; ≤64MiB payload; H_cold; 0440]
-│   ├── indexes/v1/
-│   │   ├── pages/<page>.idx [new; rebuildable bounded index page; index store; flush→catalog pointer→fsync→rebuild→supersede; none; candidate R/W; 4KiB/page, cache≤4096 pages; M; daemon]
-│   │   └── index.catalog [new; rebuildable index root; index store; pages durable→atomic pointer→fsync→rebuild→supersede; none; candidate R/W; one active+bounded recovery generation; M; daemon]
-│   ├── catalogs/v1/
-│   │   ├── roots.catalog [new; truth; root transaction; publish→atomic generation→fsync→journal recovery→compact; publication identity; candidate R/W; disk-backed; M; daemon]
-│   │   ├── locators.catalog [new; truth; locator store; object verify→atomic generation→fsync→rebuild/replay→GC; no logical identity; candidate R/W; disk-backed; M; daemon]
-│   │   ├── materializations.catalog [new; provider truth; materializer; verified carrier→generation swap→fsync→recover→evacuate; MaterializationKey→MaterializationId/generation/carriers, excluded from RootId; candidate R/W; active+leased; L_hot metadata; daemon]
-│   │   ├── leases.catalog [new; safety truth; lease store; acquire→commit→fsync→expiry/recovery→release; none; candidate R/W; bounded active; M; daemon]
-│   │   └── retention.catalog [new; retention truth; retention owner; pin→epoch commit→fsync→recover→unpin; weak provenance; candidate R/W; disk-backed; M; daemon]
-│   ├── journals/v1/
-│   │   ├── publication/<PublicationId>.journal [new; txn truth; publication; intent→phase fsync→commit recovery→terminal compact; none; candidate R/W; ≤256KiB/op; P_staging/M; 0600]
-│   │   ├── hydration/<id>.journal [new; txn truth; materializer; intent→phase fsync→resume/abort→compact; none; candidate R/W; ≤256KiB; P_staging/M; 0600]
-│   │   ├── squash/<id>.journal [new; txn truth; squash; plan→phase fsync→state recovery→DONE compact; none; candidate R/W; ≤256KiB; P_staging/M; 0600]
-│   │   ├── compaction/<id>.journal [new; txn truth; maintenance; intent→phase fsync→resume→DONE compact; none; candidate R/W; ≤256KiB; P_staging/M; 0600]
-│   │   └── migration/<id>.journal [new; txn truth; migrator; claim→phase fsync→resume→DONE compact; none; candidate R/W; ≤256KiB; P_staging/M; 0600]
-│   ├── staging/v2/
-│   │   ├── publication/<id>/ [new; txn; publication; admit→private→verify/fsync→promote/reap; none; candidate W; capture+≤5%; P_staging; 0700]
-│   │   ├── hydration/<id>/ [new; txn; materializer; miss→private→verify/fsync→catalog swap/reap; none; candidate W; target+≤5%; P_staging; 0700]
-│   │   ├── squash/<id>/ [new; txn; squash; plan→private→verify/fsync→catalog swap/evacuate; none; candidate W; replacement+leased old; P_staging; 0700]
-│   │   ├── compaction/<id>/ [new; txn; maintenance; slice→private→verify/fsync→locator swap/reap; none; candidate W; bounded source+target; P_staging; 0700]
-│   │   └── migration/<id>/ [new; txn; migrator; v1 root→private→verify→catalog commit/reap; none; candidate W; admitted txn; P_staging; 0700]
-│   ├── leases/v1/<LeaseId>.lease [new; safety truth; lease store; acquire→catalog visible→fsync→restart validate→release; none; candidate R/W; active bounded; M; daemon]
-│   ├── retention/v1/
-│   │   ├── epochs/<epoch>.epoch [new; durable GC frontier; retention owner; seal→catalog visibility→fsync→recover→grace expiry; weak roots selected by epoch; candidate R/W; ≥one complete epoch; M; daemon]
-│   │   └── pins.catalog [new; retention truth; retention owner; pin→catalog visibility→fsync→recover→unpin; weak roots selected by pin; candidate R/W; disk-backed; M; daemon]
-│   ├── maintenance/v1/
-│   │   ├── gc.cursor [new; resumable GC truth; maintenance; slice→checkpoint→fsync→resume→complete; none; candidate R/W; ≤100k records or 64MiB/slice; M; daemon]
-│   │   └── compaction.cursor [new; resumable compaction truth; maintenance; slice→checkpoint→fsync→resume→complete; none; candidate R/W; ≤100k records or 64MiB/slice; M; daemon]
-│   ├── materializations/docker-overlayfs/v1/<MaterializationId>/carriers/<ordinal>/ [new; rebuildable/provider-authoritative native carrier; Docker materializer; hydrate/publish/squash→catalog swap→syncfs→validate/rebuild→lease-safe evacuation; excluded from RootId; candidate R/W then lower R; D≤64; L_hot/C_target; masked]
-│   ├── quarantine/v1/<id>/ [new; isolated evidence; recovery; detect→never active→fsync→inspect→policy delete; none; no normal reader; explicitly bounded; M/P_staging; 0700]
-│   └── trash/v1/<epoch>/ [new; recoverable deletion; GC; final checks→rename→dir fsync→restart recheck→unlink; none; maintenance W; one bounded epoch/slice; P_staging; 0700]
+├── layer-stack/ [target; owner-only and workload-masked]
+│   ├── .storage-writer.lock [retained; process/open-format coordination only]
+│   ├── format-v2.json [format, hash, canonical codec, and SeqCDC profile]
+│   ├── objects/
+│   │   ├── loose/<prefix>/<ObjectId>.obj [typed immutable metadata or payload]
+│   │   ├── packs/<PackId>.pack [typed immutable packed objects]
+│   │   └── locators/{tables/<TableId>.sst,CURRENT} [external/pack locations; bounded LSM]
+│   ├── roots/<prefix>/<RootId>.root [immutable root record; strong edge to persistent tree]
+│   ├── refs/
+│   │   ├── heads/<BranchId>.ref [root + generation + publication/transaction ID]
+│   │   ├── checkpoints/<CheckpointId>.ref [named retained root]
+│   │   ├── pins/<PinId>.ref [policy/search/qualification root]
+│   │   ├── leases/<LeaseId>.ref [root/carrier/transaction fence]
+│   │   └── legacy/<LegacyCheckpointId>.ref [temporary migration mapping]
+│   ├── receipts/<prefix>/<PublicationId>.receipt [idempotent publication result]
+│   ├── materializations/<BackendKey>/<RootId>/
+│   │   ├── generations/<Generation>/{manifest,carriers/} [verified native carrier set]
+│   │   └── CURRENT [atomic materialization generation; excluded from RootId]
+│   ├── control/{authority,legacy-shadow} [Stage 10 atomic route/cursor state]
+│   ├── transactions/<TransactionId>/{intent,ready,work/} [one mutation/recovery shape]
+│   ├── gc/
+│   │   ├── ACTIVE [durable concurrent-ref write barrier]
+│   │   └── epochs/<Epoch>/{state,mark-runs/,barrier-roots/} [disk-backed tracing]
+│   ├── trash/<Epoch>/ [recoverable bounded deletion batches]
+│   ├── quarantine/ [bounded corrupt/uncertain evidence; no normal reads]
+│   └── locks/ [per-head and subsystem short locks; never durable truth]
 ├── storage/
 │   ├── file_auditability/ [retained; separate truth; FileService; unchanged lifecycle; none; service R/W; configured; M; daemon]
 │   └── workspace_recovery/ [retained; cleanup recovery; workspace; failure→fsync→boot retry→delete; none; recovery R/W; ≤1MiB/1024/depth32; P_staging; daemon]
@@ -399,14 +441,14 @@ are removed only by the Stage 11 retirement gate.
 | 00    | No durable-path change; legacy-only route/resource observations.                                                                                              |
 | 01    | New execution transcripts are written under `workspace/<session>/executions/`; global scratch is compatibility-read/reap only.                                |
 | 02    | No runtime delta; portable root/manifest bytes and golden fixtures are offline only.                                                                          |
-| 03    | No authoritative delta; SeqCDC boundary/object descriptors remain test/shadow stream output.                                                                  |
-| 04    | Add `format-v2`, roots/manifests, verified object-to-v1-carrier locator pages, publication journals/staging, and minimal catalogs as private shadow artifacts; the loose-object namespace remains reserved-empty and legacy remains sole authority. |
-| 05    | Add private Docker materializations, hydration journals/staging, indexes and locator/materialization catalog records; never mount until verified.             |
-| 06    | Per-root strict opt-in mounts candidate carriers with zero fallback; legacy default remains.                                                                  |
-| 07    | Candidate strict publications commit durable root generations, idempotency, and OCC; non-opted roots remain legacy.                                           |
-| 08    | Add durable leases/retention epochs/pins, sealed/open packs, GC/compaction journals/cursors, trash/quarantine; candidate strict route only.                   |
-| 09    | Add squash journal/staging and materialization-generation swaps; `RootId`/publication generation unchanged.                                                   |
-| 10    | Candidate becomes read/write authority for approved cohort; legacy is read-only shadow; migration staging/journal maps remaining v1 roots.                    |
+| 03    | No authoritative delta; SeqCDC boundary/object descriptors remain test/shadow stream output behind the object-sink contract.                              |
+| 04    | Add `format-v2`, immutable roots and persistent-tree metadata objects, v1-carrier locator SSTs/`CURRENT`, receipts, and common shadow transactions. Do not create future storage families; legacy remains sole authority. |
+| 05    | Add private native materialization generations and `CURRENT`; reuse compatible warm v1 carriers and hydrate cold roots on demand.                           |
+| 06    | Per-root strict opt-in mounts candidate carriers with zero fallback; no new durable storage family; legacy default remains.                                |
+| 07    | Add candidate-private branch-head refs, automatic immutable publication roots, named checkpoint refs, leases, receipts, and per-branch CAS.                |
+| 08    | Add packs, pins, locator compaction, GC epochs/write barriers, trash/quarantine, and last-locator evacuation; candidate strict route only.                  |
+| 09    | Squash writes a verified materialization generation and swaps only its `CURRENT`; `RootId`, refs, and publication generation are unchanged.                |
+| 10    | Candidate becomes read/write authority for approved cohort; atomic `control/authority` and `control/legacy-shadow` retain explicit rollback.               |
 | 11    | Candidate default, soak, rollback proof, full qualification; then gated removal of v1 entries, global scratch compatibility root, and transitional selectors. |
 
 ## 7. Resulting plan tree
@@ -496,7 +538,7 @@ ephemeral-sandbox/
 │   │   └── ports.rs
 │   └── tests/{golden,fragmentation,contracts,resource_bounds}.rs
 ├── crates/sandbox-runtime/layerstack/
-│   ├── src/{object_store,pack_store,index_store,catalog_store,journal_store,recovery}.rs
+│   ├── src/{object_store,pack_store,locator_store,ref_store,transaction_store,recovery}.rs
 │   ├── src/{docker_materializer,storage_budget,observe}.rs
 │   ├── src/legacy_v1/                                      [bridge, removed Stage 11]
 │   └── tests/{publication_recovery,materialization,retention_gc,squash_identity,mixed_migration}.rs
@@ -531,18 +573,18 @@ outside production `src/`.
 
 | Stage | Objective | Prerequisites | Authority/mode | Proof tier | Deliverables | Focused E2E proof | Benchmark proof | Memory proof | Dependency/portability proof | Rollback |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [00](stage_00_baseline_evidence/spec.md) | Freeze v1 behavior, environment, dependencies, route and resource evidence | none | v1 / `legacy` | POC | closed rollout enum, golden v1 fixtures, bounded observations/schemas | packaged create/write/publish/read/exec/destroy plus restart | 30–60 s raw tiny control; no normative claim | 20-cycle same-process logical release and raw noise band | exact per-target set snapshot; sole pinned Ubuntu image recorded | remove additive observations/config/fixtures |
+| [00](stage_00_baseline_evidence/spec.md) | Freeze v1 behavior, environment, dependencies, route and resource evidence | none | v1 / `legacy` | POC | closed rollout enum, golden v1 fixtures, bounded observations/schemas | packaged create/write/publish/read/exec/destroy plus restart | 30–60 s raw tiny control; no normative claim | 20-cycle same-process logical release and raw noise band | exact per-target set snapshot; pinned Ubuntu diagnostic fixture recorded; full host/image qualification deferred 11 | remove additive observations/config/fixtures |
 | [01](stage_01_workspace_scratch/spec.md) | Move command transcripts under workspace-session ownership | 00 | v1 / `legacy` | POC | scoped locator, parent-child cancellation/join, compatibility reaper | concurrent commands, cancel/error/timeout, parent destroy/restart | tiny lifecycle timing only | repeated transcript/FD/task/registry release within 5 s | no dependency delta; portable relative ownership, not provider identity | restore global writes; leave compatibility reaper |
 | [02](stage_02_portable_root_contract/spec.md) | Establish canonical provider-neutral identity and narrow ports | 00 | v1 authoritative; candidate offline | POC | internal std-only core, canonical codecs/types/goldens/contracts | deferred public route to 04; packaged feature-off equivalence now | codec/hash microloop diagnostic only | bounded encoder/path/descriptor cycles | core build graph zero external; cross-endian/fragment/order goldens | remove internal member/edge; no artifacts |
 | [03](stage_03_streaming_seqcdc/spec.md) | Implement safe scalar, fragmentation-independent bounded SeqCDC stream | 02 | v1 authoritative; algorithm offline/dormant | POC | fixed profile, oracle/differential/property/resource tests, `Digest32` usage | packaged feature-off case proves legacy-only authority and zero runtime SeqCDC/candidate work | tiny scalar/oracle diagnostic; integrated StreamCDC selection deferred 11 | 32 KiB window/ring, borrowed-slice/worker/permit sentinel | scalar on supported targets; no unsafe/SIMD/new dep | remove dormant core module and adapter |
-| [04](stage_04_shadow_cas_ingest/spec.md) | Write and recover first private v2 roots/manifests plus typed object identities and verified v1-carrier locators while v1 commits | 03 | `legacy_with_candidate_shadow` | POC | root/manifest stores, object-locator pages/catalog, minimal publication catalog/journal/staging, canonical comparison; loose payload remains absent | public publish proves shadow ran/completed and exact tree, with failpoint/restart | tiny bytes/chunks/new/reused/allocated accounting | repeated success/failure/cancel, staging/permit/FD quiescence | same graph; artifacts independent of host order/image userland | disable shadow and reap/quarantine unreferenced candidate metadata |
-| [05](stage_05_candidate_materialization/spec.md) | Hydrate private verified native carriers from v2 without exposing them | 04 | legacy authoritative + private candidate | POC | locator/index/materialization catalog, bounded hydration, Docker adapter | public legacy run plus private candidate exact tree/metadata comparison | tiny cold copy/hydrate diagnostic; final cold gate deferred 11 | 256 KiB buffers, four workers, bounded index and repeated failure cleanup | core/provider boundary tests on the sole pinned Ubuntu image; no target-image helper | remove private carrier/catalog pointer; v1 unchanged |
-| [06](stage_06_strict_candidate_activation/spec.md) | Mount an opted-in candidate root with no fallback | 05 | `candidate_strict_opt_in` per root; v1 default | POC | strict selector, verified lease/mount, route evidence | packaged command/file/PTY/stdin/workspace case asserts candidate reads and zero fallback | tiny warm/cold/mount diagnostic | repeated activate/command/cancel/destroy; zero CAS on warm hot path | sole pinned Ubuntu image now; required host rows converge in 11 | opt root back to v1; candidate data retained |
-| [07](stage_07_durable_publication/spec.md) | Make private candidate validation-branch publication atomic, OCC-safe, idempotent, and restartable | 06 | public v1 authority; private candidate branch only | POC | publication journal, `PublicationId`, root generation, external order, retry | public legacy publish triggers private no-op/disjoint/conflict/duplicate/crash proof with zero public-head mutation | tiny small-edit/disjoint diagnostic | ≤4 MiB/op excluding cache, zero payload queue, success/failure/cancel/retry release | no edge delta; canonical roots match across fragmentation/order | disable private trigger; leave immutable v2 data |
-| [08](stage_08_retention_gc_packs/spec.md) | Add durable leases/pins, packing, bounded compaction and GC | 07 | candidate strict; v1 remains for non-opted | POC | pack/locator/retention catalogs, epochs, cursors, trash/quarantine | leased old root remains usable through pack/GC; crash/resume/final recheck | tiny pack/dead/slack/reclaimed accounting; final space deferred 11 | fan-in/buffer/cache/workers bounded; no global live set; repeated cycles | no service/helper/database; target image irrelevant | stop maintenance, restore previous locator generation |
-| [09](stage_09_identity_preserving_squash/spec.md) | Replace native carrier stack without changing logical publication identity | 08 | candidate strict; v1 remains | POC | durable squash machine, generation swap, overlapping leases/remount/evacuation | public live remount proves same `RootId`/publication generation and advanced materialization generation | tiny build/freeze/remount/space diagnostic | build outside freeze, bounded workers/FDs, repeated cancel/fail/retry release | provider operation behind port; no new edge/helper | pre-install abort or prior materialization generation/lease |
-| [10](stage_10_candidate_authority/spec.md) | Make candidate authoritative for approved cohort, shadow legacy, migrate mixed roots | 01,09 | `candidate_authoritative_with_legacy_shadow` | POC/soak | migration journal/catalog, candidate authority, legacy comparison, scratch bridge join | v1/v2/mixed restart, public writes/reads candidate, shadow completed, zero mismatch/fallback | short cohort sentinel only; normative deferred 11 | soak logical/physical stability, migration/cancel cleanup | dependency equality repeated; sole pinned Ubuntu image on the selected host, no qualification claim | restore strict opt-in or legacy authority; keep verified v2 |
-| [11](stage_11_qualification_retirement/spec.md) | Default, cumulative qualify, rollback, then retire legacy | 00–10 and approved soak | `candidate_default`, then target-only v2 | final integration/qualification | full regression/host-release evidence, migration inventory/snapshot, staged deletions | all affected suites on the sole pinned Ubuntu image across required hosts; target-only restart | all prep-04 normative campaigns | full cold scale matrix, long-lived logical/physical gates | exact zero delta; every required host uses the sole pinned image; legal provenance | before deletion Stage 10; after deletion snapshot + compatibility-reader restore binary |
+| [04](stage_04_shadow_cas_ingest/spec.md) | Write and recover first private v2 roots plus typed object identities and verified v1-carrier locators while v1 commits | 03 | `legacy_with_candidate_shadow` | POC | root/object stores, persistent Merkle tree, locator SST/`CURRENT`, receipt, common transaction recovery; no duplicate chunk payload | public publish proves shadow ran/completed and exact tree, with failpoint/restart | tiny bytes/chunks/new/reused/allocated accounting | repeated success/failure/cancel, transaction/permit/FD quiescence | same graph; artifacts independent of host order/image userland | disable shadow and reap/quarantine unreferenced candidate metadata |
+| [05](stage_05_candidate_materialization/spec.md) | Hydrate private verified native carriers from v2 without exposing them | 04 | legacy authoritative + private candidate | POC | generation/`CURRENT` materializations, bounded hydration, Docker adapter | public legacy run plus private candidate exact tree/metadata comparison | tiny cold copy/hydrate diagnostic; final cold gate deferred 11 | 256 KiB buffers, four workers, bounded index and repeated failure cleanup | core/provider boundary test on the pinned Ubuntu diagnostic cell only; no qualification or target-image helper | remove private generation/`CURRENT`; v1 unchanged |
+| [06](stage_06_strict_candidate_activation/spec.md) | Mount an opted-in candidate root with no fallback | 05 | `candidate_strict_opt_in` per root; v1 default | POC | strict selector, verified lease/mount, route evidence | packaged command/file/PTY/stdin/workspace case asserts candidate reads and zero fallback | tiny warm/cold/mount diagnostic | repeated activate/command/cancel/destroy; zero CAS on warm hot path | pinned Ubuntu diagnostic cell only; full required host/image matrix deferred 11 | opt root back to v1; candidate data retained |
+| [07](stage_07_durable_publication/spec.md) | Make private candidate validation-branch publication atomic, OCC-safe, idempotent, checkpointable, and restartable | 06 | public v1 authority; private candidate branch only | POC | per-branch head CAS, `PublicationId`, receipts, checkpoint/lease refs, common transaction recovery | public legacy publish triggers private no-op/disjoint/conflict/duplicate/checkpoint/crash proof with zero public-head mutation | tiny small-edit/disjoint/checkpoint diagnostic | ≤4 MiB/op excluding cache, zero payload queue, success/failure/cancel/retry release | no edge delta; canonical roots match across fragmentation/order | disable private trigger; leave immutable v2 data |
+| [08](stage_08_retention_gc_packs/spec.md) | Add durable leases/pins, packing, bounded compaction and GC | 07 | candidate strict; v1 remains for non-opted | POC | packs, locator SSTs, pins, GC barriers/epochs, trash/quarantine | leased/checkpointed old root remains usable through pack/GC; crash/resume/final recheck | tiny pack/dead/slack/reclaimed accounting; final space deferred 11 | fan-in/buffer/cache/workers bounded; disk-backed mark runs; no global live set | no service/helper/database; target image irrelevant | stop maintenance, restore previous locator `CURRENT` |
+| [09](stage_09_identity_preserving_squash/spec.md) | Replace native carrier stack without changing logical publication identity | 08 | candidate strict; v1 remains | POC | common squash transaction, materialization `CURRENT` swap, overlapping leases/remount/evacuation | public live remount proves same `RootId`/publication generation/checkpoints and advanced materialization generation | tiny build/freeze/remount/space diagnostic | build outside freeze, bounded workers/FDs, repeated cancel/fail/retry release | provider operation behind port; no new edge/helper | pre-install abort or prior materialization generation/lease |
+| [10](stage_10_candidate_authority/spec.md) | Make candidate authoritative for approved cohort, shadow legacy, migrate mixed roots | 01,09 | `candidate_authoritative_with_legacy_shadow` | POC/soak | atomic authority/legacy-shadow control files, candidate authority, legacy comparison, scratch bridge join | v1/v2/mixed restart, public writes/reads candidate, shadow completed, zero mismatch/fallback | short cohort sentinel only; normative deferred 11 | soak logical/physical stability, migration/cancel cleanup | dependency equality repeated; pinned Ubuntu diagnostic cell on the selected host, no matrix qualification | restore strict opt-in or parity-proven legacy authority; keep verified v2 |
+| [11](stage_11_qualification_retirement/spec.md) | Default, cumulative qualify, rollback, then retire legacy | 00–10 and approved soak | `candidate_default`, then target-only v2 | final integration/qualification | full regression/host-release/image-capability evidence, migration inventory/snapshot, staged deletions | all affected suites over every frozen required host/image row; target-only restart | all prep-04 normative campaigns | full cold scale matrix, long-lived logical/physical gates | exact zero delta; pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root matrix; legal provenance | before deletion Stage 10; after deletion snapshot + compatibility-reader restore binary |
 
 Every intermediate stage owns a focused, bounded proof and can pass without a
 later stage. A deferred metric is not its exit gate. Only Stage 11 requires
@@ -581,11 +623,11 @@ they do not cross the stage's authority boundary.
 | 01 | `legacy` | v1 | v1 | none; new scratch location | not applicable | both scratch roots reaped; new writes scoped | restore global writes |
 | 02 | `legacy` | v1 | v1 | offline canonical bytes only | not applicable | no durable v2 | remove core |
 | 03 | `legacy` + algorithm observation | v1 | v1 | no authoritative artifact | no storage fallback | fragmentation/oracle state not persisted | disable chunker |
-| 04 | `legacy_with_candidate_shadow` | v1; v2 private shadow | v1; compare private v2 | first candidate roots/objects; never mounted | legacy is declared authority, not fallback | restart completes/reaps shadow journal; v1 works | disable/reap shadow |
+| 04 | `legacy_with_candidate_shadow` | v1; v2 private shadow | v1; compare private v2 | first candidate roots/objects; never mounted | legacy is declared authority, not fallback | restart derives outcome from `intent`/`ready`/commit; v1 works | disable/reap shadow |
 | 05 | same | v1 | v1 plus private comparison | verified private candidate carrier; never exposed | no candidate read fallback because no candidate read is public | rebuild/reap candidate carrier; v1 works | delete private carrier pointer |
 | 06 | `candidate_strict_opt_in` | public v1 only | candidate for an explicitly opted root, otherwise v1 | opted candidate carrier mounted | **prohibited** on strict route | explicit v1/v2 pairing; restart retains selector | disable opt-in and return new sessions to v1 |
-| 07 | `candidate_publish_private` plus strict read opt-in | public v1; private candidate validation branch writes v2 | candidate only for explicit strict reads, otherwise v1 | committed private v2 root/generation | prohibited on strict route | private journal/idempotency recovers; public v1 head is unchanged | disable private trigger; keep immutable v2 data |
-| 08 | same public/private authority split | public v1; private candidate maintenance only | same as 07 | packs/locators may replace candidate historical locations | prohibited on strict route | leases/pins/cursors recover candidate state without mutating v1 | stop maintenance/use prior locator generation |
+| 07 | `candidate_publish_private` plus strict read opt-in | public v1; private candidate validation branch writes v2 | candidate only for explicit strict reads, otherwise v1 | committed private v2 root/generation and optional checkpoint ref | prohibited on strict route | common transaction/idempotency recovery; public v1 head is unchanged | disable private trigger; keep immutable v2 data |
+| 08 | same public/private authority split | public v1; private candidate maintenance only | same as 07 | packs/locators may replace candidate historical locations | prohibited on strict route | refs, GC barriers, and disk-backed epochs recover without mutating v1 | stop maintenance/use prior locator `CURRENT` |
 | 09 | same public/private authority split | public v1; private candidate materialization only | same as 07 | materialization generation changes, root does not | prohibited on strict route | squash state resumes; old/new carrier leases overlap | abort pre-install or finish/restore prior carrier while v1 remains rollback |
 | 10 | `candidate_authoritative_with_legacy_shadow` for cohort | v2 | v2; caught-up v1 is explicit rollback/read comparison only | candidate active | prohibited; any fallback is failure | v1-only roots migrate, mixed restart; shadow does not decide output | quiesce and select only a parity-proven legacy read; candidate remains publication authority |
 | 11 pre-retirement | `candidate_default` | v2 | v2; compatibility reader present | candidate active | prohibited | soak, rollback, forward restore, all v1 mapped | Stage 10 mode |
@@ -606,12 +648,13 @@ These hold at every stage where the associated concept exists:
    explicit widths, byte order, lengths, field tags, and deterministic byte
    ordering exclude host paths, word size, locale, time, enumeration order,
    and provider locators.
-3. **Immutable truth:** a committed object, manifest, or root is never mutated.
+3. **Immutable truth:** a committed object or root is never mutated.
    Locator replacement cannot change identity.
-4. **Atomic exposure:** publication exposes one root-catalog generation;
-   hydration/squash expose one verified materialization generation. Private or
+4. **Atomic exposure:** publication exposes one generation-checked branch ref;
+   hydration/squash expose one verified materialization `CURRENT`. Private or
    partial output is never readable.
-5. **Durability/recovery:** every intent and point of no return is journaled,
+5. **Durability/recovery:** every multi-step mutation records bounded
+   `intent`, optional verified `ready`, and one commit pointer; each is
    fsynced, restart-idempotent, and safe under disk full, cancellation, panic,
    timeout, and retry.
 6. **OCC/idempotency:** expected root plus durable `PublicationId` yields one
@@ -622,7 +665,7 @@ These hold at every stage where the associated concept exists:
 8. **Blame separation:** blame is a disk-backed path/range transition record.
    Chunk presence or ownership never assigns authorship.
 9. **Squash identity:** `RootId` and publication generation remain unchanged;
-   materialization generation advances.
+   materialization generation advances, and every checkpoint remains valid.
 10. **Native hot path:** normal command/file/PTY/stdin, warm mount, and frozen
     remount perform no CDC, manifest scan, pack lookup, or cold CAS
     reconstruction.
@@ -646,11 +689,23 @@ These hold at every stage where the associated concept exists:
     runtime downloads are exactly unchanged.
 18. **Portability:** scalar correctness is mandatory; target-image userland is
     irrelevant; provider mechanics remain behind an adapter.
+19. **Filesystem-native metadata:** no SQLite, embedded database, metadata
+    daemon, separate operation-specific journal family, or unbounded
+    in-memory live set is permitted.
+20. **Concurrent GC barrier:** a ref made visible during an active GC epoch is
+    first durably recorded in that epoch; deletion is trash-first, delayed
+    through a later complete epoch, and guarded by final ref/lease/locator/
+    materialization checks.
 19. **Evidence honesty:** planning-only projections are labeled `estimated`
     with their model source and cannot pass a measured gate; missing normative
     data fails rather than becoming zero.
 20. **No premature control plane:** `/eos/attempts` is absent in every stage;
     Phase 2 refers to immutable roots, not Phase 1 filesystem attempt identity.
+21. **Branch CoW inheritance:** a clean logical fork copies zero parent
+    filesystem payload. Only an active rollout owns a private upper/work and
+    flat mount; publication creates an immutable child and reuses unchanged
+    content identities. “`O(1)` fork” never means zero metadata, mount,
+    compute, copy-up, publication, materialization, or evaluation cost.
 
 ## 12. Global time and space budgets
 
@@ -659,8 +714,10 @@ These hold at every stage where the associated concept exists:
 | Symbol | Meaning |
 | --- | --- |
 | `U` | bytes in captured unpublished upper |
-| `E` | filesystem entries processed |
+| `E` | filesystem entries processed by a full bootstrap, hydration, or rebuild |
+| `C` | canonical changed-path events in one incremental publication |
 | `K` | chunks generated/consumed |
+| `V_delta` | immutable tree/segment nodes read or written because of those changes |
 | `F` | size of one file in private upper |
 | `R` | bytes missing from requested native materialization |
 | `D` | native lower-carrier depth |
@@ -669,6 +726,7 @@ These hold at every stage where the associated concept exists:
 | `S`, `E_s` | bytes and entries in squash interval |
 | `G` | objects/bytes admitted to one maintenance slice |
 | `B` | configured storage-owned memory budget |
+| `H_graph` | logical Phase 2 search-graph depth; independent of native carrier depth `D` |
 | `C_capture` | allocated payload of one captured upper |
 | `C_current` | allocated bytes of one correct current native materialization |
 | `C_target` | allocated bytes of one hydration/squash target |
@@ -677,14 +735,19 @@ These hold at every stage where the associated concept exists:
 Complexity contracts:
 
 - boundary/hash/descriptor path: `O(U+K)=O(U)`;
-- publication: `O(U+E+K)` plus bounded external ordering up to
-  `O(E log E)`, memory `O(B)`;
+- first import: `O(R+E)` with bounded memory;
+- later publication: `O(U+K+C+V_delta)` plus bounded change-event ordering up
+  to `O(C log C)`, memory `O(B)`, and no scan/rewrite proportional to
+  unchanged tree or history size;
 - warm prepare/materialization/mount: `O(D)`, `D≤64`, zero CAS payload;
 - cold hydration: `O(R+E)`; activation: `O(R+E+D)`;
 - squash build: `O(S+E_s)`; freeze:
   `O(D+tasks+verified FDs)` with no `U/R/K/S` work;
 - GC/compaction: `O(G)` per resumable slice;
-- diff/OCC/blame: `O(Q log N)` plus bounded result output.
+- diff/OCC/blame: `O(Q log N)` plus bounded result output;
+- downstream clean graph fork: `O(1)` bounded metadata/pin work and zero
+  parent-payload copy; rollout activation remains `O(D)`, while graph
+  selection/backpropagation may remain `O(H_graph)` and belongs to Phase 2.
 
 Fixed chunk count for nonempty input:
 
@@ -753,6 +816,39 @@ D_ideal = C_current + H_unique
 ```
 
 Allocated physical bytes—not logical/apparent size—are measured by category.
+For downstream MCTS product accounting, the equation remains complete only if
+every search/evaluation byte is charged exactly once:
+
+```text
+T_product(t) =
+    T_layerstack(t)
+  + M_search_external(t)
+  + A_evaluation_external(t)
+```
+
+`T_layerstack` is the `T(t)` equation above. Search metadata or evaluation
+artifacts stored inside an already measured LayerStack category are not added
+again; the `_external` terms contain only bytes outside those categories.
+Likewise:
+
+```text
+new_payload_bytes(clean branch(parent)) = 0
+```
+
+means no parent filesystem clone. Active upper/copy-up bytes remain in
+`ΣU_active`; freshly published or cached native carriers remain in `L_hot`;
+publication and maintenance staging remains in `P_staging`; graph/root/
+manifest/index metadata remains in `M` or `M_search_external`; and retained
+evaluation payload remains in its measured filesystem root or
+`A_evaluation_external`. A tiny edit can therefore cost `O(F)` while its
+lower-only file is copied up even though later cold CDC retention reuses most
+unchanged chunks.
+
+“No 2L” is a settled-topology rule against an avoidable second complete
+materialization or one full carrier per checkpoint. It is not an
+instantaneous `T(t)<2L` promise: active copy-up, one verified replacement
+target, leased old generations, and bounded transaction staging remain
+visible in their exact categories.
 
 | Area | Target | Hard failure / exact cap |
 | --- | --- | --- |
@@ -775,7 +871,8 @@ SeqCDC unique retained bytes must be ≤1.14× StreamCDC. With source
 median >4× that target or any sample ≥25% of `F`.
 
 Autosquash is enqueued at projected `D≥48` and completes or rejects admission
-before `D>64`; routine benefit is ≥8 carriers, manual ≥2. Pack payload is
+before `D>64`; routine benefit is ≥8 carriers, while a manual selected run
+contains at least 2 lowers. Pack payload is
 ≤64 MiB, record count≤100,000, allocated output≤80 MiB. Individual
 compaction admits at≥20% dead; aggregate >5% is urgent and target≤2%;
 one slice≤100,000 records or64 MiB. Deletion waits at least one complete
@@ -796,35 +893,35 @@ flowchart TB
   TX --> WIN["32 KiB SeqCDC window"]
   TX --> RING["32 KiB publication ring"]
   TX --> META["metadata queue<br/>16 / ≤64 KiB"]
-  TX --> ENC["manifest/journal<br/>≤256 KiB"]
+  TX --> ENC["object/transaction encoder<br/>≤256 KiB"]
   W --> IO["pack/hydration buffers<br/>256 KiB each"]
   IDX["Index owner"] --> CACHE["4096×4 KiB LRU"]
-  TX --> J["durable journal handoff"]
+  TX --> J["durable intent/ready/commit handoff"]
   CANCEL["cancel/timeout/panic"] --> JOIN["stop admission · join≤5 s · fence"]
   JOIN --> REL["drop permits/buffers/FDs/maps/leases"]
   J --> REC["bounded restart recovery"]
 ```
 
 Strong ownership runs downward. Back-references are IDs or `Weak`. The
-supervisor owns all join handles; no task detaches. Durable journal ownership
+supervisor owns all join handles; no task detaches. Durable transaction ownership
 may outlive process memory, but no live buffer does.
 
 ### Resource lifecycle inventory
 
 | Resource | Owner / acquire | Hard bound | Normal release | Error/cancel/panic | Shutdown/restart | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| SeqCDC window + ring | publication worker / admitted file | 32 KiB+32 KiB | final chunk/file | RAII and source-lease release | journal has no buffer | current/high-water bytes |
+| SeqCDC window + ring | publication worker / admitted file | 32 KiB+32 KiB | final chunk/file | RAII and source-lease release | transaction files hold no buffer | current/high-water bytes |
 | borrowed payload | synchronous sink call | ≤1 chunk/worker, ≤4 global, at most 2 slices | hash/write returns | stack unwind | none | borrowed count |
 | payload queue | none | exactly 0 bytes | synchronous | synchronous | none | queue bytes |
 | metadata queue | publication transaction | 16 and≤64 KiB | consumer acknowledgment | drain/drop/join | replay descriptors from disk | count/bytes |
 | encoder | admitted operation | ≤256 KiB | phase fsync | drop; prior phase recoverable | same bound on replay | owned bytes |
-| pack/hydration buffers | storage worker | 256 KiB each/worker | phase end | drop/fence | cursor/journal replay | buffer gauges |
+| pack/hydration buffers | storage worker | 256 KiB each/worker | phase end | drop/fence | transaction/epoch replay | buffer gauges |
 | external merge readers | maintenance slice | fan-in8×64 KiB | run end | close/drop | cursor replay | FDs/bytes |
 | index pages | shared index owner | 4096×4 KiB=16 MiB | LRU/shutdown | poisoned state fails closed | cold rebuild | pages/high-water |
-| publication managed memory | transaction | ≤4 MiB excluding cache | quiescence | cancel/drop/join | journal only | transaction bytes |
+| publication managed memory | transaction | ≤4 MiB excluding cache | quiescence | cancel/drop/join | bounded intent/ready only | transaction bytes |
 | workers/tasks | supervisor | 4 global | idle pool/shutdown join | panic contained, bounded replacement | boot recovery first | live/high-water |
 | byte permits | budget owner | 64 MiB | RAII | unwind/drop | reconstructed ownership, not memory | held/high-water |
-| leases/registries | durable stores + bounded handles | active owners + configured terminal cap | release/evict | cleanup guard | recover catalog | counts |
+| leases/registries | durable refs + bounded handles | active owners + configured terminal cap | release/evict | cleanup guard | recover ref files | counts |
 | mappings/FDs | adapter transaction | workers/fan-in/D bound | phase/remount close | RAII/fenced worker | reopen by durable IDs | high-water |
 | evidence samples | external runner | fixed ring/stream to disk | case end | run-owned artifact close | recovery command | sample/drop counts |
 
@@ -843,7 +940,7 @@ not a release mechanism.
 | 01 | transcript tasks/FDs/registry | configured transcript and owner counts | success/error/timeout/cancel/parent teardown |
 | 02 | canonical encoders | ≤256 KiB and bounded descriptors | repeated codec/path failures return to idle |
 | 03 | SeqCDC worker/window/ring | exact 32/32 KiB, ≤4 borrowed chunks | fragmentation/cancel/panic cycles |
-| 04 | object/journal/staging ingest | permits, zero payload queue, ≤4 MiB/op | publish/failpoint/retry/restart handoff |
+| 04 | object/locator/common-transaction ingest | permits, zero payload queue, ≤4 MiB/op | publish/failpoint/retry/restart handoff |
 | 05 | hydration/index/worker buffers | 256 KiB/worker, 16 MiB cache | miss/corrupt/disk-full/cancel cycles |
 | 06 | activation leases/mount FDs | D/FD/task bounds, zero warm CAS | activate/command/destroy cycles |
 | 07 | durable publication/external ordering | encoder/merge/permit bounds | OCC/conflict/idempotent retry/cancel cycles |
@@ -894,35 +991,44 @@ plugin, kernel module, target-image helper, privilege, or download is added.
 4. writable externally supplied LayerStack storage such as `/eos`.
 
 It requires no shell, libc utility, package manager, network, or helper
-inside the image. Phase 1 proves that independence through public
-workspace/file APIs and read-only/non-root runtime variants of the sole pinned
-Ubuntu image. Cross-image capability coverage is deferred beyond Phase 1 and
-is not an acceptance or retirement gate.
+inside the image. Stages 00–10 may prove their focused behavior through public
+workspace/file APIs on the pinned Ubuntu diagnostic cell, including local
+read-only and non-root variants where available, but those results do not
+qualify the Phase 1 portability matrix. Stage 11 proves userland independence
+over every frozen required-release host/image row.
 
-### Frozen host release matrix with one target image
+### Frozen host release matrix
 
-| Host OS / architecture | Docker | Sole target image | Requirement | Planning status | Status after required evidence |
+| Host OS / architecture | Docker | Stage 11 image evidence | Requirement | Planning status | Status after required evidence |
 | --- | --- | --- | --- | --- | --- |
-| macOS 26.4 / Darwin 25.4.0 arm64 | Desktop 4.76.0 build 228118; Engine 29.5.2; LinuxKit 6.12.76; 4 CPU/~4.1 GiB | pinned Ubuntu 24.04 index; resolved arm64 manifest recorded | required-release; normative performance/space | `unverified` (host observed only) | `qualified` only after Stage 11 |
-| Ubuntu 24.04 LTS amd64 | Engine 29.5.2 | same pinned Ubuntu 24.04 index; resolved amd64 manifest recorded | required-release contract | `unverified` | `qualified` only after Stage 11 |
-| Windows 11 24H2 amd64, Linux containers | Desktop 4.76.0; Engine 29.5.2 | same pinned Ubuntu 24.04 index; resolved amd64 manifest recorded | required-release contract | `unverified` | `qualified` only after Stage 11 |
-| other supported Docker host triples | frozen when release inventory is approved | same pinned Ubuntu 24.04 index; resolved platform manifest recorded | informational | `unverified` | at most `contract-tested` when executed |
+| macOS 26.4 / Darwin 25.4.0 arm64 | Desktop 4.76.0 build 228118; Engine 29.5.2; LinuxKit 6.12.76; 4 CPU/~4.1 GiB | every applicable pinned image/capability row below; resolved arm64 manifest recorded | required-release; normative performance/space | `unverified` (host observed only) | `qualified` only after Stage 11 |
+| Ubuntu 24.04 LTS amd64 | Engine 29.5.2 | every applicable pinned image/capability row below; resolved amd64 manifest recorded | required-release contract | `unverified` | `qualified` only after Stage 11 |
+| Windows 11 24H2 amd64, Linux containers | Desktop 4.76.0; Engine 29.5.2 | every applicable pinned image/capability row below; resolved amd64 manifest recorded | required-release contract | `unverified` | `qualified` only after Stage 11 |
+| other supported Docker host triples | frozen when release inventory is approved | every declared applicable image row; resolved platform manifest recorded | informational | `unverified` | at most `contract-tested` when executed |
 | Firecracker materializer | provider-specific | Linux guest profile | future informational | `designed-compatible` | cannot become qualified in Phase 1 |
 | WASM materializer | provider-specific | WASM capability profile | future informational | `designed-compatible` | cannot become qualified in Phase 1 |
 
-An unverified required-release row is a production no-go. At planning time,
-there are no `qualified` or `contract-tested` target rows.
+An unverified required-release host/image row is a production no-go. At
+planning time, there are no `qualified` or `contract-tested` target rows.
 
-### Sole pinned Phase 1 image
+### Pinned Phase 1 image-capability matrix
 
-| Fixture | OCI index digest | linux/amd64 manifest | linux/arm64 manifest | Case | Planning status |
-| --- | --- | --- | --- | --- | --- |
-| Ubuntu 24.04 | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | all Phase 1 E2E, including read-only/non-root variants | unverified target |
+| Fixture / variant | OCI index and resolved-platform evidence | Stage-local use | Planning status |
+| --- | --- | --- | --- |
+| Ubuntu 24.04 glibc | index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`; amd64 `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf`; arm64 `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | focused diagnostic for Stages 00–10; required matrix cell in Stage 11 | `unverified` |
+| Debian glibc | **OPEN:** freeze exact OCI index and each applicable resolved-platform manifest before Stage 11 | Stage 11 only for qualification | `unverified`; missing pin blocks Stage 11 |
+| Alpine musl | **OPEN:** freeze exact OCI index and each applicable resolved-platform manifest before Stage 11 | Stage 11 only for qualification | `unverified`; missing pin blocks Stage 11 |
+| minimal/distroless | **OPEN:** freeze exact OCI index and each applicable resolved-platform manifest before Stage 11 | Stage 11 only for qualification | `unverified`; missing pin blocks Stage 11 |
+| shell-less | **OPEN:** freeze exact OCI index and each applicable resolved-platform manifest before Stage 11 | Stage 11 only for qualification | `unverified`; missing pin blocks Stage 11 |
+| read-only | reuse an exact pinned base fixture and record the immutable runtime configuration | local diagnostic where available; required Stage 11 capability row | `unverified` |
+| non-root | reuse an exact pinned base fixture and record image user plus immutable runtime configuration | local diagnostic where available; required Stage 11 capability row | `unverified` |
 
-Every Phase 1 E2E execution verifies this OCI index identity and records its
-resolved platform manifest; tag-only evidence does not count. No second target
-image may be used as Phase 1 acceptance evidence. Cross-image portability is
-post-Phase-1 work and its absence or failure cannot block Phase 1.
+Every executed image row verifies its OCI index identity and records the
+resolved platform manifest; tag-only evidence does not count. The frozen
+matrix declares which fixture and runtime-variant combinations are applicable
+to each host, and Stage 11 must execute every required-release row. Missing
+pins, missing cells, or failed/unverified required rows block Phase 1
+acceptance and legacy retirement.
 
 ### Scalar/acceleration determinism
 
@@ -952,7 +1058,7 @@ reruns every cumulative requirement; a `deferred` row is not passed earlier.
 | §2.1 complete native OverlayFS workspace; clean session no payload copy; zero CAS in hot paths | 06 strict activation | 06 | 11 | route snapshot, public command/file/PTY validations, payload counters |
 | §2.2 upper-only bounded publication and first-write copy-up attribution | 04 shadow publication | 04 bounded route; time deferred | 11 | scan/new/reused bytes, upper/tree digest |
 | §2.3 hot native locator → packed cold → reclaim after durable switch/lease/grace | 05 hydration and 08 evacuation | 08 | 11 | locator generations, lease/epoch history, physical tree |
-| §2.4 squash build before freeze and verified native remount | 09 | 09 | 11 | squash journal, phase timings, mount identity |
+| §2.4 squash build before freeze and verified native remount | 09 | 09 | 11 | squash transaction, phase timings, mount identity |
 | §3.1 full `T(t)` accounting by category | 04 initial categories | 08 stage-local accounting | 11 normative | allocated-byte evidence |
 | §3.2 `D_ideal=C_current+H_unique` denominator | 08 retention/pack | 08 diagnostic completeness | 11 normative | space report |
 | §3.3 peak/settled limits | 04 staging and 05 hydration peaks | each owning stage's bounds | 11 normative | checkpoint inventory |
@@ -987,8 +1093,8 @@ reruns every cumulative requirement; a `deferred` row is not passed earlier.
 | §13 large-file streaming/no collection | 03 chunk stream, 04 publication | 03/04 | 11 | 1 GiB fragmentation/RSS data |
 | §14 total physical accounting examples become measurements | 04 category sampler | stage-local facts only | 11 | allocated-byte report |
 | §15 failure/recovery/lease/OCC/blame/collection | 07 publication, 08 retention, 09 squash | 07–09 | 11 | failpoint histories/catalog audits |
-| §16 zero dependency, license, portability, CPU fallback | 00 baseline; 03 scalar | 02/03 stage facts; required-host execution on the sole pinned image deferred | 11 | exact graph, legal record, single-image host matrix |
-| §17 Phase 2 checkpoint/branch/rollback/MCTS reuse | 02 ID/ports; 07 OCC; 08 pins | 02 architecture and later semantics | 11 contract regression | core contract suite |
+| §16 zero dependency, license, portability, CPU fallback | 00 baseline; 03 scalar | 02/03 stage facts; full required host/image execution deferred | 11 | exact graph, legal record, pinned host/image matrix |
+| §17 Phase 2 checkpoint/branch/rollback/MCTS reuse, including zero-new-payload fork, flat activation, and separate search/evaluation accounting | 02 ID/ports; 04 reuse/accounting; 07 OCC; 08 pins | 02 architecture and later semantics | 11 contract regression | core contract suite |
 | §§18/20 unproven assumptions, risks, falsification | deferred-evidence ledger below | named owner stage | 11 | decision/risk ledger and raw evidence |
 | §19 minimal implementation order | dependency DAG | 00 entry requires mandated branch/base record | 11 | stage verdicts |
 
@@ -1032,7 +1138,7 @@ reruns every cumulative requirement; a `deferred` row is not passed earlier.
 | §10 depth/squash/pack/GC thresholds and identity | 08/09 | 08/09 structural/functional | 11 normative | scheduler/pack/squash reports |
 | §11 portable root versus materialization boundary | 02 core and 05 adapter | 02/05 | 11 | dependency/import/contract audit |
 | §11.1 exact zero-new-dependency rule | 00 baseline; 02 internal edge | every stage exact comparison | 11 all required host triples | canonical dependency snapshots |
-| §11.2 required-host matrix, userland independence, scalar determinism | 03 scalar; 05 private proof on sole pinned Ubuntu image | stage-local selected host | 11 required hosts using that same image; cross-image work is post-Phase-1 and non-gating | single-image host manifests |
+| §11.2 required-host matrix, userland independence, scalar determinism | 03 scalar; 05 private proof on pinned Ubuntu diagnostic cell | stage-local selected host only; not matrix qualification | 11 full pinned required-release host/image matrix over Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root cases | host/image manifests and capability report |
 | §12 all correctness gates precede measurement | first applicable stage | every stage | 11 | ordered test ledger |
 | §13 exact corpora and per-point invocation/repetition rules | 00 schemas; fixtures by owner | deferred full scale | 11 | corpus/plan/run manifests |
 | §14 every required benchmark output and missing-value rejection | 00 schema | owning stage fields | 11 complete | schema validator/report/export |
@@ -1047,7 +1153,7 @@ reruns every cumulative requirement; a `deferred` row is not passed earlier.
 | 27-point cold RSS matrix ×3 with valid raw scope | runtime performance owner | 11 | no memory qualification |
 | Full physical-space/history corpora | storage performance owner | 11 | no storage qualification |
 | Required Linux and Windows release runners | release owner | 11 entry | unverified required row is no-go |
-| Cross-image portability | release/storage owners | after Phase 1 | no Phase 1 blocker; not an acceptance or retirement gate |
+| Full Prep 04 pinned host/image portability matrix | release/storage owners | 11 | any missing pin or failed/unverified required-release row blocks acceptance, default enablement, and retirement |
 | Apache-2.0 adaptation/notice approval | legal owner | before 11 release decision | release blocked |
 | Approved candidate cohort and soak duration | storage/release owners | 10 entry/exit | Stage 11 cannot default |
 | Restorable pre-retirement snapshot procedure | release/operations owner | 11 before deletion | retirement prohibited |
@@ -1067,7 +1173,7 @@ reruns every cumulative requirement; a `deferred` row is not passed earlier.
 | physical tree/accounting | benchmark sampler | allocated `L_hot,H_cold,ΣU_active,P_staging,M`, duplication/slack/unreachable | benchmark observation/evidence |
 | raw performance samples | benchmark runner | pair/order/seed/warmup/times/bytes/chunks/source/scope | immutable `.benchmark-state` run |
 | selection/RSS/space summary | verifier | raw references, medians/p50/p95/MAD/bootstrap/slope/gates | report/export bundle |
-| migration/retirement inventory | product catalogs + outside oracle | every v1→v2 mapping, leases, snapshot/restore, deletion checkpoints | Stage 11 qualification bundle |
+| migration/retirement inventory | product refs/control files + outside oracle | every v1→v2 mapping, leases, snapshot/restore, deletion checkpoints | Stage 11 qualification bundle |
 | test execution ledger | E2E implementer | command/intent, commits, custody, Good/Defect/Fix, cleanup | test `e2e/test-report.md` |
 
 Artifacts include product/test commits and dirty states, binary/config digests,
@@ -1088,13 +1194,15 @@ The proposed slices are:
 2. Stage 01 ownership refactor, compatibility bridge, focused lifecycle proof;
 3. Stage 02 internal crate/value/codec split, then narrow ports and goldens;
 4. Stage 03 scalar algorithm and stream adapter, then resource/oracle tests;
-5. Stage 04 filesystem stores and private journal/catalog, then shadow route;
-6. Stage 05 locator/index/hydration, then Docker materializer comparison;
+5. Stage 04 persistent object graph, locator SST/`CURRENT`, common transaction
+   recovery, then shadow route;
+6. Stage 05 generation/`CURRENT` hydration, then Docker materializer comparison;
 7. Stage 06 strict selector/lease/mount route;
 8. Stage 07 durable publication/OCC/idempotency/external ordering;
-9. Stage 08 leases/pins/packs/cursors/trash and bounded maintenance;
-10. Stage 09 squash state machine/generation swap/remount/evacuation;
-11. Stage 10 migration and authority change after both dependency chains join;
+9. Stage 08 pins/packs/GC barriers/trash and bounded disk-backed maintenance;
+10. Stage 09 common squash transaction/`CURRENT` swap/remount/evacuation;
+11. Stage 10 control-file migration and authority change after both dependency
+    chains join;
 12. Stage 11 default/qualification and separately reviewed deletion slices.
 
 Within each stage, commits separate:
@@ -1134,7 +1242,7 @@ stateDiagram-v2
 
 Activation proceeds from private evidence to explicit strict opt-in, then
 approved candidate authority, then default. v1 and v2 roots coexist through
-Stage 10. Migration is additive and journaled: claim one v1 root, construct
+Stage 10. Migration is additive and transaction-recorded: claim one v1 root, construct
 private v2 truth, verify exact tree/metadata, fsync, commit the mapping, and
 retain the v1 source until lease/rollback/deletion gates pass. Restart resumes
 or reaps only transaction-owned work; it never bulk rewrites first.
@@ -1169,7 +1277,7 @@ compatibility binary, never an older binary interpreting v2 in place.
 | Allocated-byte accounting differs by Docker Desktop backing filesystem | benchmark/release owner | can invalidate cross-row space comparison | normative host-local raw controls and category reconciliation | 11 |
 | Many-small corpus may exceed one-operation deadline | performance owner | corpus still required; cannot weaken it | pre-generation and operations partitioned so each≤60 s; aggregate budget separate | 11 |
 | Scalar core may exceed 300 physical non-test Rust lines | architecture owner | blocks final gate absent exception | line audit or approved responsibility-preserving exception | 03 then 11 |
-| Durable catalog built without a database must prove bounded lookup/recovery | storage owner | blocks 05/07/08 | page/fan-out/rebuild/restart scale tests | 05–08 |
+| Filesystem-native refs/SSTs must prove bounded lookup, update, and recovery without SQLite | storage owner | blocks 05/07/08 | page/fan-out/rebuild/restart scale tests and dependency/file-format audit | 05–08 |
 | Legacy deletion may expose an unmapped operational restore case | release/operations owner | retirement prohibited | snapshot restore drill and target-only restart | 11 |
 
 No open decision permits weakening an acceptance number or silently broadening
@@ -1185,8 +1293,9 @@ Stage 11 owns the only cumulative verdict. Evaluation order:
    leases/pins, squash identity, atomic exposure, and no fallback;
 3. lifecycle ownership, bounded queues/buffers/workers/caches/permits,
    logical release, and dependency equality;
-4. required-host portability using the sole pinned Ubuntu 24.04 image, plus
-   target-image userland independence;
+4. full required-release host/image portability over pinned Ubuntu/Debian
+   glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root
+   cases, including target-image userland independence;
 5. only then time/throughput, SeqCDC selection, RSS, physical space, locality,
    pack/GC, and squash scoring;
 6. candidate-default soak and demonstrated rollback/forward restore;
@@ -1194,23 +1303,27 @@ Stage 11 owns the only cumulative verdict. Evaluation order:
    target-only restart.
 
 The normative performance/space statement is specifically the frozen
-Docker Desktop 4.76.0/Engine 29.5.2 macOS arm64 environment. Ubuntu 24.04
-amd64/Engine 29.5.2 and Windows 11 24H2 amd64/Docker Desktop 4.76.0 remain
-required-release correctness/portability rows. Every applicable host executes
-the same Ubuntu 24.04 OCI index
-`sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`
-and records the resolved platform manifest. All host rows are presently
-**unverified**. Cross-image portability is deferred beyond Phase 1 and is not
-an acceptance or retirement gate. Firecracker and WASM are
-**designed-compatible**, not implemented or qualified. There are no
-planning-time qualified or contract-tested rows.
+Docker Desktop 4.76.0/Engine 29.5.2 macOS arm64 environment with the pinned
+Ubuntu 24.04 diagnostic fixture. That normative measurement environment does
+not shrink the portability gate. Ubuntu 24.04 amd64/Engine 29.5.2 and Windows
+11 24H2 amd64/Docker Desktop 4.76.0 remain required-release
+correctness/portability hosts, and Stage 11 must execute every applicable
+frozen host/image row. The Ubuntu OCI index is already pinned to
+`sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`;
+the exact Debian glibc, Alpine musl, minimal/distroless, and shell-less indexes
+and resolved platform manifests remain open release-entry pins. Read-only and
+non-root rows reuse an exact pinned base fixture and record immutable runtime
+configuration. All host/image rows are presently **unverified**. Firecracker
+and WASM are **designed-compatible**, not implemented or qualified. There are
+no planning-time qualified or contract-tested rows.
 
 The verdict is `go` only if every preparation-04 gate passes exactly; the
 external dependency delta is zero; scalar code is safe and ≤300 physical
 non-test Rust lines or has an approved exception; all required-release host rows
 are executed; legal provenance is approved; and the final artifact bundle is
 complete and schema-valid. Any missing normative measurement, unverified
-required-release host row, wrong or tag-only target image, corruption, silent fallback, suspected leak,
+required-release host/image row, missing, wrong, or tag-only required image,
+corruption, silent fallback, suspected leak,
 unexplained persistent byte, dependency/feature/edge change, target-image
 helper, cleanup trespass, or artifact gap is `no-go`.
 

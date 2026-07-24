@@ -14,7 +14,7 @@
 | Status | Proposed hard gate for implementation and production enablement |
 | Candidate | Internal scalar author-semantic SeqCDC |
 | Comparator | Internal synchronous StreamCDC at equal effective chunk distribution |
-| Baseline | Current raw LayerStack on identical hardware and filesystem |
+| Baseline | Current raw LayerStack on identical hardware and filesystem, except the no-op command control is direct shell-free `docker exec <container-id> ls` in a ready ordinary container from the pinned OCI/platform digest with no LayerStack integration |
 | Normative performance environment | Pinned Ubuntu 24.04 Docker image |
 | Portability qualification | Frozen supported-host release matrix plus versioned Linux-image capability profile |
 | Dependency budget | Exact zero external dependency delta from the frozen product baseline |
@@ -50,9 +50,23 @@ An outcome between a space target and its hard ceiling requires an explicit
 exception plus evidence that the StreamCDC comparator cannot meet the target
 without violating a higher-priority correctness or time requirement.
 
-There is no trustworthy absolute latency baseline yet. Relative gates are
-evaluated only after freezing the raw LayerStack baseline on the same host,
-filesystem, Docker environment, cache state, and corpus.
+There is no trustworthy measured absolute latency value yet. The no-op command
+comparator is nevertheless fixed as direct shell-free
+`docker exec <container-id> ls`. Each matched invocation creates a fresh
+ordinary Docker control container from the same pinned OCI index/platform
+digest. Its visible pristine root and cwd are byte- and metadata-equivalent to
+the candidate view, but it has no LayerStack-owned `/eos` root, candidate
+materialization, lower/upper/work mount, root lease, session/namespace-holder
+setup, or public API wrapper. Image pull, create/start/health, and fixture
+setup are untimed and reported separately. The ready control is timed only
+from the Docker exec request through complete exit-status/stdout/stderr drain.
+
+Pair it with public `exec_command(["ls"])` under the same host, filesystem,
+root contents, cwd, environment, Docker CPU/memory allocation, cache class,
+arm ordering, and output-drain rule. This is the raw Docker execution-floor
+control, not bare-host `fork/exec`. Other relative gates are evaluated only
+after freezing the raw LayerStack baseline on the same host, filesystem,
+Docker environment, cache state, and corpus.
 
 ## 2. Fixed SeqCDC profile
 
@@ -208,7 +222,7 @@ failure.
 | OverlayFS mount | p50 and p95 `≤ baseline + 5% + 2 ms` |
 | Squash live-remount frozen interval | p50 and p95 `≤ baseline + 5% + 2 ms` |
 | Full squash plan/build/commit | p50 and p95 `≤ baseline + 10% + 5 ms` |
-| No-op `exec_command` | p50 and p95 `≤ baseline + 3% + 0.5 ms` |
+| No-op `exec_command(["ls"])` | against the ready ordinary non-LayerStack direct shell-free `docker exec <container-id> ls` control defined above, p50 and p95 `≤ baseline + 3% + 0.5 ms` |
 | Native command throughput | At least 97% of raw LayerStack baseline |
 | PTY create | p50 and p95 `≤ baseline + 3% + 1 ms` |
 | PTY drain, supported `write_stdin`, and control-C/control-D cancellation | p50 and p95 `≤ baseline + 3% + 0.5 ms` |

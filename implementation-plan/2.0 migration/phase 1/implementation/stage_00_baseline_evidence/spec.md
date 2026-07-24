@@ -306,7 +306,7 @@ The fixed SeqCDC profile, publication/cold/squash/maintenance gates, CAS space e
 | Logical quiescence and no unexplained positive settled trend in short sentinel | `stage-gating` diagnostic |
 | Absolute RSS ≤384 MiB and ≤128 MiB above idle raw; scale 64/256 MiB/1 GiB × roots 1/16/64, three reps, ≤16 MiB series and ≤8 MiB per 4× | `deferred-to-stage_11`; Stage 00 freezes sources/noise only |
 | SeqCDC 8/16/32 KiB, threshold 5/opposing 50/jump 512, 32 KiB window, ≤2 slices, chunk bounds | `deferred-to-stage_03` |
-| publication `O(U+E+K)`, 32 KiB ring, ≤4 MiB/publication, 4 workers, ≤4 borrowed chunks, zero payload queue, 16/64 KiB metadata queue, 64 MiB semaphore | `deferred-to-stage_04` |
+| incremental publication `O(U+K+C+V_delta)` after a separately labeled `O(R+E)` bootstrap, 32 KiB ring, ≤4 MiB/publication, 4 workers, ≤4 borrowed chunks, zero payload queue, 16/64 KiB metadata queue, 64 MiB semaphore | `deferred-to-stage_04` |
 | warm/mount ≤+5%+2 ms and zero CAS reads; hydration ≥70%; activation bound | `deferred-to-stage_05` |
 | small edit ≤+15%+5 ms; disjoint ≥90%; OCC/durable publication | `deferred-to-stage_07` |
 | pack 64 MiB/100k/80 MiB; fan-in 8×64 KiB; slice 100k or64 MiB; dead/slack thresholds; epoch grace | `deferred-to-stage_08` |

@@ -1,6 +1,6 @@
 # Stage 02 — Portable root contract
 
-[Implementation overview](../index.md) · [Stage 02 E2E plan](e2e_test.md) · [Stage 01 handoff](handoff_from_stage_01.md) · [Preparation 01](../../prep/01-cdc-cas-space-time-materialization-spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Stage 02 E2E plan](e2e_test.md) · [Approved portable-root v2 contract D2.5](contract_v2_owner_decision_d2_5.md) · [Stage 01 handoff](handoff_from_stage_01.md) · [Preparation 01](../../prep/01-cdc-cas-space-time-materialization-spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -21,6 +21,14 @@ Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
 | Rollback | Remove the new internal crate and internal workspace edge plus its tests/adapters. No durable data migration or `/eos` cleanup is needed because this stage writes no v2 artifact. |
 
 `RootId` in this stage is a value and a deterministic computation, not a published root. The v1 `Manifest::root_hash` remains the only runtime/public revision identity and must never be reinterpreted as a v2 `RootId`.
+
+The owner approved
+[`PRC-STAGE02-OWNER-DECISION-D2.5`](contract_v2_owner_decision_d2_5.md) at
+`2026-07-25T00:02:23+0800`. That versioned record reconciles direct work on
+the preserved dirty trees, assigns every v2 wire value, closes the
+source/sink/digest signatures, and assigns preparation ownership. It controls
+where the illustrative required-shape excerpt below is less specific or uses
+an earlier spelling. Goldens may be frozen only against D2.5.
 
 ## 2. Current evidence
 
@@ -396,7 +404,7 @@ No thread, worker, task, queue, permit pool, file descriptor, mmap, cache, `Arc`
 | Fixed `seqcdc-scalar-author-v1`: increasing; min 8,192 B; target mean 16,384 B; max/window 32,768 B; threshold 5; opposing slope 50; jump 512; one 32 KiB ring; ≤2 slices; `ceil(U/32KiB)≤K≤ceil(U/8KiB)` | **deferred-to-stage_03** |
 | Scalar SeqCDC core ≤300 physical non-test Rust lines and author-oracle/fragmentation correctness | **deferred-to-stage_03** |
 | SIMD/accelerated boundary path | **not-applicable**; no accelerated path is introduced. Any later optional path requires safe runtime detection and byte-identical output. |
-| Publication `O(U+E+K)`, bounded external ordering, four workers, 32 KiB ring/worker, ≤4 borrowed chunks, zero downstream payload, queue 16/≤64 KiB, ≤4 MiB/publication, 64 MiB semaphore | **deferred-to-stage_04** |
+| Incremental publication `O(U+K+C+V_delta)` after a separately labeled `O(R+E)` bootstrap, bounded changed-event ordering, four workers, 32 KiB ring/worker, ≤4 borrowed chunks, zero downstream payload, queue 16/≤64 KiB, ≤4 MiB/publication, 64 MiB semaphore | **deferred-to-stage_04** |
 | Publication peak `C_capture + staging≤5% C_capture`; preflight ENOSPC; no deletion of authority | **deferred-to-stage_04** |
 | Metadata budgets: chunk ≤96 B, segment ≤64 B, changed path ≤256 B + path | **deferred-to-stage_04** for emitted candidate records; final accounting `deferred-to-stage_11` |
 | Warm resolve/session and mount p50/p95 ≤ baseline +5%+2 ms and zero CAS reads; cold hydration ≥70% native copy; cold activation p95 ≤1.5× native copy + warm allowance | **deferred-to-stage_05** |
@@ -513,18 +521,26 @@ Error observations expose only a closed error kind, format version, field class,
 
 ## 12. Completion checklist
 
-- [ ] Exact branch `upgrade-2.0-phase-1` is created from the newest approved immutable product revision; immutable product/test/doc bases and clean scoped worktrees are recorded. Planning itself created no branch.
-- [ ] Stage 00 focused gate passes. The deterministic Stage 00 scratch layout is accepted independently; the Stage 01 replacement delta is accepted only when Stage 01's own exit passes and is not required by Stage 02.
+Checklist amendment approved by
+[`PRC-STAGE02-OWNER-DECISION-D2.5`](contract_v2_owner_decision_d2_5.md):
+the original “clean scoped worktrees” entry condition is reconciled to the
+recorded preserved-dirty custody inherited from Stages 00 and 01. This
+amendment changes no implementation or evidence gate; it forbids replacing or
+discarding inherited work and requires complete staged, unstaged, and
+untracked inventories.
+
+- [x] Exact branch `upgrade-2.0-phase-1` is based on the newest approved immutable product revision; immutable product/test/doc bases and complete preserved-dirty scoped worktree inventories are recorded. Planning itself created no branch, and no inherited work was replaced or discarded.
+- [x] Stage 00 focused gate passes. The deterministic Stage 00 scratch layout is accepted independently; the Stage 01 replacement delta is accepted only when Stage 01's own exit passes and is not required by Stage 02.
 - [ ] New core crate is std-only, safe Rust, cycle-free, and imports no backend/runtime/hash/serde type.
 - [ ] Existing LayerStack retains concrete SHA-256, serde, persistence, and provider responsibilities.
-- [ ] Canonical path bytes, ordering, fixed widths, byte order, versions, domains, and capability behavior are explicit.
-- [ ] Root/object IDs are nominal and exclude every physical/materialization locator.
-- [ ] Golden bytes/IDs pass for valid vectors; hostile/malformed vectors fail closed without panic or allocation escape.
+- [x] Canonical path bytes, ordering, fixed widths, byte order, versions, domains, and capability behavior are explicit.
+- [x] Root/object IDs are nominal and exclude every physical/materialization locator.
+- [x] Golden bytes/IDs pass for valid vectors; hostile/malformed vectors fail closed without panic or allocation escape.
 - [ ] V1 manifest bytes, `root_hash`, publication, mount, file, command, and PTY behavior remain compatible.
 - [ ] Exact external package/version set, feature set, and direct external-edge multiset have zero delta for every frozen invocation.
 - [ ] No system tool/package, service, helper, target-image userland, network, database, FUSE, FFI, vendored source, or download was added.
 - [ ] Focused operations remain under 60 seconds; tiny loop is labeled diagnostic, not qualification.
-- [ ] `/eos` matches the annotated legacy tree; every explicit candidate path listed in §3 is absent.
+- [x] `/eos` matches the annotated legacy tree; every explicit candidate path listed in §3 is absent.
 - [ ] Logical resources return immediately to zero; no worker/task/queue/cache/FD/mmap/global registry was added.
 - [ ] At least three Mermaid diagrams and all required design/gate tables are present and consistent.
 - [ ] Stage 02 E2E exit verdict is POC-only and does not claim broad, release, portability-matrix, performance, memory-scale, or production qualification.

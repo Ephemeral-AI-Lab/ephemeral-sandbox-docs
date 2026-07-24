@@ -1,6 +1,13 @@
 # Stage 05 — Private candidate materialization and dual-read verification
 
-Links: [implementation overview](../index.md) · [stage E2E plan](e2e_test.md) · [portable storage contract](../../prep/01-cdc-cas-space-time-materialization-spec.md) · [recovery and migration contract](../../prep/03-seqcdc-cas-and-squash-decision.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+Links: [implementation overview](../index.md) · [simplified storage contract](../layerstack_storage_contract.md) · [stage E2E plan](e2e_test.md) · [benchmark note](benchmark_note.md) · [portable storage contract](../../prep/01-cdc-cas-space-time-materialization-spec.md) · [recovery and migration contract](../../prep/03-seqcdc-cas-and-squash-decision.md) · [quantitative contract](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+
+> **Normative storage update.** Stage 05 adds only
+> `materializations/<BackendKey>/<RootId>/generations/<Generation>/` and its
+> atomic `CURRENT`, using the common transaction directory for cold hydration.
+> Compatible warm v1 carriers may be referenced directly. Separate hydration
+> journals/staging and a materialization catalog are superseded; all existing
+> correctness, recovery, memory, and performance gates still apply.
 
 Proof tier: **POC proof tier**. This stage makes candidate roots reconstructable into a private native carrier and compares them with the legacy oracle. It does not serve that carrier to a sandbox.
 
@@ -13,11 +20,11 @@ Proof tier: **POC proof tier**. This stage makes candidate roots reconstructable
 | Owners / affected crates | `sandbox-runtime-layerstack-core`, `sandbox-runtime-layerstack`, `sandbox-runtime`, configuration, external LayerStack/workspace E2E and benchmark lab |
 | Objective | Stream a Stage 04 candidate `RootId` into a verified, crash-atomic Docker/OverlayFS native materialization and privately compare its exact tree/content/metadata with the legacy projection. |
 | Visible outcome | In opt-in `dual_read_verify`, public create/execute/publish still uses legacy v1; structured evidence reports candidate hydration class, bytes, generation, comparison, and mismatch without mounting the candidate. |
-| In scope | Provider-neutral materialization request/receipt; Docker filesystem adapter; bounded hydration transaction; durable hydration journal/catalog/locator; atomic carrier visibility; private tree comparator; corruption quarantine; restart cleanup. |
+| In scope | Provider-neutral materialization request/receipt; Docker filesystem adapter; bounded common hydration transaction; generation directory plus atomic `CURRENT`; locator reads; atomic carrier visibility; private tree comparator; corruption quarantine; restart cleanup. |
 | Non-goals | No candidate activation or fallback; no candidate publication authority; no public root switch; no pack compaction/GC; no candidate squash/remount; no legacy deletion; no acceleration. |
 | Entry | A committed legacy publication has exactly one Stage 04 shadow v2 root; scalar object verification/goldens pass; graph delta is zero; implementation is on `upgrade-2.0-phase-1` created from the newest approved immutable product revision. Planning creates no branch. |
 | Exit gate | Focused private dual-read route proves byte/metadata/tree equivalence, cold and warm-idempotent hydration, no partial visibility, corruption failure/quarantine, bounded memory/space, restart cleanup, and zero silent mismatch. |
-| Rollback | Set mode to `shadow_write`; stop scheduling hydration/comparison; delete only catalog-proven rebuildable candidate materializations and hydration staging. Candidate roots/objects and legacy public state remain. |
+| Rollback | Set mode to `shadow_write`; stop scheduling hydration/comparison; delete only generation/`CURRENT`-proven rebuildable candidate materializations and transaction-owned work. Candidate roots/objects and legacy public state remain. |
 
 Migration-mode contract:
 
@@ -26,6 +33,12 @@ Migration-mode contract:
 | `legacy` | legacy v1 | legacy v1 | none | not applicable | v1 | unchanged |
 | `shadow_write` | legacy v1 | legacy v1 | Stage 04 root/manifest/object-locator ingest | not applicable | public v1; private v2 | shadow error observable; legacy unaffected |
 | `dual_read_verify` | **legacy v1** | **legacy v1** | privately materialize matching v2 root, compare to legacy oracle | not a serving fallback; candidate never serves | public v1; candidate verifier only v2 | mismatch/corruption fails stage and quarantines candidate evidence; legacy result remains authoritative |
+
+Materialization is on demand. A compatible current v1 native stack is a valid
+warm carrier and is referenced rather than copied. A cold root is rebuilt once
+into a private generation, verified and fsynced, then exposed by a single
+atomic `CURRENT` update. Inactive roots and checkpoints remain CAS-only unless
+selected; Stage 05 must not create one full native tree per root.
 
 ## 2. Current evidence
 
@@ -40,7 +53,7 @@ Migration-mode contract:
 | observed | `ephemeral-sandbox/crates/sandbox-runtime/operation/src/layerstack/service/impls/export.rs:62-103,184-298`, `run_export_layerstack`, `run_read_export_chunk`, and `ExportFlight` | Export already uses bounded workspace `.export` spool and has restart-rerun behavior; materialization must not repurpose that scratch. |
 | observed | `ephemeral-sandbox/crates/sandbox-runtime/workspace/src/overlay/capture.rs:104-194,241-388`, `capture_upperdir` and its whiteout/opaque/path helpers | Capture handles modes, symlinks, whiteouts and opaque metadata; comparison must cover these exact semantics. |
 | observed | `ephemeral-sandbox/crates/sandbox-runtime/namespace-process/src/runner/mod.rs:48-92`, `run` and `mask_model_shell_paths` | Runtime mount/process behavior is Linux/provider-specific and independent of target-image shell tools. |
-| proposed from Stage 02–04 | `crates/sandbox-runtime/layerstack-core`; `/eos/layer-stack/format-v2.json`; `/eos/layer-stack/roots/v2`; `/eos/layer-stack/manifests/v2`; reserved-empty `/eos/layer-stack/objects/v1/loose`; `/eos/layer-stack/catalogs/v1`; `/eos/layer-stack/journals/v1`; `/eos/layer-stack/staging/v2`; `/eos/layer-stack/quarantine/v1` | Candidate identities and canonical object ranges are portable; physical Stage 04 locators still name verified immutable v1 carriers, and legacy remains authority. |
+| proposed from Stage 02–04 | `crates/sandbox-runtime/layerstack-core`; format marker; immutable roots and persistent metadata objects; locator SSTs/`CURRENT`; receipts; common transactions; quarantine | Candidate identities and canonical object ranges are portable; physical Stage 04 locators still name verified immutable v1 carriers, and legacy remains authority. |
 | inferred | A native carrier is necessary for current OverlayFS lowerdir use | A direct “mount CAS objects” shortcut would leak provider details and cannot preserve current native execution unchanged. |
 | open | Exact performance baselines after Stage 04 implementation | Freeze current-host control artifacts before Stage 05 gates; do not synthesize thresholds. |
 
@@ -59,8 +72,8 @@ ephemeral-sandbox/
 ├── crates/sandbox-runtime/layerstack/src/
 │   ├── materialization/mod.rs                                      [add] — adapter construction
 │   ├── materialization/docker_overlayfs.rs                         [add] — filesystem carrier builder
-│   ├── materialization/journal.rs                                  [add] — hydration transaction/recovery
-│   ├── materialization/catalog.rs                                  [add] — durable locator/generation records
+│   ├── materialization/transaction.rs                              [add] — common transaction protocol adapter
+│   ├── materialization/current.rs                                  [add] — atomic generation CURRENT adapter
 │   ├── materialization/compare.rs                                  [add] — private legacy/candidate tree comparator
 │   ├── storage/fs.rs                                               [modify] — scoped atomic directory promotion/quarantine
 │   └── lib.rs                                                      [modify] — adapter exports
@@ -93,9 +106,18 @@ ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/implementation/
 └── e2e_test.md                                                    [add]
 ```
 
-### Resulting runtime storage
+### Superseded pre-simplification runtime inventory
 
-Every candidate entry is owner-only and hidden from workloads. “RootId input: yes” applies only to canonical manifest/object content, never locators, journals, paths, carriers, permissions, or timestamps.
+This inventory is retained only for requirement traceability. It is not an
+implementation target; the normative Stage 05 delta is
+`materializations/<BackendKey>/<RootId>/{generations/<Generation>/,CURRENT}`
+plus a common `transactions/<TransactionId>/` record, as assigned by the
+[simplified storage contract](../layerstack_storage_contract.md#stage-ownership).
+
+Every candidate entry is owner-only and hidden from workloads. “RootId input:
+yes” applies only to canonical logical metadata/object content, never locators,
+transactions, physical paths, carriers, permissions, or non-logical
+timestamps.
 
 ```text
 /eos/
@@ -163,7 +185,12 @@ Every candidate entry is owner-only and hidden from workloads. “RootId input: 
     └── workspace_recovery/                                       [existing] recovery; P_staging
 ```
 
-Delta from Stage 04: add only hydration journal/staging, materialization catalog records, provider-native carriers, and corruption quarantine used by hydration. Candidate roots/manifests and typed object-to-verified-v1-carrier locator records are already shadow-produced; `objects/v1/loose/` remains reserved-empty. No legacy path is replaced, no candidate payload store is added, and no candidate carrier is mounted.
+Normative delta from Stage 04: add only one on-demand materialization
+generation plus its atomic `CURRENT`, using common transaction `work/` during
+cold hydration. Candidate roots, persistent objects, and typed
+object-to-verified-v1-carrier locators are already shadow-produced. No legacy
+path is replaced, no independent candidate payload store is added, and no
+candidate carrier is mounted.
 
 ## 4. SRP, SOLID, and coupling design
 
@@ -212,12 +239,19 @@ The associated provider locator is outside `RootId` and is not serialized into p
 
 | Boundary | Host/image assumption before | Assumption after | Portable core / provider adapter | Evidence now | Later evidence |
 | --- | --- | --- | --- | --- | --- |
-| Object/root decode | host-independent canonical bytes from Stages 02–04 | unchanged; streaming verification | portable core | scalar goldens/current CPUs | required host triples on the sole pinned image in Stage 11 |
+| Object/root decode | host-independent canonical bytes from Stages 02–04 | unchanged; streaming verification | portable core | scalar goldens/current CPUs | required host triples and full Prep 04 Phase-1 image matrix in Stage 11 |
 | Native tree construction | legacy projection on Linux filesystem | candidate private builder uses Rust filesystem APIs | Docker/OverlayFS adapter | Ubuntu 24.04 OCI index `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`; resolved platform manifest recorded | same image on required hosts in Stage 11 |
-| Target userland | ordinary execution may have userland | hydration needs none | provider adapter outside target namespace | public API plus read-only/non-root runtime variants of the sole pinned Ubuntu image | cross-image portability after Phase 1; not an acceptance or retirement gate |
+| Target userland | ordinary execution may have userland | hydration needs none | provider adapter outside target namespace | stage-local public API plus read-only/non-root variants of the pinned Ubuntu image; no qualification claim | Stage 11 qualifies pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root |
 | Phase 3 provider | none | neutral request/receipt and opaque locator | new adapter only | design/contract test | OCI/Firecracker/WASM implementations later |
 
-Change-impact exercises: Phase 2 branch/checkpoint/MCTS consumes `RootId` and manifest ports without native locator fields; a new object backend implements `VerifiedObjectReader` without changing materializer/comparator; Firecracker/WASM supplies its own `Materializer::Locator` without changing identity. Cycle audit forbids core → adapter/orchestration, comparator → mode config, or catalog → service. No materialization manager also publishes roots. Stage 05 transition pieces are dual-read comparator (retained through qualification, removable after Stage 11 policy) and unmounted private carriers; Stage 06 consumes the same port.
+Change-impact exercises: Phase 2 branch/checkpoint/MCTS consumes `RootId` and
+logical-object ports without native locator fields; a new object backend
+implements `VerifiedObjectReader` without changing materializer/comparator;
+Firecracker/WASM supplies its own materialization adapter without changing
+identity. Cycle audit forbids core → adapter/orchestration, comparator → mode
+config, or storage adapter → service. No materialization manager also publishes
+roots. Stage 05 transition pieces are the dual-read comparator and unmounted
+private carriers; Stage 06 consumes the same port.
 
 ## 5. Type, class, and field design
 
@@ -228,28 +262,66 @@ Change-impact exercises: Phase 2 branch/checkpoint/MCTS consumes `RootId` and ma
 | `MaterializationRequest` — new, core, public within workspace crates | `key: MaterializationKey`; `expected_tree_manifest: TreeManifestId` | Owned value; canonical IDs; transient; no path | no allocation beyond bounded IDs; invalid kind/version/profile fails before I/O |
 | `BackendKind` / `BackendFormatVersion` / `TargetProfileId` — new, core, public | `DockerOverlayfs`; explicit `1`; `NativeLowerV1`, respectively | Provider family, on-disk format version, and target semantics have separate canonical fields; none enters `RootId` | exhaustive match; a new provider, format, or profile is independently additive |
 | `MaterializationReceipt<L>` — new, core, public | `materialization_id: MaterializationId`; `root_id`; `generation: u64`; `carriers: Vec<L>`; `class: Warm|Cold`; `reconstructed_bytes: u64`; `entry_count: u64`; `tree_manifest_id: TreeManifestId`; `verified: bool` | Returned value; carrier count bounded by provider profile; counters checked overflow; locators adapter-owned; transient copy of durable record | no cache ownership; false verified is never published |
-| `MaterializationCatalogRecord` — new, layerstack adapter, crate-visible | `materialization_id`; `key: MaterializationKey`; `generation: u64`; `carriers: Vec<RelativeCarrierPath>`; `tree_manifest_id`; `tree_digest`; `created_epoch: u64`; `state: Ready` | Durable canonical record; contained relative carrier paths; atomic catalog generation; not `RootId` | old record stays authoritative until new fsync+rename+catalog commit |
-| `HydrationTxn` — new, adapter, private | `txn_id: HydrationTxnId`; `request`; `state`; `staging: RelativeStagingPath`; `bytes_written: u64`; `entries_written: u64`; `cancel`; `permit`; `workers: Vec<JoinHandle>` | One orchestration owner; journaled; ≤4 workers, 64 MiB global byte semaphore | owner cancels/joins ≤5 s; drop cannot detach; incomplete staging recovered |
-| `HydrationState` — new, adapter, serialized | `Prepared`, `ObjectsVerified`, `CarrierFsynced`, `Visible`, `Cataloged`, `Aborted` | monotonic state; fixed-width tag; durable journal | illegal transition/corrupt/truncated journal fails closed |
+| `MaterializationManifest` — new, layerstack adapter, crate-visible | `key: MaterializationKey`; `generation: u64`; `carriers: Vec<RelativeCarrierPath>`; `tree_id`; `tree_digest`; `created_epoch: u64` | Checksummed record inside a verified immutable generation; contained relative carrier paths; not `RootId` | old `CURRENT` remains authoritative until new generation fsync plus atomic `CURRENT` commit |
+| `HydrationTxn` — new, adapter, private | `txn_id`; typed `intent`; optional `ready`; `work` path; counters; cancellation token; permit; worker joins | One orchestration owner; common transaction; ≤4 workers, 64 MiB global byte semaphore | owner cancels/joins ≤5 s; drop cannot detach; incomplete `work/` is recovered |
+| `HydrationRecovery` — new, adapter | no `ready`; `ready` without `CURRENT`; or `CURRENT` naming generation | Derived from common durable facts; no operation-specific serialized state machine | corrupt/truncated facts fail closed; recovery aborts, retries commit, or confirms commit |
 | `RelativeCarrierPath` — new, adapter, private fields | normalized relative components | no absolute/parent/symlink traversal; provider-only | typed containment error |
 | `CandidateTreeDigest` — new, adapter comparator, internal | `content_sha256`; `metadata_sha256`; `entry_count: u64` | streaming canonical comparator result; path bytes length-prefixed; transient/evidence | no complete tree retained; mismatch typed |
 | `StorageRolloutMode` — modified, config | add `DualReadVerify` | default remains legacy; explicit opt-in; serialized config | invalid mode/version combination rejected |
 
-No `Arc` is required for transaction back-references: shared immutable store/permit/supervisor handles may be `Arc`, while tasks receive clones and the owner holds joins; any observation back-reference is `Weak` or an ID. The catalog cache is capped by the inherited shared 4,096 × 4 KiB (16 MiB) index cache. Existing public command/workspace DTOs, legacy manifests/layers/projection, Stage 02 `RootId`, Stage 03 chunk/object identities, and Stage 04 publication result remain unchanged.
+No `Arc` is required for transaction back-references: shared immutable
+store/permit/supervisor handles may be `Arc`, while tasks receive clones and
+the owner holds joins; any observation back-reference is `Weak` or an ID. The
+locator cache is capped by the inherited shared 4,096 × 4 KiB (16 MiB) cache.
+Existing public command/workspace DTOs, legacy manifests/layers/projection,
+Stage 02 `RootId`, Stage 03 chunk/object identities, and Stage 04 publication
+result remain unchanged.
 
 ## 6. Data and compatibility design
 
 The Stage 02 portable logical schema remains authoritative for candidate identity: versioned root → typed `TreeManifestId` values → canonical entries → file descriptors → fixed SeqCDC chunk/object descriptors. All typed hashes use the frozen domain-separated SHA-256 tags; integers are explicit unsigned widths in big-endian canonical encoding; lengths precede byte strings; path bytes are not lossy UTF-8; entries sort by canonical raw path bytes; duplicate/non-canonical paths are rejected. SeqCDC remains scalar `seqcdc-scalar-author-v1` with min 8,192, target 16,384, max/window 32,768, threshold 5, opposing 50, jump 512.
 
-Stage 05 adds only provider-specific durable records. The exact key is `MaterializationKey=(RootId,backend_kind,backend_format_version,target_profile)` and deterministically yields `MaterializationId`, but neither the key nor `MaterializationId` is hashed into `RootId`; carrier locators are contained relative paths. Hydration resolves each typed object through the Stage 04 locator catalog, streams and verifies the named byte range from an immutable v1 native carrier, and never requires a loose or packed candidate payload. It writes a transaction journal and staging directory, constructs exact file types/modes/symlink targets/whiteouts/opaque markers/sparse semantics defined by the manifest, fsyncs files/directories, computes a normalized tree digest, atomically renames the complete directory to `materializations/docker-overlayfs/v1/<MaterializationId>/`, fsyncs its parent, then atomically advances the materialization catalog with the generation and ordered carrier locators. No partial directory is catalog-visible.
+Stage 05 adds only provider-specific materialization state. The exact key is
+`MaterializationKey=(RootId,backend_kind,backend_format_version,target_profile)`,
+but it is not hashed into `RootId`; carrier locators are contained relative
+paths. Hydration resolves typed objects through deterministic loose paths or
+the Stage 04 locator SST, streams and verifies immutable v1 carrier ranges,
+and never requires a copied candidate payload. It uses common transaction
+`work/`, constructs the exact filesystem semantics defined by the persistent
+graph, fsyncs files/directories, computes a normalized tree digest, atomically
+renames the complete directory under
+`materializations/<BackendKey>/<RootId>/generations/<Generation>/`, fsyncs its
+parent, then atomically advances `CURRENT`. No partial directory is
+`CURRENT`-visible.
 
-Legacy v1 and candidate v2 coexist. Public reads accept v1 only in this stage; the private candidate verifier accepts v2 only and never silently interprets one as the other. Upgrade builds a rebuildable carrier; downgrade stops reading its catalog and safely leaves/deletes it without touching v2 roots/manifests/locators or v1 source carriers. A missing/corrupt/truncated/hash-mismatched object range or index aborts, quarantines only proven corrupt candidate evidence/locator (never a possibly healthy shared v1 carrier without proof), retains the last ready generation, and records a typed mismatch. Existing v1 fixtures/identities are never mutated. There is no accelerated chunker; equivalence is against the scalar golden oracle.
+Legacy v1 and candidate v2 coexist. Public reads accept v1 only in this stage;
+the private candidate verifier accepts v2 only and never silently interprets
+one as the other. Upgrade builds a rebuildable generation; downgrade stops
+reading its `CURRENT` and safely leaves/deletes it without touching v2
+roots/objects/locators or v1 source carriers. A missing/corrupt/truncated/
+hash-mismatched object range or SST aborts, quarantines only proven corrupt
+candidate evidence/locator, retains the last ready generation, and records a
+typed mismatch.
 
 ## 7. Workflow and failure semantics
 
-Happy path: legacy publication commits → Stage 04 supplies its single derived v2 shadow root plus typed object locators into immutable v1 carrier ranges → `DualReadVerifyService` requests `MaterializationKey(root,DockerOverlayfs,1,NativeLowerV1)` → catalog hit with matching manifest/tree digest is warm and performs zero object-source reads → otherwise a cold transaction acquires byte/worker permits, streams and verifies the locator-backed object ranges into private staging, fsyncs and atomically promotes a generation, advances the catalog → comparator streams normalized legacy and candidate trees → structured exact match is emitted; public legacy result is unchanged.
+Happy path: legacy publication commits → Stage 04 supplies its derived v2
+shadow root and typed object locators → `DualReadVerifyService` requests a
+`MaterializationKey` → compatible verified v1 carriers or a matching `CURRENT`
+are warm and perform zero CAS payload reads → otherwise a cold transaction
+acquires permits, streams verified object ranges into private `work/`, fsyncs
+and promotes a generation, advances `CURRENT` → comparator streams normalized
+legacy and candidate trees → structured exact match is emitted; public legacy
+result is unchanged.
 
-Retry with the same key is idempotent: it returns the ready generation or resumes/cleans a non-visible transaction; it never creates two visible authoritative carrier locators. Cancellation or five-second join deadline prevents catalog visibility, releases permits, and leaves journaled staging for bounded restart recovery. Disk full before visibility aborts; after carrier rename but before catalog commit, restart verifies and either commits the catalog or deletes the unreferenced carrier. Corrupt journal/catalog fails closed and is quarantined; last valid generation remains.
+Retry with the same key is idempotent: it returns the `CURRENT` generation or
+resumes/cleans a non-visible transaction. Cancellation or the five-second join
+deadline prevents `CURRENT` visibility, releases permits, and leaves only
+bounded transaction-owned work for restart recovery. Disk full before
+visibility aborts; after generation rename but before `CURRENT`, restart
+verifies and either retries the declared commit or deletes the unreferenced
+generation. Corrupt transaction/`CURRENT` fails closed and is quarantined; the
+last valid generation remains.
 
 There is no publication/OCC/lease authority change here: Stage 04 legacy publication supplies input; Stage 07 owns durable candidate publication and leases. Squash/remount is Stage 09; pack/compaction/retention/GC is Stage 08. Rollback stops scheduling private work and reaps only records proven rebuildable.
 
@@ -260,14 +332,21 @@ There is no publication/OCC/lease authority change here: Stage 04 legacy publica
 | Hydration output buffer | worker | reconstruct entry | 256 KiB per worker | flushed/drop | drop + staging retained/reaped | recover transaction | buffer gauge |
 | SeqCDC ring/borrowed views | object verification path | chunk stream | one 32 KiB ring/worker; ≤4 borrowed chunks globally, ≤2 per stream | chunk accepted | views drop before error | none retained | borrowed-count gauge |
 | Global data permits | storage supervisor | before buffers/I/O | 64 MiB byte semaphore | RAII permit drop | unwind/cancel guard | supervisor rebuilt at boot | permits in-use/available |
-| Metadata queue | coordinator | entry scheduling | 16 descriptors and ≤64 KiB | drained | close, cancel, join | journal replay, no queue replay | item/byte gauge |
+| Metadata queue | coordinator | entry scheduling | 16 descriptors and ≤64 KiB | drained | close, cancel, join | transaction replay, no queue replay | item/byte gauge |
 | Worker tasks/joins | hydration owner | admitted transaction | ≤4 global; one join per worker | owner joins ≤5 s | cancel then join; panic becomes typed failure | startup recovery before new work | active/join gauge |
-| Shared index cache | storage service | locator lookup | 4,096 × 4 KiB = 16 MiB; bounded eviction | retained by design | poisoned entry evicted | empty/rebuilt on restart | cache count/bytes |
-| Catalog/journal buffers | transaction owner | encode/commit | ≤256 KiB per admitted op | fsync/commit/drop | drop; durable residue recovered | monotonic replay | txn/live bytes |
+| Shared locator cache | storage service | locator lookup | 4,096 × 4 KiB = 16 MiB; bounded eviction | retained by design | poisoned entry evicted | empty/rebuilt on restart | cache count/bytes |
+| Transaction/`CURRENT` buffers | transaction owner | encode/commit | ≤256 KiB per admitted op | fsync/commit/drop | drop; durable residue recovered | common-fact replay | txn/live bytes |
 | Comparator state | dual-read service | after carrier ready | O(path depth) with depth ≤64; no full tree | end compare | typed mismatch/drop | comparison reruns | entries/bytes scanned |
-| FDs/mappings | adapter | object/carrier operations | bounded by workers + small constant; no mmap required | close before commit return | RAII close | OS closes; journal recovery | FD/mapping gauges |
+| FDs/mappings | adapter | object/carrier operations | bounded by workers + small constant; no mmap required | close before commit return | RAII close | OS closes; transaction recovery | FD/mapping gauges |
 
-Quiescence, polled every 100 ms for ≤5 s, is: hydration queue empty; active transaction/worker/task/borrowed-chunk/permit counts zero; journal has no nonterminal transaction except a deliberately crash-recoverable fixture; file descriptors return to warmed idle; comparator is idle; catalog/cache cardinality is within explicit capacity. Missing stage-gating evidence blocks. No strong cycle exists: supervisor owns shared services and join handles; tasks own `Arc` service clones and a cancellation child, but no task owns the supervisor or its join collection.
+Quiescence, polled every 100 ms for ≤5 s, is: hydration queue empty; active
+transaction/worker/task/borrowed-chunk/permit counts zero; no transaction
+remains except a deliberately crash-recoverable fixture; file descriptors
+return to warmed idle; comparator is idle; locator-cache cardinality is within
+explicit capacity. Missing stage-gating evidence blocks. No strong cycle
+exists: the supervisor owns shared services and join handles; tasks own `Arc`
+service clones and a cancellation child, but no task owns the supervisor or
+its join collection.
 
 ## 8. Complexity and performance contract
 
@@ -275,14 +354,20 @@ Let `R` be reconstructed logical bytes, `E` entries, `K` chunks, `C_target` fina
 
 | Operation | Inputs | Expected time | Worst-case time | Peak app memory | Temporary disk | Settled physical disk | I/O pattern |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Warm `ensure` | root/key catalog hit | O(1) expected / O(log pages) | bounded index traversal | shared cache + O(1) | 0 | `C_old` | metadata only; zero CAS payload reads |
-| Cold hydrate | manifest `E`, bytes `R`, chunks `K` | O(`R+E+K`) | O(`R+E+K`) | ≤4 MiB/publication-equivalent op excluding shared cache; bounded by 4×buffers + metadata + 64 MiB global permit | `C_target` + journal, with old authoritative | `C_target + M` | sequential object reads/writes; bounded index access |
+| Warm `ensure` | compatible v1 carrier or matching `CURRENT` | O(1) ref check plus `O(D)` validation | bounded locator/ref traversal | shared cache + O(`D`) | 0 | `C_old` | metadata only; zero CAS payload reads |
+| Cold hydrate | persistent graph `E`, bytes `R`, chunks `K` | O(`R+E+K`) | O(`R+E+K`) | ≤4 MiB/publication-equivalent op excluding shared cache; bounded by 4×buffers + metadata + 64 MiB global permit | `C_target` + transaction metadata, with old authoritative | `C_target + M` | sequential object reads/writes; bounded locator access |
 | Verify/tree digest | `R,E` | O(`R+E`) | O(`R+E`) | O(depth≤64)+buffers | 0 | 0 | streaming tree walk |
-| Atomic promotion | one staging tree | O(entries/fsync) | O(`E`) | O(path depth) | staging becomes final | unchanged total bytes | fsync + same-filesystem rename |
-| Recovery | `J` bounded journals/residue | O(`J + residue metadata`) | streaming O(entries in affected tx) | bounded one transaction | may delete/finalize one staging tree | only cataloged generation | journal/catalog scan |
-| Cleanup rebuildable carrier | one cataloged generation | O(`E`) | O(`E`) | bounded walker | 0 | frees `C_target` | streaming unlink |
+| Atomic promotion | one private generation | O(entries/fsync) | O(`E`) | O(path depth) | `work/` becomes generation | unchanged total bytes | fsync + same-filesystem rename + atomic `CURRENT` |
+| Recovery | `J` bounded transactions/residue | O(`J + residue metadata`) | streaming O(entries in affected tx) | bounded one transaction | may delete/finalize one private generation | only `CURRENT` generation | transaction/`CURRENT` scan |
+| Cleanup rebuildable carrier | one non-current generation | O(`E`) | O(`E`) | bounded walker | 0 | frees `C_target` | streaming unlink after lease/grace |
 
-Complete space is `T = L_hot + H_cold + ΣU_active + P_staging + M`. During hydration, the exact hard peak is `current T + C_target + journal/metadata`, with the old authoritative legacy native state retained; candidate carrier overhead target is `C_target + ≤5%`. Carrier bytes are `L_hot` only after a later activation chooses them; here they are rebuildable materialization/cache bytes reported separately. No complete file/tree/history/global index is resident.
+Complete space is `T = L_hot + H_cold + ΣU_active + P_staging + M`. During
+hydration, the exact hard peak is
+`current T + C_target + transaction metadata`, with the old authoritative
+legacy native state retained; candidate carrier overhead target is
+`C_target + ≤5%`. Carrier bytes are `L_hot` only after a later activation
+chooses them; here they are rebuildable materialization/cache bytes reported
+separately. No complete file/tree/history/global index is resident.
 
 | Inherited gate family | Disposition | Exact contract |
 | --- | --- | --- |
@@ -298,9 +383,14 @@ Complete space is `T = L_hot + H_cold + ΣU_active + P_staging + M`. During hydr
 | Pack slack, amplification, GC/compaction | deferred-to-stage_08 | verified locator-backed object reader only; loose and pack payload namespaces remain reserved |
 | Squash/remount | deferred-to-stage_09 | absent |
 | Candidate authority/mixed-root migration | deferred-to-stage_10 | public legacy only |
-| Normative corpus/p50/p95, 64MiB–1GiB × roots matrix, required host triples on the sole pinned Ubuntu image | deferred-to-final | Stage 11 qualification; cross-image coverage is outside Phase 1 |
+| Normative corpus/p50/p95, 64MiB–1GiB × roots matrix, required host triples, and full Prep 04 Phase-1 image matrix | deferred-to-final | Stage 11 qualification: pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root |
 
-Working set is `W = shared_index_cache(≤16 MiB) + admitted_ops × (manifest/journal≤256 KiB + metadata≤64 KiB) + workers × (read256 KiB + output256 KiB + ring32 KiB)`, subject to ≤4 workers and the 64 MiB global semaphore; shared cache does not multiply. Active peak includes filesystem/page cache and is measured separately. At quiescence all per-transaction terms release; only bounded shared cache/catalog metadata may remain.
+Working set is `W = shared_locator_cache(≤16 MiB) + admitted_ops ×
+(object/transaction encoder≤256 KiB + metadata≤64 KiB) + workers ×
+(read256 KiB + output256 KiB + ring32 KiB)`, subject to ≤4 workers and the
+64 MiB global semaphore; shared cache does not multiply. Active peak includes
+filesystem/page cache and is measured separately. At quiescence all
+per-transaction terms release; only the bounded shared cache may remain.
 
 ## 9. Diagrams
 
@@ -311,7 +401,7 @@ flowchart LR
   ORCH --> PORT["Materializer port"]
   PORT --> ADAPTER["DockerOverlayfsMaterializer"]
   ADAPTER --> CORE["Portable manifest + verified object ports"]
-  ADAPTER --> JOURNAL["Hydration journal/catalog adapter"]
+  ADAPTER --> TXN["Common transaction + CURRENT adapter"]
   ORCH --> CMP["Streaming comparator"]
   CORE -. "forbidden: /eos, OverlayFS, PathBuf" .-> ADAPTER
 ```
@@ -319,12 +409,12 @@ flowchart LR
 ```mermaid
 flowchart TD
   LEGACY["Legacy v1 public head/layers"] --> PUBLIC["Public native result"]
-  ROOT["roots/v2 + manifests/v2"] --> READ["verified object stream"]
-  LOC["locators.catalog"] --> READ
+  ROOT["immutable root + persistent object DAG"] --> READ["verified object stream"]
+  LOC["locator SST CURRENT"] --> READ
   V1["immutable v1 carrier ranges"] --> READ
-  READ --> STAGE["staging/v2/hydration/txn"]
-  STAGE -->|verify + fsync + atomic rename| CARRIER["materializations/docker-overlayfs/v1/MaterializationId/carriers/ordinal"]
-  CARRIER --> CAT["materializations.catalog"]
+  READ --> STAGE["transactions/id/work"]
+  STAGE -->|verify + fsync + atomic rename| CARRIER["materializations/BackendKey/RootId/generations/Generation"]
+  CARRIER --> CAT["generation + CURRENT"]
   PUBLIC --> CMP["private tree comparator"]
   CARRIER --> CMP
   CMP --> OBS["structured match/mismatch; never public activation"]
@@ -332,23 +422,26 @@ flowchart TD
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Prepared
-  Prepared --> ObjectsVerified: bounded stream succeeds
+  [*] --> Intent
+  Intent --> ObjectsVerified: bounded stream succeeds
   ObjectsVerified --> CarrierFsynced
-  CarrierFsynced --> Visible: atomic rename
-  Visible --> Cataloged: catalog fsync/commit
-  Cataloged --> [*]
-  Prepared --> Aborted: cancel/corrupt/disk full
+  CarrierFsynced --> Ready: generation rename + ready fsync
+  Ready --> Current: CURRENT fsync/commit
+  Current --> [*]
+  Intent --> Aborted: cancel/corrupt/disk full
   ObjectsVerified --> Aborted: write/fsync failure
   CarrierFsynced --> Aborted: pre-rename failure
-  Visible --> Cataloged: restart verifies and commits
+  Ready --> Current: restart verifies and retries commit
   Aborted --> [*]: release permits + bounded cleanup
 ```
 
 ## 10. Implementation sequence
 
 1. **Core seam, no behavior change.** Add neutral request/receipt/reader/materializer contracts and golden compile tests; preserve existing Stage 02–04 codecs. Run `cargo test -p sandbox-runtime-layerstack-core materialization_contract`. Rollback removes unused seam.
-2. **Persistence transaction.** Add relative locators, journal states, catalog generation, scoped fsync/rename/quarantine, and exhaustive failpoint tests. No mode invokes it yet. Run layerstack recovery tests; checkpoint is adapter-internal.
+2. **Persistence transaction.** Add relative locators, the common
+   `intent`/`ready`/`CURRENT` facts, scoped fsync/rename/quarantine, and
+   exhaustive failpoint tests. No mode invokes it yet. Run LayerStack recovery
+   tests; checkpoint is adapter-internal.
 3. **Docker/OverlayFS materializer.** Implement streaming file/metadata reconstruction under exact buffers/workers/permits, no target helper. Validate the deterministic golden tree. Rollback leaves source objects untouched.
 4. **Private comparator and orchestration.** After one committed legacy result, schedule one candidate request, compare normalized trees, and emit typed status. Public legacy result remains unchanged even on candidate error. Run operation integration test.
 5. **Mode/config/recovery wiring.** Add default-off `DualReadVerify`, reject invalid combinations, recover incomplete hydration before work, and support rollback to `shadow_write`. Run config and restart tests.
@@ -359,9 +452,47 @@ stateDiagram-v2
 
 Each request emits one bounded structured record:
 
-`storage_mode=dual_read_verify`, `write_authority=legacy_v1`, `public_read_source=legacy_v1`, `candidate_read_source=v2`, `candidate_served=false`, `fallback_count=0` (semantic “not serving,” never evidence of activation), `root_id`, `tree_manifest_id`, `materialization_id`, `materialization_backend`, `materialization_generation`, `carrier_count`, `hydration_class=warm|cold`, `objects_read`, `bytes_read`, `bytes_reconstructed`, `entries_reconstructed`, `cas_payload_reads`, `journal_state`, `comparison_count`, `mismatch_count`, `content_match`, `metadata_match`, `quarantine_count`, and failure reason enum.
+`storage_mode=dual_read_verify`, `write_authority=legacy_v1`,
+`public_read_source=legacy_v1`, `candidate_read_source=v2`,
+`candidate_served=false`, `fallback_count=0`, `root_id`, `tree_id`,
+`materialization_backend`, `materialization_generation`, `carrier_count`,
+`hydration_class=warm|cold`, `objects_read`, `bytes_read`,
+`bytes_reconstructed`, `entries_reconstructed`, `cas_payload_reads`,
+`transaction_fact`, `comparison_count`, `mismatch_count`, `content_match`,
+`metadata_match`, `quarantine_count`, and failure reason enum.
 
 Resource fields include live/high-water buffers/owned bytes/workers/tasks/queue items/queue bytes/borrowed chunks/permits/index-cache entries/FDs/mappings/transactions, cleanup state/quiescence ms, process anonymous/file RSS, cgroup current/peak, first/last settled delta/slope, and allocated bytes per full storage category. Root/object/path cardinality is aggregated; no raw path or chunk log stream. Missing route/mismatch/resource evidence is a blocker.
+
+### Performance arrival checkpoint
+
+Stage 05 is not reached until the cold/warm and lifecycle matrix in
+[benchmark_note.md](benchmark_note.md) emits and validates:
+
+```text
+.benchmark-state/results/<run_id>/stage-05-perf-report.json
+.benchmark-state/results/<run_id>/stage-05-perf-report.md
+```
+
+The machine-readable JSON uses
+`schema_version=phase1.stage05.perf-report.v1`; Markdown renders exactly that
+record. Both contain provenance and immutable run/raw links; raw native-copy/
+legacy controls and candidate cold/warm samples; frozen baseline actual;
+required pass target/cap; separately predeclared optimization target;
+candidate actual; delta/ratio/headroom; `R/E/K` and phase work counters;
+buffers, queues, workers, permits, cache, memory and RSS; complete
+physical-space/carrier/staging accounting; field-by-field mode/uid/gid/
+mtime-seconds/mtime-nanoseconds/raw-xattr/hardlink/symlink/sparse equality; all
+declared cancellation, crash-state, corruption, ENOSPC, verify/fsync/rename/
+`CURRENT`/transaction failpoints and same-key retry outcomes; canonical external
+package/version/source/checksum, feature, and direct-edge before/after arrays
+with empty symmetric differences plus zero system/runtime/image-helper deltas;
+recovery and cleanup; and
+`DIAGNOSTIC_PASS|FAIL|OPEN`. The first Markdown table exposes those comparison
+fields per stage-owned metric. Raw-relative caps identify their raw baseline;
+absolute “minus N ms” targets are unsupported. Stage arrival additionally
+requires schema/link validation, an appended benchmark tracker row, and
+matching Plan/Run plus Good/Defect entries in `e2e/test-report.md`. This report
+is diagnostic and does not qualify the final Prep gates.
 
 ## 12. Completion checklist
 
@@ -370,10 +501,15 @@ Resource fields include live/high-water buffers/owned bytes/workers/tasks/queue 
 - [ ] Legacy remains sole writer, publication authority, and public reader; candidate is never mounted or used as fallback.
 - [ ] Full `/eos/layer-stack`, workspace scratch, legacy global root, delta, permissions, lifecycle, RootId, and space annotations are verified.
 - [ ] Warm idempotency gives zero CAS payload reads; cold hydration/tree comparison and corruption/restart failpoints pass.
+- [ ] Exact mode, uid/gid, mtime seconds/nanoseconds, raw xattrs, hardlink groups/native sharing, symlink target, sparse extents, and whiteout/opaque final-tree semantics pass.
+- [ ] Cancellation, all common transaction recovery cases, corruption, three
+  ENOSPC positions, and all verify/fsync/rename/`CURRENT` boundaries pass in
+  the separately budgeted sub-five-minute invocations.
 - [ ] Exact SeqCDC/object/root goldens remain unchanged; v1 artifacts are not mutated.
 - [ ] Buffers, workers, queue, cache, semaphore, depth, duration, physical peak, and RSS stage gates pass.
 - [ ] Logical release and short repeated-cycle physical stability pass with no strong cycle/detached work.
 - [ ] External resolved packages/features/direct-edge multiset and system/runtime dependencies have exact zero delta.
-- [ ] Current-host helper-independence evidence passes on the pinned Ubuntu 24.04 target; untested host rows remain unverified until Stage 11 and cross-image coverage remains deferred.
+- [ ] Current-host helper-independence evidence passes on the stage-local pinned Ubuntu 24.04 target; Stage 11 still must qualify pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root.
 - [ ] E2E, tiny benchmark, structured artifacts, and append-only report are complete and linked.
+- [ ] Versioned Stage 05 JSON and Markdown performance-arrival reports validate with raw controls, cold/warm/resource/space evidence, and matching append-only benchmark/E2E ledger entries.
 - [ ] Activation, candidate publication/leases, packs/GC, squash, authority cutover, and full qualification remain assigned to Stages 06, 07, 08, 09, 10, and 11.

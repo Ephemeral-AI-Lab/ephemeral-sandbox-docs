@@ -1,6 +1,6 @@
 # Stage 08 E2E — Retention, GC, packs, compaction, and evacuation
 
-[Implementation overview](../index.md) · [Stage 08 specification](spec.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
+[Implementation overview](../index.md) · [Stage 08 specification](spec.md) · [Benchmark note](benchmark_note.md) · [Preparation 03](../../prep/03-seqcdc-cas-and-squash-decision.md) · [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 Product root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox`
 Test root: `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test`
@@ -15,9 +15,36 @@ planning stage creates or switches no branch; any mismatch is a hard blocker.
 
 This is a **POC proof tier**, not Phase 1 qualification. It proves, before candidate authority exists, that focused candidate maintenance is bounded and recoverable while legacy publication/read authority remains untouched.
 
+> **Performance arrival checkpoint.** Stage 08 is not reached until its
+> [benchmark note](benchmark_note.md) tracker has a new append-only row and the run emits
+> versioned `.benchmark-state/results/<run-id>/stage-08-perf-report.json` and
+> `stage-08-perf-report.md` with
+> `schema_version="phase1.stage08.perf-report.v1"`. Each report contains the
+> frozen raw baseline actual, required pass target/cap, separately predeclared
+> optimization target, candidate actual, delta, ratio, and headroom,
+> complexity/work counters, logical-resource high-water counters, memory/RSS,
+> physical space, run/raw-artifact
+> links, provenance, missing values, and a
+> `DIAGNOSTIC_PASS|FAIL|OPEN` verdict. The first Markdown table exposes those
+> comparison fields per stage-owned metric.
+> Stage arrival additionally requires one terminal checkpoint from
+> `layerstack.phase1.retention-gc.pack-limit-boundaries` and one from
+> `layerstack.phase1.retention-gc.transaction-limit-boundaries`. The report
+> must contain all 15 exact below/at/would-cross rows, before/projected/after
+> counters, allocation quantum and physical blocks, seal/cursor decisions,
+> recovery, and quiescence. Missing or unrepresentable rows remain `OPEN`.
+> Append the command and
+> `Good`/`Defect`/`Fix` plus cleanup to `e2e/test-report.md`. These reports are
+> diagnostic; only Stage 11 qualifies the Prep gates.
+
 Exit evidence must show:
 
-- a current, retained, pinned, leased, branched/frontier, or in-flight root is never collected;
+- current roots, root/carrier leases, explicit pins, active branches,
+  configured-retention ancestors, frontier/in-flight roots, and every root or
+  object named by a pending publication journal, hydration, materialization,
+  evacuation, or compaction transaction are never collected;
+- complete-manifest reconstruction edges are followed as strong edges, while a
+  parent/base/provenance edge alone is weak and does not retain history;
 - an unreachable and unleased candidate object becomes invisible only after a complete durable grace epoch and final generation/lease recheck;
 - open/sealed packs and maintenance transactions obey every fixed cap;
 - compaction/evacuation commits replacement locators before source deletion and never loses the last locator;
@@ -27,8 +54,9 @@ Exit evidence must show:
 
 Full suites, final 64 MiB/256 MiB/1 GiB × 1/16/64-root matrices, normative
 percentiles, RSS limits, settled-space claims, and required-host qualification
-using the sole pinned Ubuntu target are owned by Stage 11 and must not run
-here. Cross-image portability is outside Phase 1 and is not a gate.
+across the full Prep 04 Phase-1 image matrix—pinned Ubuntu/Debian glibc,
+Alpine musl, minimal/distroless, shell-less, read-only, and non-root—are owned
+by Stage 11 and must not run here. Stage 08 qualifies none of those rows.
 
 ## 2. Existing assets to reuse
 
@@ -153,13 +181,17 @@ Correctness is asserted through public manager/runtime/file/workspace/observabil
 
 | Stable ID | Tier | Capability/mode | Setup | Public action | Correctness assertions | Time metric | Disk metric | Memory-lifecycle metric | Dependency/portability evidence | Timeout | Artifacts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `layerstack.phase1.retention-gc.retain-leased-root` | medium / `run-now-focused` | candidate-shadow retention and GC | current/history/pinned/leased/in-flight/unselected roots | publish/read roots; acquire/release lease; request bounded maintenance | every selected root reconstructs; only unreachable unleased state passes trash, durable grace, and final recheck | phase durations, diagnostic only | allocated bytes by live/staging/trash/unexplained | owner gauges return to warmed idle after cleanup | zero dependency delta; pinned Ubuntu public APIs; outside `/eos` evidence only | `60000` ms | catalog JSON, receipts, tree digests, epoch/lease snapshots, allocated-byte inventory, logs |
+| `layerstack.phase1.retention-gc.retain-leased-root` | medium / `run-now-focused` | candidate-shadow retention and GC | current, root/carrier lease, pin, active branch, configured-retention ancestor, frontier/in-flight, pending-transaction root/object, unreachable, and weak-ancestry-only fixtures | publish/read roots; acquire/release lease; request bounded maintenance | every independently selected root/object and its strong graph reconstruct; weak ancestry alone is unmarked; only unreachable unleased state passes trash, durable grace, and final recheck | phase durations, diagnostic only | allocated bytes by seed reason and live/staging/trash/unexplained | owner gauges return to warmed idle after cleanup | zero dependency delta; pinned Ubuntu public APIs; outside `/eos` evidence only | `60000` ms | catalog JSON, seed/edge oracle, receipts, tree digests, epoch/lease snapshots, allocated-byte inventory, logs |
 | `layerstack.phase1.retention-gc.pack-bounds-recovery` | hard / `run-now-focused` | pack caps and crash recovery | records at next-record payload/count/allocation boundaries; failpoints around journal/seal/locator/trash | publish fixtures; request maintenance; restart daemon; reread roots | reserve-before-cap; no pack exceeds 64 MiB/100,000/80 MiB; old-or-new complete generation; retry idempotent | phase/failpoint recovery durations | open/sealed/staging/trash allocated bytes and residue | buffers/permits/journals settle after every fault | graph/lock equality and target-image tool independence | `60000` ms | pack/index summaries, journal states, root digests, recovery timeline, logs |
 | `layerstack.phase1.retention-gc.evacuation-locator-swap` | hard / `run-now-focused` | compaction, locators, reader leases | one/two-locator objects; reader lease; ≥20% dead selected pack and >5% aggregate pressure | read while requesting evacuation; cancel/restart; release lease | replacement durable first; last locator never removed; source survives lease plus complete epoch; content exact | evacuation phases and lease overlap | source/target/trash/dead/slack allocation | locator/read leases and permits quiesce; no detached worker | zero new helpers/services; portable core/provider boundary evidence | `60000` ms | locator generations, lease snapshots, pack inventory, tree digests, logs |
+| `layerstack.phase1.retention-gc.pack-limit-boundaries` | hard / `run-now-boundary` | exact live pack admission limits | nine isolated `P-*` below/at/would-cross cases for payload, records, and allocation; pre-generated input | reserve/append/seal through the packaged writer | pure oracle and live writer agree; old pack never exceeds 67,108,864 payload bytes, 100,000 records, or 83,886,080 allocated bytes; crossing record starts a new pack | raw per-case phase durations; each operation ≤60 s | before/projected/after counters, allocation quantum, `st_blocks*512`, sealed inventory | writer buffer/permit/FD gauges quiesce after each case | same pinned image and zero helper/dependency delta | `300000` ms | boundary-case JSON, pack/footer/index summaries, physical-block inventory, terminal checkpoint |
+| `layerstack.phase1.retention-gc.transaction-limit-boundaries` | hard / `run-now-boundary` | exact GC/compaction slice limits | six isolated `T-*` below/at/would-cross cases for payload and record count | admit bounded maintenance transaction, persist cursor, resume next transaction | transaction never exceeds 67,108,864 payload bytes or 100,000 records; crossing cursor is durable before the record; restart resumes it exactly once | raw per-case phase/cursor/recovery durations; each operation ≤60 s | journal/cursor/staging/trash bytes | transaction/queue/permit/cursor gauges quiesce after each case | same pinned image and zero helper/dependency delta | `300000` ms | boundary-case JSON, journal/cursor timeline, terminal checkpoint |
 | `layerstack.phase1.retention-gc.tiny` | bench / `run-now-tiny-bench` | diagnostic retention/GC loop | fixed ~16 MiB mixed corpus; depths 1/8/32; one warmup; ≥5 alternating pairs | publish, read, retain, sweep, compact, clean up through public surfaces | every repetition matches tree/object oracle and cap invariants; no normative percentile claim | raw paired durations and diagnostic threshold | peak/settled categorized allocated bytes | logical final/high-water gauges plus explicit cgroup/RSS availability | frozen dependency evidence and pinned-environment manifest | `60000` ms | plan/result JSON, raw samples, environment, disk series, memory series, logs |
-| `layerstack.phase1.retention-gc.qualification` | release / `planned-final` | cumulative final qualification | Stage 11 scale/history/required-host matrix using the sole pinned Ubuntu 24.04 target image | Stage 11 public regression, soak, and benchmark routes | all normative space/RSS/time/soak/portability rows and affected regressions pass | normative paired p50/p95 and ≤5 min pair | full settled/peak envelope | full repeated-cycle adjusted final/peak and RSS gates | required release runners use the pinned Ubuntu 24.04 target; cross-image acceptance is deferred beyond Phase 1 | `300000` ms | Stage 11 qualification bundle only |
+| `layerstack.phase1.retention-gc.qualification` | release / `planned-final` | cumulative final qualification | Stage 11 scale/history/required-host and full Prep 04 Phase-1 image matrix | Stage 11 public regression, soak, and benchmark routes | all normative space/RSS/time/soak/portability rows and affected regressions pass | normative paired p50/p95 and ≤5 min pair | full settled/peak envelope | full repeated-cycle adjusted final/peak and RSS gates | pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root rows; every required row evidenced | `300000` ms per matched invocation | Stage 11 qualification bundle only |
 
-The three live cases each emit exactly one terminal validation checkpoint after cleanup. Complete declarations:
+The five focused/boundary live cases each emit exactly one terminal validation
+checkpoint after cleanup. The tiny wrapper emits its own checkpoint.
+Complete declarations:
 
 ```python
 @pytest.mark.medium
@@ -167,10 +199,10 @@ The three live cases each emit exactly one terminal validation checkpoint after 
 @e2e_test(
     id="layerstack.phase1.retention-gc.retain-leased-root",
     title="Retention and GC preserve every selected or leased root",
-    description="Publishes a deterministic candidate-shadow root graph, closes durable retention epochs, and proves that only unreachable unleased state passes trash, grace, and final recheck while legacy remains authoritative.",
+    description="Publishes the complete deterministic mark-seed graph, distinguishes strong reconstruction edges from weak ancestry, closes durable retention epochs, and proves that only unreachable unleased state passes trash, grace, and final recheck while legacy remains authoritative.",
     features=("workspace-session", "layerstack", "phase1-cas", "retention", "garbage-collection"),
     validations={
-        "terminal": "All selected, pinned, leased, frontier, and in-flight roots reconstruct exactly; unreachable unleased state is deleted only after a complete durable grace epoch; cleanup and authority invariants hold.",
+        "terminal": "Current, root/carrier-leased, pinned, active-branch, configured-retention-ancestor, frontier/in-flight, and pending-transaction roots/objects reconstruct exactly through strong edges; weak ancestry alone is not marked; unreachable unleased state is deleted only after a complete durable grace epoch; cleanup and authority invariants hold.",
     },
     validation_features={
         "terminal": ("layerstack", "retention", "resource-efficiency", "observability"),
@@ -222,12 +254,52 @@ The three live cases each emit exactly one terminal validation checkpoint after 
 ```
 
 ```python
+@pytest.mark.hard
+@pytest.mark.config
+@e2e_test(
+    id="layerstack.phase1.retention-gc.pack-limit-boundaries",
+    title="Pack limits seal before every exact crossing",
+    description="Runs nine isolated below, at, and would-cross live-writer cases for the 64 MiB payload, 100,000-record, and 80 MiB allocated-byte caps.",
+    features=("workspace-session", "layerstack", "phase1-cas", "pack", "benchmark"),
+    validations={
+        "terminal": "All nine P-* cases agree with the pure admission oracle; exact-cap appends are accepted, would-cross records start a new pack, physical allocation agrees with the recorded quantum, no pack exceeds a cap, and resources quiesce.",
+    },
+    validation_features={
+        "terminal": ("layerstack", "pack", "resource-efficiency", "observability", "benchmark"),
+    },
+    execution_surface="cli",
+    owner_id="layerstack-phase1",
+    timeout_ms=300_000,
+)
+```
+
+```python
+@pytest.mark.hard
+@pytest.mark.config
+@e2e_test(
+    id="layerstack.phase1.retention-gc.transaction-limit-boundaries",
+    title="Maintenance transactions persist cursors before exact crossings",
+    description="Runs six isolated below, at, and would-cross cases for the 64 MiB payload and 100,000-record GC/compaction transaction limits.",
+    features=("workspace-session", "layerstack", "phase1-cas", "garbage-collection", "pack", "recovery"),
+    validations={
+        "terminal": "All six T-* cases stay within the first limit reached; a crossing cursor is durable before the record, restart resumes it exactly once, and transaction resources quiesce.",
+    },
+    validation_features={
+        "terminal": ("layerstack", "garbage-collection", "pack", "recovery", "resource-efficiency"),
+    },
+    execution_surface="cli",
+    owner_id="layerstack-phase1",
+    timeout_ms=300_000,
+)
+```
+
+```python
 @pytest.mark.release
 @pytest.mark.config
 @e2e_test(
     id="layerstack.phase1.retention-gc.qualification",
     title="Retention GC and pack qualification matrix",
-    description="Stage 11-only cumulative release matrix for settled space, memory, time, recovery, required-host coverage using the sole pinned Ubuntu 24.04 target image, and regression; cross-image acceptance is deferred beyond Phase 1 and the declaration is cataloged but not selected in Stage 08.",
+    description="Stage 11-only cumulative release matrix for settled space, memory, time, recovery, regression, required-host coverage, and pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, and non-root fixtures; the declaration is cataloged but not selected in Stage 08.",
     features=("layerstack", "phase1-qualification", "retention", "garbage-collection", "pack", "portability"),
     validations={
         "terminal": "All Stage 11 normative gates and required-release matrix rows have executed evidence and no unverified required row.",
@@ -269,12 +341,16 @@ Its plan metadata is: existing schema/version; factors `route × history-depth �
 
 | Boundary / fault | Required assertion | Disposition |
 | --- | --- | --- |
-| root is current, retained-history, pinned, branch, frontier, leased, or in-flight | strong graph and required materialization/object locators remain | `run-now-focused` |
-| provenance-only parent/base is not independently selected | weak edge does not retain its graph | `run-now-focused` |
+| root/object is current, root/carrier-leased, pinned, an active branch head, a configured-retention ancestor, frontier/in-flight, or named by a pending publication journal, hydration, materialization, evacuation, or compaction transaction | direct seed remains; selected-root complete manifest and required materialization/object locators remain through strong reconstruction edges | `run-now-focused` |
+| provenance-only parent/base is not independently selected | weak ancestry edge does not retain its root or graph | `run-now-focused` |
 | object is unreachable and unleased in epoch `N` | rename to trash may occur; unlink may not | `run-now-focused` |
 | epoch `N+1` incomplete, lease/catalog generation changes, or final check unavailable | conservative keep/replan | `run-now-focused` |
 | epoch `N+1` complete and all final generations match | unlink + parent fsync; root reconstruction unaffected | `run-now-focused` |
-| next record would cross exactly one of 64 MiB payload, 100,000 records, 80 MiB allocation | current pack seals before append; record starts a new pack | `run-now-focused` |
+| payload after reservation is `67,108,863`, `67,108,864`, or `67,108,865` bytes with other caps slack | below/at append; would-cross seals first and starts a new pack | `run-now-boundary` |
+| count after reservation is `99,999`, `100,000`, or `100,001` records with other caps slack | below/at append; would-cross seals first and starts a new pack | `run-now-boundary` |
+| complete allocation after reservation is `83,886,080-a`, `83,886,080`, or `83,886,080+a` bytes for measured allocation quantum `a` with other caps slack | below/at append; would-cross seals first; live allocation and pure oracle agree | `run-now-boundary` |
+| GC/compaction payload after reservation is `67,108,863`, `67,108,864`, or `67,108,865` bytes | below/at admit; would-cross persists cursor before record and next transaction resumes once | `run-now-boundary` |
+| GC/compaction count after reservation is `99,999`, `100,000`, or `100,001` records | below/at admit; would-cross persists cursor before record and next transaction resumes once | `run-now-boundary` |
 | crash before pack/footer fsync | target private/unreadable; old locator active | `run-now-focused` |
 | crash after target fsync but before locator CAS | orphan target reaped/quarantined; old locator active | `run-now-focused` |
 | crash with unknown locator CAS result | recovery reads generation; never guesses; old or new complete set | `run-now-focused` |
@@ -286,7 +362,7 @@ Its plan metadata is: existing schema/version; factors `route × history-depth �
 | corruption in pack/footer/index/journal | candidate fails closed/quarantines; legacy stays readable | `run-now-focused` |
 | pack pressure while native depth is low | compaction/evacuation only; squash queue unchanged | `run-now-focused` |
 | command/file/PTY/stdin during/after maintenance | exact bytes/semantics on native carrier; zero CAS/pack lookup | `run-now-focused` |
-| full space/time/RSS and required-host matrix using the sole pinned Ubuntu target | no Stage 08 claim | `planned-final` in Stage 11 |
+| full space/time/RSS, required-host, and Prep 04 Phase-1 image matrix (pinned Ubuntu/Debian glibc, Alpine musl, minimal/distroless, shell-less, read-only, non-root) | no Stage 08 claim | `planned-final` in Stage 11 |
 
 Fixture oracles include typed IDs, canonical logical tree/metadata digest, selected-root reasons, strong/weak edge list, locator generations, epoch records, pack record offsets/lengths/checksums, legacy inventory digest, and expected terminal state.
 
@@ -297,13 +373,16 @@ Preset `layerstack-phase1-tiny-retention-gc` is deliberately smaller than qualif
 - one deterministic ~16 MiB mixed tree with a localized edit, repeated object, incompressible object, and 256 small files;
 - history depths 1, 8, and 32;
 - pack states below/at the 20% individual trigger and below/above the 5% aggregate urgent trigger;
-- one current, one pinned, one leased, and one unreachable root;
+- one each current, root/carrier-leased, pinned, active-branch,
+  configured-retention-ancestor, frontier, in-flight, and
+  pending-transaction root/object; one unreachable root; and one
+  weak-ancestry-only parent/base negative control;
 - one warmup and at least five alternating `legacy control / candidate-shadow maintenance` pairs; prefer 3–5 warmups and 10 samples only if the entire developer loop stays within 30–60 seconds;
 - pre-generated payloads, identical seed/order/image/config/cache class, and no concurrent campaign.
 
 Each cell performs publish → exact read/tree digest → maintenance → exact read/exec → destroy → quiescence. Record raw samples only: elapsed/components, bytes read/written/scanned/copied, logical/allocated bytes by candidate category, pack live/dead/slack, trash and staging, object/locator/root counts, catalog generations, workers/buffers/queues/permits/leases/FDs, cgroup/process-source availability, and authority/fallback/mismatch.
 
-An operation or cell over 60 seconds fails the POC. With fewer than enough independent samples, report median/raw spread only—never p95. The tiny loop may prove cap adherence and logical release; it cannot pass final amplification, RSS, or throughput gates.
+An operation or cell over 60 seconds fails the POC. With fewer than enough independent samples, report median/raw spread only—never p95. The tiny loop may prove trigger, graph, and logical-release behavior, but the separate exact boundary IDs own pack/transaction cap proof. It cannot pass final amplification, RSS, or throughput gates.
 
 ## 7. Memory-stability and reclamation test
 
@@ -346,10 +425,11 @@ the final cross-host qualification. All storage inspection is outside the
 sandbox; the test performs no `sh`, `tar`, `find`, checksum utility,
 libc-specific tool, or package install inside the image. Read-only and
 non-root runtime variants use the same image identity. Stage 11 executes every
-required host/architecture/Docker release-runner row using this same OCI index
-and records the resolved platform manifest; no unexecuted required row is
-called qualified. Cross-image portability is deferred beyond Phase 1 and is
-neither an acceptance nor a retirement gate.
+required host/architecture/Docker release-runner row and the full Prep 04
+Phase-1 image matrix—pinned Ubuntu/Debian glibc, Alpine musl,
+minimal/distroless, shell-less, read-only, and non-root—recording each OCI
+index and resolved platform manifest. No unexecuted required row is called
+qualified; any such row blocks qualification and retirement.
 
 ## 9. Focused and final-stage commands
 
@@ -392,9 +472,42 @@ PYTHONPATH=e2e \
 .venv/bin/python -m pytest \
   e2e/runtime/layerstack_retention_gc/test_retention_gc.py \
   e2e/runtime/layerstack_retention_gc/test_pack_recovery.py \
+  -k 'not pack_limit_boundaries and not transaction_limit_boundaries' \
   --test-repository-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
+
+Run the two boundary checkpoints as separate invocations; do not fold them
+into the focused command or each other:
+
+```bash
+cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
+E2E_IMAGE=ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90 \
+E2E_REBUILD_BINARY=0 \
+PYTHONPATH=e2e \
+.venv/bin/python -m pytest \
+  e2e/runtime/layerstack_retention_gc/test_pack_recovery.py \
+  -k pack_limit_boundaries \
+  --test-repository-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test \
+  --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
+```
+
+```bash
+cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
+E2E_IMAGE=ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90 \
+E2E_REBUILD_BINARY=0 \
+PYTHONPATH=e2e \
+.venv/bin/python -m pytest \
+  e2e/runtime/layerstack_retention_gc/test_retention_gc.py \
+  -k transaction_limit_boundaries \
+  --test-repository-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test \
+  --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
+```
+
+Each invocation has a 300-second watchdog. The expected boundary durations are
+120–240 seconds for the nine pack cases and 75–150 seconds for the six
+transaction cases; these are `ESTIMATED`, not measured. Record matching
+gateway binary/config identity before using `E2E_REBUILD_BINARY=0`.
 
 Use `E2E_REBUILD_BINARY=0` only after the report records matching gateway binary/config identity. `E2E_REBUILD_BINARY=1` may reuse an already-responsive gateway; record actual custody evidence.
 
@@ -448,11 +561,12 @@ PYTHONPATH=e2e \
   --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox
 ```
 
-### DO NOT RUN in Stage 08 — Stage 11 native-host/pinned-Ubuntu-24 matrix
+### DO NOT RUN in Stage 08 — Stage 11 host/image matrix (Ubuntu row shown)
 
-Stage 11 runs this single-image matrix once per applicable required host.
-Pinned Ubuntu 24.04 is the only Phase 1 target image; cross-image portability
-is deferred beyond Phase 1 and is not an acceptance gate.
+Stage 11 runs the matrix driver once per applicable required host and pinned
+fixture: Ubuntu/Debian glibc, Alpine musl, minimal/distroless, and shell-less,
+including read-only and non-root cases. The command below shows only the
+pinned Ubuntu row; running it in Stage 08 does not qualify any matrix row.
 
 ```bash
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
@@ -496,8 +610,10 @@ done
 | --- | --- | --- | --- |
 | logical tree/content/metadata digest | public file/workspace operations each boundary | exact | unchanged for every retained root |
 | legacy inventory digest and route authority | outside inventory + public observation pre/post | exact/delta | legacy bytes unchanged; read/write `legacy_v1`; fallback/mismatch zero |
-| pack payload/records/allocation | pack observation on reserve/seal/recovery | max/exact | ≤64 MiB/100k/80 MiB and seal-before-cross |
-| GC transaction records/payload | journal observation per transaction | max | ≤100k or 64 MiB, whichever first |
+| retention seed reasons and edge classes | catalog/journal fixture oracle at mark and final recheck | exact per declared fixture | current, lease, pin, active branch, configured ancestor, frontier/in-flight, and pending roots/objects marked; strong graph followed; weak ancestry alone skipped |
+| pack boundary case/before/projected/after/decision | all nine `P-*` rows on reserve/seal/recovery | exact, never rounded | below/at append; `67,108,865`, `100,001`, and `83,886,080+a` projections seal before append; no observed pack exceeds caps |
+| filesystem allocation quantum and pack physical allocation | outside `st_blocks*512` plus writer projection | exact per allocation row | recorded and reconciled; unrepresentable exact row is `OPEN` |
+| GC transaction boundary case/before/projected/after/cursor | all six `T-*` rows per transaction/restart | exact | below/at admit; `67,108,865` payload or `100,001` record projection persists cursor before record and resumes once |
 | retention/lease/locator/materialization generations | public bounded observation at mark/trash/final recheck | exact sequence | consistent snapshot and repeated final check |
 | live/dead/slack/trash/unexplained bytes | allocated filesystem inventory | boundary and settled | trigger semantics exact; unexplained persistent bytes zero |
 | last-locator risk/rejected deletion | product counters and fixture locator set | exact | zero committed last-locator losses |
@@ -512,7 +628,16 @@ Every result value uses exactly one provenance label: `measured`, `derived`, `es
 
 ## 11. Stage exit verdict
 
-Pass Stage 08 only when all focused Rust and three live cases pass; the tiny plan validates and completes; every retained/leased root reconstructs; unreachable unleased state obeys grace and final recheck; pack and transaction caps never cross; all failpoints recover old-or-new complete locators; last-locator loss is zero; legacy inventory/authority are unchanged; native hot paths have zero CAS/pack lookups; logical resources quiesce; the physical sentinel stays within its predeclared coarse rule; schemas/catalog validate; cleanup is proven; and external dependency/runtime surface delta is exactly zero.
+Pass Stage 08 only when all focused Rust and five focused/boundary live cases
+pass; the tiny plan validates and completes; every complete root/object seed
+survives through strong reconstruction edges while weak ancestry alone does
+not retain history; unreachable unleased state obeys grace and final recheck;
+all nine pack and six transaction boundary rows pass without rounding; all
+failpoints recover old-or-new complete locators; last-locator loss is zero;
+legacy inventory/authority are unchanged; native hot paths have zero CAS/pack
+lookups; logical resources quiesce; the physical sentinel stays within its
+predeclared coarse rule; schemas/catalog validate; cleanup is proven; and
+external dependency/runtime surface delta is exactly zero.
 
 Block on corruption, ambiguous catalog generation, early deletion, persistent unexplained bytes, cap violation, route ambiguity/fallback, legacy mutation, missing gating evidence, cross-run cleanup, suspected leak, or external delta. A warning may cover only an optional physical source when an approved independent fallback supplies the gate.
 

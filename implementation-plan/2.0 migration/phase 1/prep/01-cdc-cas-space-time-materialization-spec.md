@@ -363,9 +363,25 @@ to reduce new historical bytes, not magically make the source scan `O(edit)`.
 
 ### 4.2 Latency and throughput acceptance
 
-No trustworthy absolute millisecond baseline has yet been recorded for the new
-unified benchmark. Therefore the first benchmark lane must freeze the current
-raw LayerStack numbers on the same hardware before a candidate is judged.
+No trustworthy absolute millisecond value has yet been recorded for the new
+unified benchmark. The no-op command comparator is nevertheless fixed:
+direct, shell-free `docker exec <container-id> ls` in a fresh ordinary Docker
+control container created for the matched invocation from the same pinned OCI
+index/platform digest. The container presents byte- and metadata-equivalent
+pristine root contents and the same cwd, but has no LayerStack-owned `/eos`
+root, candidate materialization, lower/upper/work mount, root lease,
+session/namespace-holder setup, or public API wrapper. Image pull,
+container create/start/health, and fixture setup are excluded from command
+timing and reported separately. The control is already running when timing
+starts immediately before the Docker exec request; timing ends after exit
+status, stdout, and stderr are fully drained.
+
+Pair it with public `exec_command(["ls"])` under the same host, filesystem,
+root contents, cwd, environment, Docker CPU/memory allocation, cache class,
+arm ordering, and output-drain rule. This is a raw Docker execution-floor
+control, not bare-host `fork/exec`. The first benchmark lane must measure that
+control and freeze the current raw LayerStack controls for every other
+operation on the same hardware before a candidate is judged.
 
 For latency, define:
 
@@ -383,7 +399,7 @@ false regression.
 | OverlayFS mount | p50 and p95 `≤ baseline + 5% + 2 ms` |
 | Squash live-remount frozen interval | p50 and p95 `≤ baseline + 5% + 2 ms` |
 | Full squash plan/build/commit | p50 and p95 `≤ baseline + 10% + 5 ms` |
-| No-op `exec_command` | p50 and p95 `≤ baseline + 3% + 0.5 ms` |
+| No-op `exec_command(["ls"])` | against direct shell-free `docker exec <container-id> ls` in the ready ordinary non-LayerStack control defined above, p50 and p95 `≤ baseline + 3% + 0.5 ms` |
 | Native command throughput | At least `97%` of baseline |
 | PTY create | p50 and p95 `≤ baseline + 3% + 1 ms` |
 | PTY resize, signal, stdin, EOF, and drain | p50 and p95 `≤ baseline + 3% + 0.5 ms` |
