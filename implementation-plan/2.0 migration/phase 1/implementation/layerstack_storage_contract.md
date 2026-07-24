@@ -188,9 +188,9 @@ directory.
 There is no durable `/eos/legacy` or `/eos/layer-stack/refs/legacy`. Exact
 v1↔v3 correspondence, catch-up cursor, coverage proof, and retirement proof belong to
 the active common migration operation. Existing v1 bytes stay in their existing
-`manifest.json`, `base`, `layers`, `staging`, and `.layer-metadata` paths until
-retirement; renaming them into a new folder would add migration work without adding a
-consistency boundary.
+`manifest.json`, `workspace.json`, `base`, `layers`, `staging`, and
+`.layer-metadata` paths until retirement; renaming them into a new folder would add
+migration work without adding a consistency boundary.
 
 The target tree has no `/eos/namespace_execution`. Stage 01 redirects all new
 transcripts into the owning session's `executions/` directory. A bounded compatibility

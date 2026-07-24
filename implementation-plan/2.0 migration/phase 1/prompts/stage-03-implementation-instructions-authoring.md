@@ -64,7 +64,7 @@ Read these files completely:
 - `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/implementation/stage_03_incremental_publication/spec.md`
 - `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/implementation/stage_03_incremental_publication/e2e_test.md`
 - `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/implementation/stage_03_incremental_publication/benchmark_note.md`
-- `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/implementation/stage_03_incremental_publication/handoff_from_stage_02.md`
+- `/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs/implementation-plan/2.0 migration/phase 1/implementation/stage_02_portable_root_contract/handoff_to_stage_03.md`
 
 ### Phase 1 authority and quantitative gates
 
@@ -178,7 +178,8 @@ continue.
 Separate Stage 03 work from Stages 04–07. Explicitly forbid Stage 03 from creating or
 implementing:
 
-- packs except an existing-v1 physical locator when genuinely required;
+- packs;
+- locator files except when an imported existing-v1 carrier genuinely requires one;
 - native materializations;
 - GC authority or `gc/CURRENT`;
 - candidate public authority, migration retirement, or public route selection;
@@ -233,13 +234,14 @@ Workloads must continue to see `/eos` masked.
 
 Describe SRP ownership and dependency direction for:
 
-- v3 portable canonical values/codecs and typed IDs;
+- v3 portable content and attribution canonical values/codecs, stable logical
+  `ActorId`, and typed IDs;
 - LayerStack SHA-256 and persistence adapters;
 - SeqCDC streaming reader and typed chunk sink;
 - changed-path external ordering/spool;
 - loose-object store and typed verification;
-- persistent tree/file/segment page mutation and flat diagnostic export;
-- atomic refs and the short writer-lock commit seam;
+- persistent content and attribution page mutation and flat diagnostic export;
+- atomic `{RootId,AttributionRootId}` refs and the short writer-lock commit seam;
 - publication operation state machine and recovery;
 - conflict-key extraction/OCC/rebase;
 - source locators/leases;
@@ -276,15 +278,17 @@ existing structure has no suitable owner.
 
 Use a dependency-aware sequence that starts only after the owner gate:
 
-1. freeze and test v3 codecs and hostile decoder bounds;
+1. freeze and test v3 content/attribution codecs, stable logical `ActorId`, and
+   hostile decoder bounds;
 2. implement deterministic loose-object put-if-absent and typed verification;
 3. implement bounded changed-path capture/order and SeqCDC installation;
-4. implement persistent-page mutation, sharing, and derived flat export;
+4. implement persistent content/attribution page mutation, structural sharing,
+   blame lookup, and derived flat export;
 5. implement atomic refs and GC-barrier hook points without adding GC;
 6. implement publication operation recovery and lost-response repair;
 7. implement OCC conflict keys and bounded disjoint rebase;
 8. implement checkpoints, forks, checkout, revert, and reset;
-9. add v1 locator/source holds only if import needs them;
+9. add v1 locator/source-protection leases only if import needs them;
 10. add optional hidden validation using the normal protocol;
 11. add observability, failpoints, E2E declarations, benchmark operations, verifiers,
     and documentation closure.
@@ -325,7 +329,8 @@ verification row. It must include:
 
 - entry/custody/owner gates;
 - v2 compatibility and approved v3 goldens;
-- all publication/ref/OCC/recovery/source-hold behaviors;
+- all content/attribution publication, ref, blame, OCC, recovery, and
+  source-protection behaviors;
 - exact `/eos` allowed, conditional, and forbidden paths;
 - public-v1 compatibility and `/eos` masking;
 - every E2E family in `e2e_test.md`;
@@ -395,7 +400,8 @@ Provide exact future commands, based on the live repositories, for:
 
 1. formatting and narrow static checks;
 2. v3 core golden/hostile/portability tests;
-3. loose-object, tree mutation, refs, operation recovery, OCC, and source-hold tests;
+3. loose-object, content/attribution mutation, refs, operation recovery, OCC, blame,
+   and source-protection tests;
 4. safe E2E catalog collection;
 5. focused E2E cases feature by feature;
 6. benchmark plan validation;
@@ -499,7 +505,8 @@ Measure allocated physical bytes, not only apparent/logical length. Sample at
 pre-operation, peak, post-commit, post-restart where applicable, and settled
 quiescence. Attribute bytes to the Stage 03-applicable categories:
 
-- loose logical objects and conditional existing-v1 locator/source holds;
+- loose logical content/attribution objects and conditional existing-v1
+  locator/source-protection leases;
 - refs;
 - operation `STATE` and work/staging;
 - metadata;
@@ -509,8 +516,8 @@ quiescence. Attribute bytes to the Stage 03-applicable categories:
 
 Record:
 
-- new unique payload and changed chunk/page bytes;
-- shared unchanged payload/pages;
+- new unique payload plus changed content/attribution chunk/page bytes;
+- shared unchanged content/attribution payload/pages;
 - peak and settled candidate bytes;
 - publication staging amplification;
 - metadata bytes per chunk, segment, and changed path where applicable;
@@ -560,7 +567,8 @@ The handoff template must include:
 - focused product results;
 - every typed E2E result and run ID;
 - three-minute campaign budget/result, sample sufficiency, and raw artifacts;
-- time, space, memory, concurrency, failpoint, source-hold, and `/eos` evidence;
+- time, space, memory, concurrency, failpoint, blame, source-protection, and `/eos`
+  evidence;
 - dependency and portability proof;
 - exact cleanup/quiescence result and retained failed attempts;
 - current Git custody for all repositories;
