@@ -642,7 +642,7 @@ Sole pinned Phase 1 target image:
 
 | Image | OCI index | linux/amd64 manifest | linux/arm64 manifest | Capability case |
 | --- | --- | --- | --- | --- |
-| `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827d7c5425fb57681140e6efb` | public capability profile plus read-only and non-root runtime variants |
+| `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | public capability profile plus read-only and non-root runtime variants |
 
 The same OCI index identity is used on every applicable required host. The
 index is verified and its host-appropriate resolved platform manifest is

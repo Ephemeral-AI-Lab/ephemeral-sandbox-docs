@@ -379,16 +379,24 @@ No field is labeled by user path, object ID, chunk ID, or unbounded error text. 
 
 ## 12. Completion checklist
 
-- [ ] Exact mandated branch `upgrade-2.0-phase-1`, newest approved immutable base, upstream, clean scoped worktrees, and responsible implementer are recorded before implementation.
-- [ ] Legacy behavior, v1 fixtures, `/eos` layout, and public CLI output frozen.
-- [ ] Focused config, observation, golden, failpoint, and feature-off route tests pass.
-- [ ] Existing native command/file/PTY behavior—including unsupported PTY cases—is unchanged.
-- [ ] Tiny paired loop and same-process cleanup sentinel complete in 30–60 seconds.
-- [ ] Logical gauges return to declared idle; physical samples fall within the predeclared raw noise rule.
-- [ ] Exact dependency/package/feature/direct-edge/system/service/helper snapshots compare equal.
-- [ ] The shared standard-library dependency-delta verifier rejects package, version, source, checksum, feature, and direct-edge drift and is available for every later stage.
-- [ ] Required host rows use the sole pinned Ubuntu 24.04 OCI index, and its resolved platform manifest is recorded without false qualification.
-- [ ] All evidence schemas validate and artifacts are retained under run-owned state.
-- [ ] SRP/cycle/forbidden-edge audit passes; no test support entered production `src/`.
-- [ ] No product durable format, candidate artifact, branch, external dependency, service, or `/eos` path was added.
-- [ ] Full normative time/space/RSS/portability qualification remains explicitly deferred to Stage 11.
+Closure status recorded on 2026-07-24 in test-report Iteration 56. `[x]`
+means the point passed or has the explicit owner disposition stated on that
+line. The historical entry capture remains immutable: its original branch
+preflight was superseded after the owner required both Stage 00 commits to be
+saved on `upgrade-2.0-phase-1`. The measured 78.22-second tiny run is retained
+and its duration threshold alone is owner-waived; its correctness,
+quiescence, resource, and custody assertions remain gating.
+
+- [x] Exact mandated branch `upgrade-2.0-phase-1`, immutable bases, upstream state, worktree scope, and responsible implementer are recorded; the original pre-implementation branch record is closed by the explicit owner-approved supersession in Iteration 56 rather than rewritten.
+- [x] Legacy behavior, v1 fixtures, `/eos` layout, and public CLI output frozen.
+- [x] Focused config, observation, golden, failpoint, and feature-off route tests pass.
+- [x] Existing native command/file/PTY behavior—including unsupported PTY cases—is unchanged; immutable tree objects and PTY test bytes are exact across the Stage 00 commit boundary.
+- [x] Tiny paired loop and same-process cleanup sentinel completed in 78.22 seconds; the owner explicitly waived only the 30–60 second duration requirement.
+- [x] Logical gauges return to declared idle; physical samples fall within the predeclared raw noise rule.
+- [x] Exact dependency/package/feature/direct-edge/system/service/helper snapshots compare equal.
+- [x] The shared standard-library dependency-delta verifier rejects package, version, source, checksum, feature, and direct-edge drift and is available for every later stage.
+- [x] Required host rows use the sole pinned Ubuntu 24.04 OCI index, and its resolved platform manifest is recorded without false qualification.
+- [x] All evidence schemas validate and artifacts are retained under run-owned state.
+- [x] SRP/cycle/forbidden-edge audit passes; no test support entered production `src/`.
+- [x] No product durable format, candidate artifact, external dependency, service, or `/eos` path was added; the mandated implementation branch is the sole Stage 00 branch.
+- [x] Full normative time/space/RSS/portability qualification remains explicitly deferred to Stage 11.

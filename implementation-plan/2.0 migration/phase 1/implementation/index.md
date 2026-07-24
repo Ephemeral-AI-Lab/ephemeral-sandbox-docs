@@ -917,7 +917,7 @@ there are no `qualified` or `contract-tested` target rows.
 
 | Fixture | OCI index digest | linux/amd64 manifest | linux/arm64 manifest | Case | Planning status |
 | --- | --- | --- | --- | --- | --- |
-| Ubuntu 24.04 | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827d7c5425fb57681140e6efb` | all Phase 1 E2E, including read-only/non-root variants | unverified target |
+| Ubuntu 24.04 | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | all Phase 1 E2E, including read-only/non-root variants | unverified target |
 
 Every Phase 1 E2E execution verifies this OCI index identity and records its
 resolved platform manifest; tag-only evidence does not count. No second target

@@ -196,16 +196,16 @@ Sole Phase 1 target image recorded on 2026-07-24:
 
 | Fixture | OCI index digest | linux/amd64 manifest | linux/arm64 manifest | Stage 00 status |
 | --- | --- | --- | --- | --- |
-| `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827d7c5425fb57681140e6efb` | contract record; arm64 runnable here, not yet qualified |
+| `ubuntu:24.04` | `sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90` | `sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf` | `sha256:7f622ca8766bccb22f04242ecb6f19f770b2f08827dc4b8c707de5e78a6da7ab` | raw index identity verified; arm64 runnable here, not yet qualified |
 
 The same Ubuntu OCI index is used on every applicable required host, and each
-run records and verifies the resolved platform manifest. The arm64 digest above
-must be rechecked against the captured raw OCI index before implementation; any
-transcription mismatch fails artifact validation rather than silently resolving
-the tag. Read-only and non-root runtime variants of this image are allowed. No
-image is a product dependency and no target image helper is added. Cross-image
-portability is deferred beyond Phase 1 and is neither an acceptance nor a
-retirement gate.
+run records and verifies the resolved platform manifest. Test-report Iteration
+56 records the owner-authorized correction of the earlier transcribed arm64
+value to the descriptor contained in the immutable captured raw index. The
+index, tag, and historical captures were not changed. Read-only and non-root
+runtime variants of this image are allowed. No image is a product dependency
+and no target image helper is added. Cross-image portability is deferred beyond
+Phase 1 and is neither an acceptance nor a retirement gate.
 
 ## 9. Focused and final-stage commands
 
@@ -232,14 +232,15 @@ cargo metadata --locked --all-features --format-version 1 \
 
 cd /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-test
 .venv/bin/python e2e/tools/verify_external_dependency_delta.py \
-  --baseline .e2e-state/baselines/layerstack-phase1/<invocation_id> \
-  --candidate .e2e-state/tmp/<run_id>/metadata-after.json \
-  --product-root /Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox \
-  --require-exact-external-delta-zero
+  .e2e-state/evidence/<entry_capture>/stage00-entry-baseline.json \
+  .e2e-state/evidence/<post_capture>/stage00-post-baseline.json \
+  --output .e2e-state/evidence/<closure_capture>/dependency-delta.json
 ```
 
-Resolve `<run_id>` and `<invocation_id>` to explicit run-owned values and repeat
-the comparison for every frozen target/feature invocation.
+Resolve every placeholder to an explicit run-owned capture. Each capture
+contains the complete frozen invocation inventory, and the verifier fails
+unless package identities, versions, sources, checksums, feature pairs,
+direct-edge multisets, and contract-file records are exact.
 
 ### Focused E2E
 

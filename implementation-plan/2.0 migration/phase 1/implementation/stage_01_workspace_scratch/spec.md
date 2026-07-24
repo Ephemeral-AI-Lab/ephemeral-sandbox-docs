@@ -313,15 +313,20 @@ The benchmark artifact separately records process RSS, anonymous/file-backed RSS
 
 ## 12. Completion checklist
 
-- [ ] All listed product/test/doc files exist; no `/eos/attempts` or transcript CAS path exists.
-- [ ] Workspace locator alone composes session/execution paths; containment, permissions, symlinks, and ID encoding are tested.
-- [ ] Command owner release precedes recursive session deletion; no strong cycle or detached task exists.
-- [ ] Full annotated before/after `/eos` tree and legacy-root lifecycle match outside inspection.
-- [ ] Legacy LayerStack formats, public CLI, native execution, and `manager.json` compatibility are unchanged.
-- [ ] Focused Rust, packaged route, restart/cancel/collision, and cleanup proofs pass.
-- [ ] Tiny paired benchmark and short repeated-cycle sentinel meet stage-gating bounds.
-- [ ] Logical resources return to warmed idle; RSS/cgroup results and attribution are complete.
-- [ ] Resolved external packages/features/direct-edge multiset are identical; no system/runtime/image helper is added.
-- [ ] Rollback to the legacy locator is demonstrated without data migration.
-- [ ] Machine-readable artifacts and append-only test report link from the stage E2E plan.
-- [ ] CDC/CAS, materialization, publication, packs/GC, squash, candidate authority, and full qualification remain explicitly assigned to Stages 03, 05, 07, 08, 09, 10, and 11.
+- [x] Product and test repositories are on `upgrade-2.0-phase-1`; their starting HEADs, upstreams, complete worktree status, and preserved Stage 00 diff are recorded before Stage 01 edits.
+- [x] The frozen Stage 00 functional, dependency, environment, E2E, and benchmark evidence is referenced rather than rerun; the pinned Ubuntu arm64 digest mismatch has an explicit owner-approved resolution before any Stage 01 pass is claimed.
+- [x] One validated workspace locator alone composes session, execution, and transcript paths; canonical-ID, separator, dot-segment, NUL, containment, symlink-parent, and out-of-root rejection tests pass.
+- [x] New execution directories and transcripts are owner-only; the annotated before/after `/eos` tree proves every new transcript is under `/eos/workspace/<session>/executions/<execution>/transcript.log` and no new write appears under `/eos/namespace_execution`.
+- [x] Command completion and cancellation close resources, evict terminal ownership, release the execution lease, and delete its leaf before a move-only zero-owner proof permits recursive session deletion; no strong cycle, detached task, or live-owner deletion exists.
+- [x] Join-deadline failure preserves a bounded recovery artifact, blocks unsafe deletion, and completes safely after restart; cleanup and lease release are idempotent.
+- [x] The legacy reaper is restart-safe and bounded to 1,024 entries, depth 3, and the declared minimum age; active, recent, foreign, malformed, ambiguous, and symlink entries are preserved while eligible old residue is removed.
+- [x] Structured evidence reports the workspace-scoped route, bounded/hashed identity, lease/terminal/FD ownership, live/high-water bytes, teardown/deadline counts, legacy scan outcomes, cleanup state, and quiescence without unbounded labels or path logs.
+- [x] LayerStack v1 formats, `/workspace`, public command/CLI output, native execution, limits, `manager.json`, and `.export` compatibility remain unchanged; no `/eos/attempts`, transcript CAS path, or later-stage durable format exists.
+- [x] Focused format, clippy, workspace/runtime Rust, configuration, observation, query, CLI, and catalog checks pass without substituting a broad suite for a missing focused filter.
+- [x] Packaged cases `phase1.stage01.workspace-scratch.lifecycle` and `phase1.stage01.workspace-scratch.restart-reap` pass with fresh-binary identity, run-owned cleanup, route/permission/cancel/restart/reap evidence, and no legacy-root write.
+- [x] Tiny case `phase1.stage01.workspace-scratch.tiny` uses `workspace-scratch-tiny.yml`, seed `0x5A01`, the same-revision legacy adapter control, two warmup pairs, six alternating measured pairs, one cancellation, and the declared operation/run deadlines.
+- [x] Tiny benchmark throughput, latency diagnostic, RSS/cgroup, quiescence, logical-owner settlement, allocated-disk, and Theil–Sen trend gates pass; no unsupported p95 or normative Stage 11 claim is made.
+- [x] Exact Stage 00-to-Stage 01 external package, feature, direct-edge, and semantic environment comparisons are empty; no Cargo, Python, system, service, runtime, or image helper dependency is added.
+- [x] Rollback to the legacy locator is demonstrated without data migration, while recovery never broad-deletes either the workspace-scoped or legacy root.
+- [x] Strict machine-readable schemas accept all run-owned artifacts and fail closed on missing, malformed, truncated, wrong-run, or contradictory evidence; the append-only test report records command, timing, binary identity, run ID, artifact links, and cleanup custody.
+- [x] CDC/CAS, materialization, publication, packs/GC, squash, candidate authority, affected regression, host/release-runner matrix, sustained soak, and full Phase 1 qualification remain explicitly assigned to Stages 03, 05, 07, 08, 09, 10, and 11.
