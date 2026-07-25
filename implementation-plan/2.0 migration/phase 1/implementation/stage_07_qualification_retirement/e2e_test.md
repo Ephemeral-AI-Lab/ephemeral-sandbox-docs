@@ -14,7 +14,7 @@ work, not optional context:
 | `S07-X03-02` | §3 performance, space and memory | complete Preparation 04 64/256/1024 MiB input/history × 1/16/64-root RSS/resource matrix and bounded-owner counters |
 | `S07-X03-03` | §3 and §8 evidence/decision | matched five-minute baseline/candidate campaigns, three valid invocations per selection cell and explicit threshold decision |
 | `S07-X03-04` | §§1–4 cumulative/fault/soak/rollback | exhaustive corpus, long soak, restart storm, release variance and exact cleanup/residue evidence |
-| `S07-X03-05` | §§1 and 3 | real Stage 04 cold/warm materialization, strict activation, lease/fence and capability replay |
+| `S07-X03-05` | §§1 and 3 | real Stage 04 cold/warm materialization plus Stage 04.5 common publication, bounded ownership/recovery, strict activation, lease/fence and capability replay |
 | `S07-X03-06` | §§1–3 and 5 | real Stage 05 common replacement, two-phase root admission, two-cycle GC, singleton retirement, and fault replay |
 | `S07-X03-07` | §§4–5 | genuine Stage 06 rollback/re-cutover plus separately approved Stage 07 retirement and candidate-only restart |
 | `S07-X03-08` | §§1, 2 and 5 | retained content/attribution/checkpoint proof across every real destructive later-stage transition |

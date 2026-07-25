@@ -10,6 +10,11 @@ Normative dependencies:
 - [Stage 04 incoming handoff from completed Stage 03](handoff_from_stage_03.md)
 - [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
+[Stage 04.5](../stage_04_5_materialization_gc_alignment/spec.md) supersedes
+this document for outgoing publication, recovery/resource ownership, and
+generation retirement. Stage 04 remains the private builder and activation
+owner; it has no deletion authority.
+
 ## 1. Outcome
 
 Stage 04 reconstructs a private v3 root into a verified native generation and activates
@@ -42,14 +47,16 @@ A generation is immutable after verification. Its manifest names:
 
 Build output is private operation work until every logical object is verified, the
 native tree is synced, and the manifest is durable. Only then may `CURRENT` change.
-Old generations remain usable until all active reader/session leases release and
-grace/final recheck permits deletion.
+Old generations remain usable until all active reader/session leases release.
+Stage 04 never deletes them; Stage 05 alone evaluates retirement after the
+Stage 04.5 common handoff.
 
 `materializations/` is a reconstructible managed native view, but it is not an
 unprotected best-effort cache. A generation may be selected by `CURRENT`, leased by
 sessions, explicitly pinned, or temporarily be the last verified native locator.
-Those conditions prevent eviction. Only unreachable, unleased, non-current,
-non-last-locator generations pass grace/final recheck deletion.
+Those conditions prevent eviction. Stage 04 has no eviction path. Stage 05 may
+retire an unreachable, unleased, non-current, non-last-locator generation only
+through its typed eligibility checks and singleton retirement ledger.
 
 The complete relationship to `/eos/workspace` is defined by
 [the full `/eos` tree](../layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree):
@@ -165,3 +172,8 @@ unless a benchmark cell declares a maximum root size; total cold work remains `O
 - Linux/Docker/backend capability claims are limited to measured matrix cells; no
   universal or image-percentage claim is made;
 - public authority remains v1.
+
+Passing the Stage 04 functional exit does not authorize Stage 05 implementation.
+[Stage 04.5](../stage_04_5_materialization_gc_alignment/spec.md) is the mandatory
+outgoing gate that aligns private construction, publication, recovery, resource
+ownership, and the no-deletion boundary with Stage 05.

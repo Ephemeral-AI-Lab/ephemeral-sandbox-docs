@@ -25,7 +25,7 @@ binds them to the exact release artifact:
 | `S07-X03-02` | Preparation 04 64/256/1024 MiB input/history × 1/16/64-root RSS/resource matrix | — | `OPEN` |
 | `S07-X03-03` | matched five-minute baseline/candidate campaigns and three-invocation selection decision | — | `OPEN` |
 | `S07-X03-04` | exhaustive corpus, long soak, restart storm and release variance | — | `OPEN` |
-| `S07-X03-05` | release replay of real Stage 04 materialization/activation | — | `OPEN` |
+| `S07-X03-05` | release replay of real Stage 04 materialization/activation and Stage 04.5 lifecycle/resource alignment | — | `OPEN` |
 | `S07-X03-06` | release replay of real Stage 05 common replacement, two-phase admission, two-cycle GC, singleton retirement, and squash | — | `OPEN` |
 | `S07-X03-07` | Stage 06 rollback/re-cutover plus separately approved retirement | — | `OPEN` |
 | `S07-X03-08` | attribution/checkpoint survival through all real destructive transitions | — | `OPEN` |

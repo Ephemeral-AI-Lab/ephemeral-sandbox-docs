@@ -1,12 +1,15 @@
 # LayerStack Phase 1 implementation plan
 
 Status: Stage 02 portable-root and Stage 03 corrected-identity/private-publication
-slices are **POC PASS**. Stage 04 is the next implementation boundary. Cumulative
-performance/release qualification remains open in Stage 07.
+slices are **POC PASS**. Stage 04 implementation exists, but its evidence and the
+Stage 04.5 materialization/GC alignment gate remain **OPEN**. Stage 05 cannot start
+until Stage 04.5 passes. Cumulative performance/release qualification remains open
+in Stage 07.
 
-Phase 1 uses **five contiguous implementation stages after Stage 02**, not nine.
-The merged stage directories are removed; the active sequence is Stage 03 through
-Stage 07.
+Phase 1 uses **six ordered implementation boundaries after Stage 02**, not nine:
+Stage 03, Stage 04, the Stage 04.5 compatibility gate, and Stages 05–07. Stage 04.5
+adds no authority or deletion feature; it aligns Stage 04 with the Stage 05 common
+lifecycle before destructive work begins.
 
 The normative storage and failure contract is
 [LayerStack Phase 1 minimal storage contract](layerstack_storage_contract.md).
@@ -139,11 +142,12 @@ safe point to correct the format.
 | named checkpoint, clean fork | one content/attribution ref/head; no payload copy | Stage 03 / Stage 07 |
 | dirty checkpoint | ordinary publication then one checkpoint ref | Stage 03 / Stage 07 |
 | checkout/revert/reset | session selection / new publication / head move | Stage 03 / Stage 07 |
-| warm native execution | preverified materialization `CURRENT`; native-only route | Stage 04 / Stage 07 |
-| cold reconstruction/on-demand materialization | bounded streamed generation build | Stage 04 / Stage 07 |
-| bounded MCTS native depth | inactive refs only; active private uppers; materialization flattening | Stage 04 / Phase 2 suites |
+| warm native execution | preverified materialization `CURRENT`; native-only route | Stage 04 / Stage 04.5 / Stage 07 |
+| cold reconstruction/on-demand materialization | bounded streamed private generation build and common publication seam | Stage 04 / Stage 04.5 / Stage 07 |
+| bounded MCTS native depth | inactive refs only; active private uppers; materialization flattening | Stage 04 / Stage 04.5 / Phase 2 suites |
+| materialization/GC lifecycle alignment | one common operation lifecycle, shared resource governor, no Stage 04 deletion | Stage 04.5 / Stage 07 |
 | compaction without identity change | pack/locator pointer replacement | Stage 05 / Stage 07 |
-| checkpoint survival across squash | squash is materialization generation replacement | Stage 05 / Stage 07 |
+| checkpoint survival across squash | Stage 04.5 private replacement plus Stage 05 common publish/retirement | Stage 04.5 / Stage 05 / Stage 07 |
 | concurrent GC safety | disk mark runs, two-phase root admission, two complete negative observations, final typed recheck | Stage 05 / Stage 07 |
 | migration and authority rollback | one authority state; verified on-demand reverse materialization | Stage 06 / Stage 07 |
 | Phase 3 backend portability | provider-neutral objects/refs; physical adapters only | contract / provider contract suites |
@@ -194,6 +198,21 @@ mode. Multiple sessions may share one read-only generation; a head or `CURRENT`
 change never mutates an admitted session. Strict routing is an exit gate in this
 stage, not another stage.
 
+### Stage 04.5 — materialization/GC lifecycle alignment
+
+Documents:
+
+- [spec](stage_04_5_materialization_gc_alignment/spec.md)
+- [E2E plan](stage_04_5_materialization_gc_alignment/e2e_test.md)
+- [benchmark note](stage_04_5_materialization_gc_alignment/benchmark_note.md)
+
+This compatibility gate separates private construction from common publication,
+collapses materialization durability into the shared four-state operation lifecycle,
+moves workers/bytes/FDs/recovery under the shared bounded storage owner, and removes
+Stage 04's independent time-based generation deletion. It creates no new top-level
+state or deletion authority. Stage 04 continues to build and verify native generations;
+Stage 05 remains the first owner of GC, old-generation retirement, and unlink.
+
 ### Stage 05 — retention, physical compaction, GC, and squash
 
 Documents:
@@ -204,9 +223,10 @@ Documents:
 
 This stage adds pack/locator maintenance, disk-backed tracing GC, two-phase root
 admission, two complete negative observations, policy retention, one shared verified
-generation lifecycle, and one singleton exact-path retirement ledger. Stage 04 still
-owns materialization/squash construction; Stage 05 owns generic old-generation
-retirement after the existing materialization-generation switch.
+generation lifecycle, and one singleton exact-path retirement ledger. Stage 04/04.5
+owns private materialization/squash construction and verification. The common
+publisher performs bounded root admission and selector switching; Stage 05 owns the
+durable old-generation handoff, retirement decision, and deletion.
 
 ### Stage 06 — reversible candidate authority
 
@@ -250,12 +270,13 @@ the eight release-qualification items transferred from Stage 03 `S03-Q07`.
 | 06 strict candidate activation | **merged into new Stage 04** as its exit gate | Strict routing adds no persisted representation. |
 | 07 durable publication | **merged into Stage 03** | The first durable root already needs recovery, refs, source protection, and idempotency. |
 | 08 retention/GC/packs | **renumbered new Stage 05** | Physical deletion and concurrent reachability are a distinct high-risk boundary. |
-| 09 identity-preserving squash | **merged into new Stage 05** | Squash is the same verified-generation build and pointer switch as materialization. |
+| 09 identity-preserving squash | **split across Stage 04.5 and Stage 05** | Stage 04.5 owns the private verified generation; Stage 05 supplies common publication and retirement. |
 | 10 candidate authority | **renumbered redesigned Stage 06** | Public authority and reversible migration are a distinct rollout risk. |
 | 11 qualification/retirement | **renumbered Stage 07 gate** | Qualification and destructive retirement must remain separately approved. |
 
-Thus there are five active stages: **03, 04, 05, 06, and 07**. There are no mapping
-stubs or reserved empty stage directories.
+Thus there are six active implementation boundaries: **03, 04, 04.5, 05, 06,
+and 07**. Stage 04.5 is a tested compatibility gate, not a mapping stub, empty
+directory, or new authority surface.
 
 ## 6. Former Stage 04 “shadow” decision
 
@@ -287,7 +308,8 @@ detailed migration progress and proof remain in the common migration operation.
 | --- | --- | --- |
 | 02→03 | canonical identity and incremental/crash-safe logical publication | Format errors contaminate every later root. |
 | 03→04 | logical correctness before native reconstruction/routing | A native bug must not obscure an object/ref bug. |
-| 04→05 | verified reads before physical deletion/compaction | GC introduces irreversible risk. |
+| 04→04.5 | functional native reconstruction before lifecycle alignment | Alignment must not obscure provider reconstruction defects. |
+| 04.5→05 | bounded common publication/recovery with no Stage 04 deletion before GC | GC introduces irreversible risk and may start only from an aligned producer. |
 | 05→06 | private durability before public authority | Migration failure must not become public corruption. |
 | 06→07 | reversible authority before default/retirement | Rollout evidence and irreversible removal need separate approval. |
 

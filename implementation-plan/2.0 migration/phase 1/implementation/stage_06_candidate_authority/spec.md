@@ -6,7 +6,8 @@ Normative dependencies:
 
 - [implementation index](../index.md)
 - [minimal storage contract](../layerstack_storage_contract.md)
-- Stages 03–05 complete
+- [Stage 04.5 materialization/GC alignment](../stage_04_5_materialization_gc_alignment/spec.md)
+- Stages 03, 04, 04.5, and 05 complete
 - [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 ## 1. Outcome

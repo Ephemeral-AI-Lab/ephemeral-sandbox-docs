@@ -9,6 +9,7 @@ Normative dependencies:
 - [implementation index](../index.md)
 - [minimal storage contract](../layerstack_storage_contract.md)
 - [Stage 04](../stage_04_candidate_materialization/spec.md)
+- [Stage 04.5 alignment gate](../stage_04_5_materialization_gc_alignment/spec.md)
 - [Stage 06](../stage_06_candidate_authority/spec.md)
 - [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
@@ -42,8 +43,10 @@ The following remain unchanged:
 - `RootId` and `AttributionRootId` are independent of physical storage;
 - packing, locator consolidation, evacuation, squash, and retirement do not change
   logical identity or attribution;
-- Stage 04 owns construction and verification of materialization/squash generations;
-- Stage 05 owns generic old-generation retirement after Stage 04 switches `CURRENT`;
+- Stage 04/04.5 owns private construction and verification of materialization/squash
+  generations;
+- the common publisher performs bounded GC admission and `CURRENT` replacement;
+  Stage 05 owns durable old-generation handoff, eligibility, and retirement;
 - v1 remains public authority and is not deleted; Stage 06 owns authority switching and
   Stage 07 owns irreversible legacy retirement;
 - LayerStack owns only `/eos/layer-stack`; it never scans or deletes
@@ -142,18 +145,18 @@ rules, encoded in an ordinary common operation:
 stateDiagram-v2
     [*] --> Building
     Building --> Ready: bytes and manifest verified and synced
-    Building --> Aborted: cancel, error, or conservative recovery
+    Building --> Terminal: cancel, error, or conservative recovery
     Ready --> Published: selector atomically replaced
-    Ready --> Aborted: loses fence or fails recheck
+    Ready --> Terminal: loses fence or fails recheck
     Published --> Terminal: old subject handed to retirement ledger
-    Aborted --> Terminal: exact private work reaped
 ```
 
 - `Building` output is private and cannot be selected.
 - `Ready` names immutable bytes, their checksums, exact relative paths, and verification
   result. It still has no visibility.
 - `Published` is recorded only after the selector replacement and parent fsync.
-- `Terminal` may be compacted after the bounded response/recovery window.
+- `Terminal` records success or an aborted/cancelled/failed outcome and may be
+  compacted after the bounded response/recovery window.
 - A pack has no independent `CURRENT`: it becomes usable only when a verified locator
   generation naming it is published.
 - Evacuation is pack/locator replacement followed by retirement of source carriers. It

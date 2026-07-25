@@ -9,6 +9,13 @@ prose, Stage 03 evidence, a planned command, or source inspection into a Stage 0
 `PASS`. The focused benchmark is Stage 04 POC evidence only. Stage 07 release
 qualification remains `DEFERRED_STAGE_07`.
 
+Supersession notice: for work intended to enter Stage 05,
+[Stage 04.5](../stage_04_5_materialization_gc_alignment/spec.md) replaces this
+guide's materialization-specific publication/recovery phases, private worker
+ownership, grace tickets, and direct generation-deletion tasks. Do not implement
+or enable those retirement paths. Stage 04 remains responsible for private native
+construction, verification, activation, and exact session leases.
+
 ## 1. Status, authority, source ledger, and custody
 
 ### 1.1 Authority order

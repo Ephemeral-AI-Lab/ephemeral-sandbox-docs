@@ -2,6 +2,11 @@
 
 Status: `NOT_RUN`.
 
+[Stage 04.5](../stage_04_5_materialization_gc_alignment/e2e_test.md)
+supersedes this plan for common publication, bounded recovery/resource ownership,
+and generation retirement. Stage 04 E2E must not exercise a direct generation
+deletion path.
+
 Entry evidence and inherited invariants are recorded in
 [`handoff_from_stage_03.md`](handoff_from_stage_03.md). Stage 04 execution must
 preserve the Stage 03 v2/v3 identities, public `legacy_v1` authority, exact
@@ -58,7 +63,8 @@ recoverable; the current/last case fails closed and retains source/object data.
 - switching `CURRENT` does not invalidate an admitted session;
 - publishing a new branch head does not remount or mutate admitted sessions; a new or
   explicitly checked-out session selects the new root;
-- old generation deletion waits for all leases plus grace/final recheck;
+- Stage 04 retains old generations and exposes exact lease/hold evidence for
+  Stage 05; only Stage 05 tests deletion eligibility and unlink;
 - cancellation, panic, timeout, daemon shutdown, and restart leave no detached task,
   permit, FD, mapping, mount, or temporary path;
 - build admission, FD pressure, mapping pressure, and upper-space exhaustion apply

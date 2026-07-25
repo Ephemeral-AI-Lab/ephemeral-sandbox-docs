@@ -9,7 +9,8 @@ Normative dependencies:
 - [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 - [Stage 03 final handoff](../stage_03_incremental_publication/handoff_to_stage_04.md)
 - [Stage 03 benchmark note](../stage_03_incremental_publication/benchmark_note.md)
-- all Stage 03–06 exit evidence
+- [Stage 04.5 alignment gate](../stage_04_5_materialization_gc_alignment/spec.md)
+- all Stage 03–06 exit evidence, including Stage 04.5
 
 ## 0. Imported Stage 03 deferrals
 
@@ -26,7 +27,7 @@ environment, cleanup, and approval.
 | `S07-X03-02` | full Preparation 04 64/256/1024 MiB input/history × 1/16/64-root RSS matrix | final publication, materialization, pack/locator, GC and authority routes | Preparation 04 matrix with idle/peak/settled RSS, queues, buffers, workers/tasks, FDs/mappings, cache/permit ownership, raw distributions and cap verdicts | `OPEN` |
 | `S07-X03-03` | full five-minute matched candidate/baseline allowance and three-invocation selection-advantage decision | qualified baseline/candidate pair on the same release revision, corpus and host cell | matched five-minute campaigns plus at least three valid invocations per decision cell, variance and exclusion accounting, threshold comparison and explicit selection decision | `OPEN` |
 | `S07-X03-04` | exhaustive corpus, long-duration soak, restart storm and release-variance matrix | all Stage 03–06 mechanisms and fault seams integrated | corpus manifest/digest, soak duration, restart/fault schedule, per-release distributions, cleanup ledger, unexplained-residue zero and bounded rollback behavior | `OPEN` |
-| `S07-X03-05` | real Stage 04 materialization/activation behavior | Stage 04 exit evidence | release-artifact replay of exact cold reconstruction, strict no-fallback warm route, generation fencing/leasing, capability rejection and resource/space bounds | `OPEN` |
+| `S07-X03-05` | real Stage 04 materialization/activation behavior and Stage 04.5 lifecycle alignment | Stage 04 and Stage 04.5 exit evidence | release-artifact replay of exact cold reconstruction, strict no-fallback warm route, common publication/root admission, generation fencing/leasing, bounded recovery/ownership, capability rejection and resource/space bounds | `OPEN` |
 | `S07-X03-06` | real Stage 05 packs, locator compaction, GC, squash and destructive retention | Stage 05 exit evidence | release-artifact replay of common verified replacement, two-phase root admission, two complete GC observations, singleton `Pending`/`Deleting`/`Done` retirement, restart and last-location safety | `OPEN` |
 | `S07-X03-07` | Stage 06 public authority cutover/fallback plus Stage 07 retirement | Stage 06 reversible cutover/rollback exit evidence | genuine candidate→v1 rollback, verified v1 publication, re-cutover, separate qualification/default/retirement approvals, evacuation proof and candidate-only restart | `OPEN` |
 | `S07-X03-08` | end-to-end attribution/checkpoint survival through real later-stage destructive operations | `S07-X03-05` through `S07-X03-07` prerequisites | immutable attribution and retained checkpoint roots survive materialize→squash→compact→GC→restart→cutover/rollback→retirement rehearsal with unchanged content identity and exact blame | `OPEN` |
