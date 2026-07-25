@@ -1,14 +1,21 @@
 # Stage 03 implementation instructions — corrected identity and complete private publication
 
-> **Instruction status:** authoring complete; implementation evidence is `NOT_RUN`.
+> **Instruction status:** Stage 03 implementation and mandatory evidence are
+> complete; final verdict is **POC PASS**.
 >
-> **Current implementation gate:** `BLOCKED`. No recorded owner decision freezes the
-> complete v3 wire contract and benchmark corpus required by Stage 03. Do not write v3
-> product code, freeze v3 goldens, or persist v3 state until that decision exists.
+> **Closure:** `S03-G01–S03-G10`, `S03-I01–S03-I11`, `S03-E01–S03-E08`,
+> `S03-B01`, `S03-D01`, `S03-L01`, `S03-R01`, `S03-A01`, `S03-DOC01`, and
+> `S03-H01` are `PASS`. The approved
+> [`PRC-STAGE03-OWNER-DECISION-G01.1`](contract_v3_owner_decision_g01_1.md) and
+> immutable [`stage03_v3_owner_corpus_v1.json`](stage03_v3_owner_corpus_v1.json)
+> freeze the complete v3 wire contract and corpus. See the final
+> [Stage 04 handoff](handoff_to_stage_04.md), final
+> [benchmark note](benchmark_note.md), and
+> [dependency/portability audit](stage03_dependency_portability_audit_20260725.md).
 >
-> This document is an execution guide, not a format decision, specification amendment,
-> test result, benchmark result, or authority claim. The retained Stage 00–02 evidence
-> listed below remains valid only for the claims made by those stages.
+> This document remains the canonical execution guide and tracker. It does not
+> amend the approved format or grant later-stage authority. Retained Stage 00–02
+> evidence remains valid only for the claims made by those stages.
 
 ## 0. Source status and reconciliation
 
@@ -40,8 +47,8 @@ means the requested path was checked and did not exist; it is not represented as
 | --- | --- | --- | --- |
 | [`spec.md`](spec.md) | Present; status says specification only and blocked on the v3 amendment | Stage outcome, entry conditions, identity exclusions, publication/ref/recovery protocol, complexity, exit criteria | Read through EOF |
 | [`e2e_test.md`](e2e_test.md) | Present; `NOT_RUN` | Mandatory correctness, failpoint, resource, exposure, and exit-evidence cases | Read through EOF |
-| [`benchmark_note.md`](benchmark_note.md) | Present; `NOT_RUN` | Required Stage 03 benchmark cells and report fields | Read through EOF |
-| `stage_03_incremental_publication/handoff_from_stage_02.md` | **Missing** | None; stale path in the authoring prompt | File absence verified |
+| [`benchmark_note.md`](benchmark_note.md) | Present; initial `NOT_RUN` history plus final bounded POC result | Required Stage 03 benchmark cells, final campaign identity, honest sample sufficiency and report fields | Read through EOF before implementation; final result appended at closure |
+| `stage_03_incremental_publication/handoff_from_stage_02.md` | **Missing from the current branch**; retained at `origin/layerstack_2_0` | Historical architecture/specification handoff; it repeats the v3 owner blocker and grants no implementation authority | Current absence and retained remote-ref contents verified |
 | [`../index.md`](../index.md) | Present | Stage DAG, invariants, authority boundary, physical accounting, stage ownership | Read through EOF |
 | [`../layerstack_storage_contract.md`](../layerstack_storage_contract.md) | Present and locally modified before this guide was written | Canonical `/eos` layout, record ownership, atomicity, lifetime, allowed and forbidden paths | Read through EOF, including the live dirty change |
 | [`../../index.md`](../../index.md) | Present | Phase-level intent and links | Read through EOF |
@@ -54,6 +61,11 @@ means the requested path was checked and did not exist; it is not represented as
 | [`../stage_02_portable_root_contract/implementation_instructions.md`](../stage_02_portable_root_contract/implementation_instructions.md) | Present | Structural baseline, live command patterns, dependency comparator and reporting rules | Read through EOF |
 | [`../stage_02_portable_root_contract/contract_v2_owner_decision_d2_5.md`](../stage_02_portable_root_contract/contract_v2_owner_decision_d2_5.md) | Present; approved for v2 only | `PRC-STAGE02-OWNER-DECISION-D2.5`; explicitly not v3 approval | Read through EOF |
 | [`../stage_02_portable_root_contract/handoff_to_stage_03.md`](../stage_02_portable_root_contract/handoff_to_stage_03.md) | Present; actual completed handoff | Live Stage 02 artifacts, custody at handoff, and explicit v3 owner blocker | Read through EOF |
+| [`contract_v3_owner_decision_g01_1.md`](contract_v3_owner_decision_g01_1.md) | Present; approved on 2026-07-25 | `PRC-STAGE03-OWNER-DECISION-G01.1`; complete v3 framing, records, identities, bounds, errors, compatibility and corpus freeze | Read through EOF |
+| [`stage03_v3_owner_corpus_v1.json`](stage03_v3_owner_corpus_v1.json) | Present; immutable manifest SHA-256 `7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be` | Fourteen exact byte/ID goldens plus qualification, focused and hostile corpus inventory | Parsed and every golden length/digest independently verified |
+| [`gate_resolution_approval_20260725_04.md`](gate_resolution_approval_20260725_04.md) | Present; `PASS` | User approval mapping and complete §5.2 non-drift closure audit | Read through EOF |
+| [`stage03_dependency_portability_audit_20260725.md`](stage03_dependency_portability_audit_20260725.md) | Present; `PASS` | Final exact dependency, helper/service/image/network and portable-core closure | Created from retained final evidence |
+| [`handoff_to_stage_04.md`](handoff_to_stage_04.md) | Present; `POC PASS` | Final custody, implementation, verification, cleanup, deferral and Stage 04 boundary | Created at closure |
 | Product `AGENTS.md`, `CLAUDE.md`, `docs/maintainer-architecture.md` | Present | Repository working rules and core → LayerStack → workspace/provider dependency boundary | Read through EOF |
 | Test/docs ancestry instructions | No `AGENTS.md` or `CLAUDE.md` found below their repository roots | No additional local override | Search completed |
 | Test `e2e/test-report.md` and benchmark `README.md` | Present | Append-only execution record; one scheduler/runner and run-state ownership | Relevant report history inspected; benchmark README read through EOF |
@@ -64,23 +76,18 @@ must also re-read any source above that changed after the custody snapshot in §
 
 ### 0.3 Owner-decision status
 
-The latest recorded decision found is
-`PRC-STAGE02-OWNER-DECISION-D2.5`. It approves the v2 portable-root contract only.
-It does **not** approve `RootRecordV3`, `TreePage`, `FileNode`, `SegmentPage`,
-`Chunk`, `AttributionRoot`, `AttributionPage`, `ActorId`, their digest domains,
-numeric tags, canonical ordering, encoded bounds, compatibility rules, or the frozen
-Stage 03 benchmark corpus. No newer v3 approval was found.
+`PRC-STAGE03-OWNER-DECISION-G01.1` is the current approved Stage 03 decision. It
+freezes every record and identity listed in §5.2, numeric record and digest domains,
+canonical encoding and ordering, all maximum bounds and typed errors, v2
+coexistence/import, and the immutable corpus manifest with SHA-256
+`7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be`.
+The approval and spec-conformance audit are retained in
+[`gate_resolution_approval_20260725_04.md`](gate_resolution_approval_20260725_04.md),
+SHA-256 `49ea0a740462ce2652d5a4c4f21f595a44a56af25c0b7222dff3149a63a5f849`.
 
-Therefore `S03-G01` is `BLOCKED`. Until an owner amendment closes every item in the
-decision-shape table in §5.2:
-
-- do not implement or persist a v3 record;
-- do not assign numeric format/kind/domain tags;
-- do not create v3 golden bytes or expected IDs;
-- do not create candidate refs, objects, operations, or `CONTROL`;
-- do not reinterpret D2.5 as provisional v3 permission.
-
-Read-only design work, repository inspection, and this instruction document are safe.
+Therefore `S03-G01` is `PASS`. D2.5 remains immutable and v2-only; the new decision
+adds a side-by-side v3 contract and grants no authority to alter public v1 behavior
+or pull Stage 04–07 work into Stage 03.
 
 ### 0.4 Live repository custody at authoring time
 
@@ -141,9 +148,9 @@ replace those Stage 03 regression checks.
 
 | ID | Conflict/stale statement | Resolution or blocker |
 | --- | --- | --- |
-| `S03-C01` | The authoring prompt requires `stage_03_incremental_publication/handoff_from_stage_02.md`, but that file does not exist. | Use the live, normative Stage 02 [`handoff_to_stage_03.md`](../stage_02_portable_root_contract/handoff_to_stage_03.md) while recording the requested path as missing. This is a stale-path resolution, not permission to fabricate a handoff. |
-| `S03-C02` | D2.5 is an approved owner decision, while Stage 03 needs v3 approval. | D2.5 remains v2-only. `S03-G01` stays blocked pending a separate complete v3 amendment and corpus freeze. |
-| `S03-C03` | The Stage 02 handoff records earlier revisions/custody; the live worktrees have advanced and docs are dirty/ahead. | Preserve the handoff as historical evidence and use §0.4 as the current snapshot. Re-capture custody before implementation. |
+| `S03-C01` | The authoring prompt requires `stage_03_incremental_publication/handoff_from_stage_02.md`, but that file does not exist on the current branch. A historical copy remains at `origin/layerstack_2_0`. | Use the live, normative Stage 02 [`handoff_to_stage_03.md`](../stage_02_portable_root_contract/handoff_to_stage_03.md). The remote-ref copy was inspected and also says not to implement before owner approval; it is blocker evidence, not authority or permission to restore/fabricate history. |
+| `S03-C02` | D2.5 is an approved owner decision, while Stage 03 needs v3 approval. | D2.5 remains v2-only. `PRC-STAGE03-OWNER-DECISION-G01.1` separately freezes the complete v3 amendment and corpus, so `S03-G01` is `PASS`. |
+| `S03-C03` | The Stage 02 handoff and §0.4 record earlier revisions/custody; the live worktrees have advanced. | Preserve both as historical evidence. The fresh clean pre-mutation custody is retained in [`gate_resolution_20260725.md`](gate_resolution_20260725.md); re-capture again before implementation. |
 | `S03-C04` | The complete canonical tree contains future pack/materialization/GC paths, but Stage 03 authorizes only its actual delta. | A tree pattern is not creation authority. Future directories must remain absent until their owning stage first uses them. |
 | `S03-C05` | Stage 03 exit text mentions attribution surviving later squash, compaction, and GC, whose implementations belong to Stages 05–07. | Stage 03 proves its records are retained and restart-stable, plus focused compatibility hooks; destructive later-stage lifecycle qualification remains `DEFERRED_STAGE_07` until those owners exist. Do not claim the full cross-stage result in Stage 03. |
 | `S03-C06` | Preparation 04 permits a later matched candidate/baseline allowance up to five minutes, while this task requires a 180-second focused campaign. | Use the 180-second campaign in §13 for Stage 03 POC evidence. Full corpus/host/RSS/selection qualification remains deferred; the shorter run cannot weaken or approximate it. |
@@ -154,11 +161,14 @@ replace those Stage 03 regression checks.
 
 ## 1. Status, purpose, and exact outcome
 
-All Stage 03 product, E2E, benchmark, and completion results are `NOT_RUN` unless a
-future retained artifact directly proves them. Source inspection proves only current
-architecture and planning facts.
+Stage 03 implementation, product regressions, the complete typed E2E catalog,
+the runner-owned canonical campaign, dependency closure, portability/layout
+audits, artifact verification, and cleanup are complete with direct retained
+evidence. Performance selection remains honestly
+`NOT_RUN/INSUFFICIENT_SAMPLE`, and full release qualification remains
+`DEFERRED_STAGE_07`.
 
-After `S03-G01` closes, Stage 03 must deliver one complete **private** v3 vertical
+With `S03-G01` closed, Stage 03 must deliver one complete **private** v3 vertical
 slice:
 
 - owner-approved bounded Merkle content identity, with immutable v2 read/import
@@ -188,16 +198,16 @@ Every row is yes/no. A missing artifact is not “probably yes.”
 
 | Gate | Current status | Required evidence | Stop rule |
 | --- | --- | --- | --- |
-| `S03-G01` complete v3 owner amendment and frozen corpus | `BLOCKED` | Approved decision covering every §5.2 row, complete wire version/tags/domains/bounds/compatibility, immutable golden corpus and digest | No v3 code, tags, goldens, or durable state while open |
-| `S03-G02` Stages 00–02 pass and artifacts retained | `NOT_STARTED` for the Stage 03 recheck; prior stage records report pass | Verify retained files/full digests in §0.5 and append the verification record | Any missing/mismatched mandatory artifact blocks reuse |
-| `S03-G03` public v1 remains sole authority | `NOT_STARTED` for the fresh Stage 03 regression; inherited records report v1 authority | Retained PRC-01 plus a fresh Stage 03 public-route regression | Any candidate public read/write/route is failure |
-| `S03-G04` shared-worktree custody accepted | `NOT_STARTED` | Fresh branch/HEAD/upstream/full status for all three Git repositories; explicit owners for overlapping dirty files | Do not edit an owned/unclear overlapping file |
-| `S03-G05` exact dependency baseline frozen | `NOT_STARTED`; inherited baseline exists but the two Stage 03 entry captures have not run | Full 16-invocation baseline identities and two agreeing entry captures | Count-only or partial comparison blocks work |
-| `S03-G06` required product/test/benchmark tools ready | `NOT_STARTED` | Rust toolchain/locked metadata, test `.venv`, benchmark venv/CLI `--help`, catalog collection, no network install | Do not create an alternate harness or fetch a dependency |
-| `S03-G07` environment and image pinned | `NOT_STARTED` | Exact host/target, filesystem, kernel/cgroup, image digest, product binary/config identity | Unknown or mutable identity blocks measured claims |
-| `S03-G08` available disk and cgroup headroom | `NOT_STARTED` | Allocated-byte baseline, free bytes/inodes, 384 MiB RSS cap and at least 128 MiB-over-idle headroom demonstrably available | No campaign if resource cap cannot be observed safely |
-| `S03-G09` benchmark plan/verifier ready | `NOT_STARTED` | Proposed preset validates, strict fixtures/tests pass, runner clock and 180 s deadline are encoded | No benchmark run from ad hoc shell timing |
-| `S03-G10` append-only reporting/run-owned cleanup ready | `NOT_STARTED` | Planned report entry, run ID, exact owned resources, artifact roots, cleanup/quiescence oracle | No live command without the pre-entry |
+| `S03-G01` complete v3 owner amendment and frozen corpus | `PASS` | Approved decision covering every §5.2 row, complete wire version/tags/domains/bounds/compatibility, immutable golden corpus and digest | Decision `PRC-STAGE03-OWNER-DECISION-G01.1`; manifest SHA-256 `7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be` |
+| `S03-G02` Stages 00–02 pass and artifacts retained | `PASS` | Verify retained files/full digests in §0.5 and append the verification record | Record `stage03_entry_evidence_20260725.md`, SHA-256 `a7daa2be2bdca8605f35eb405b8bd43b800d18febecf46f9cf9b4c0f28075329` |
+| `S03-G03` public v1 remains sole authority | `PASS` | Retained PRC-01 plus a fresh Stage 03 public-route regression | Fresh run `20260724T221647.648307Z-52067`, 1/1 PASS; summary SHA-256 `de5fee5ea1d5f2a25ca324d48df45815cfe4fdbc9a7f2458f19ef7efde6447d6` |
+| `S03-G04` shared-worktree custody accepted | `PASS` | Fresh branch/HEAD/upstream/full status for all three Git repositories; explicit owners for overlapping dirty files | Custody accepted; all current dirty paths are task-owned and recorded |
+| `S03-G05` exact dependency baseline frozen | `PASS` | Full 16-invocation baseline identities and two agreeing entry captures | Both captures SHA-256 `1c77ccb2048f4c7383b0bbe6b45f5c999a88e79bcd2ef86ac2650d503e52be1d`; exact external delta zero |
+| `S03-G06` required product/test/benchmark tools ready | `PASS` | Rust toolchain/locked metadata, test `.venv`, benchmark venv/CLI `--help`, catalog collection, no network install | Rust/Cargo and both Python environments ready; safe catalog collects 643 tests |
+| `S03-G07` environment and image pinned | `PASS` for implementation entry; per-run binary identity remains mandatory | Exact host/target, filesystem, kernel/cgroup, image digest, product binary/config identity | Entry identity record retained; every measured run must retain its newly built binary/config identity |
+| `S03-G08` available disk and cgroup headroom | `PASS` for implementation entry; recheck immediately before campaign | Allocated-byte baseline, free bytes/inodes, 384 MiB RSS cap and at least 128 MiB-over-idle headroom demonstrably available | Observable 384 MiB cgroup-v2 cap and environment headroom retained; warmed-idle campaign check remains mandatory |
+| `S03-G09` benchmark plan/verifier ready | `PASS` | Canonical preset validates; focused runner/strict-artifact/dispatch tests pass 22/22; runner clock and 180 s deadline are encoded | Final runner-owned run `019f977b-752d-7868-927d-170b8d46a078` completed in 137.27 s |
+| `S03-G10` append-only reporting/run-owned cleanup ready | `PASS` | Planned report entry, run ID, exact owned resources, artifact roots, cleanup/quiescence oracle | Iterations 001–003 demonstrate pre-entry, exact ownership, immutable evidence, and exact cleanup |
 
 ## 3. Scope and non-goals
 
@@ -380,25 +390,26 @@ Docker, OverlayFS, mount/runtime/async/serde/SHA implementation, host paths, uid
 identity, environment, and materialization types. Reuse the existing `sha2` edge in
 LayerStack; the exact external dependency delta must be zero.
 
-### 5.2 Required owner-decision shape — not a provisional schema
+### 5.2 Approved owner-decision shape
 
-Because `S03-G01` is open, this table deliberately contains no invented numeric tag,
-wire byte, digest-domain value, golden, or unapproved size. The owner amendment must
-close every `PENDING_OWNER` cell before implementation.
+`PRC-STAGE03-OWNER-DECISION-G01.1` closes every row below without weakening the
+higher-authority identity requirements or exclusions. Exact tags, domains, wire
+fields, bounds, errors and compatibility rules are normative in the decision; exact
+goldens and corpus inventories are normative in its immutable manifest.
 
-| Record/type | Identity-bearing content required by higher authority | Explicitly excluded | Decision still required |
+| Record/type | Identity-bearing content required by higher authority | Explicitly excluded | Approved closure |
 | --- | --- | --- | --- |
-| `RootRecordV3` / `RootId` | logical format, required capabilities, approved chunk profile, Merkle tree root | publication/branch/generation/parent/base, actor/attribution, timestamp, backend, carrier/locator/materialization | version, record tag, digest domain/tag, exact field order/encoding/bounds, unknown-capability behavior, v2 coexistence/import |
-| `TreePage` / typed page ID | canonically ordered bounded directory entries/child references and approved logical metadata | host inode/path encoding artifacts, backend/carrier/history | page shape/fanout, tags/domains, ordering, maximum encoded bytes/counts/depth, hostile errors |
-| `FileNode` / typed ID | approved logical metadata, size/sparse semantics, segment root/list reference | source path/FD/carrier, actor/history | fields, sparse/xattr/hardlink/special-file rules, tags/domains/bounds |
-| `SegmentPage` / typed ID | ordered bounded chunk/zero/sparse descriptors | queued payload/source location | descriptor form, page/fanout/length bounds, tags/domains |
-| `Chunk` / typed ID | exact logical payload bytes under approved typed domain | file path, offset, carrier, author | tag/domain, maximum chunk encoding, verification rule; SeqCDC profile remains Prep 03 |
-| `AttributionRoot` / `AttributionRootId` | approved attribution format/capabilities and bounded attribution page root | content-irrelevant host identity, operation-history scan | tags/domains/fields/bounds and association rule |
-| `AttributionPage` / typed ID | canonically ordered path/range attribution to stable logical actor/publication facts | content identity, host uid/gid, environment identity | `ActorId` wire form, range/page structure, ordering/fanout/bounds, query/output bounds |
-| `BranchId`, `PublicationId`, checkpoint/pin/lease IDs | approved stable logical identifiers | host/time randomness unless explicitly normalized outside identity | syntax/length/canonical validation and collision/error rules |
-| Head record | `{root, attribution_root, generation, publication_id}` plus only approved framing | names as content inputs | exact codec/checksum/max bytes, generation overflow, atomic validation |
-| Operation `STATE` | kind/branch/publication scope, request digest, base triple, phase, prepared result, terminal exact outcome/retention facts required by protocol | payload queue, complete tree/history | phase enum, atomic fields/checksum/max bytes, retry/ack/expiry policy and error variants |
-| Locator/source lease | physical typed object → existing v1 location and fenced locator generation/lease facts | mapping in content identity | exact minimal record, fence/checksum/bounds and last-location validation |
+| `RootRecordV3` / `RootId` | logical format, required capabilities, approved chunk profile, Merkle tree root | publication/branch/generation/parent/base, actor/attribution, timestamp, backend, carrier/locator/materialization | Decision §§4, 16 and 21 |
+| `TreePage` / typed page ID | canonically ordered bounded directory entries/child references and approved logical metadata | host inode/path encoding artifacts, backend/carrier/history | Decision §§5–6, 16 and 21 |
+| `FileNode` / typed ID | approved logical metadata, size/sparse semantics, segment root/list reference | source path/FD/carrier, actor/history | Decision §§7–8, 16 and 21 |
+| `SegmentPage` / typed ID | ordered bounded chunk/zero/sparse descriptors | queued payload/source location | Decision §§9, 16 and 21 |
+| `Chunk` / typed ID | exact logical payload bytes under approved typed domain | file path, offset, carrier, author | Decision §§10, 16 and 21; SeqCDC remains Prep 03 |
+| `AttributionRoot` / `AttributionRootId` | approved attribution format/capabilities and bounded attribution page root | content-irrelevant host identity, operation-history scan | Decision §§11, 16 and 21 |
+| `AttributionPage` / typed ID | canonically ordered path/range attribution to stable logical actor/publication facts | content identity, host uid/gid, environment identity | Decision §§11, 16 and 21 |
+| `BranchId`, `PublicationId`, checkpoint/pin/lease IDs | approved stable logical identifiers | host/time randomness unless explicitly normalized outside identity | Decision §12 |
+| Head record | `{root, attribution_root, generation, publication_id}` plus only approved framing | names as content inputs | Decision §13 |
+| Operation `STATE` | kind/branch/publication scope, request digest, base triple, phase, prepared result, terminal exact outcome/retention facts required by protocol | payload queue, complete tree/history | Decision §14 |
+| Locator/source lease | physical typed object → existing v1 location and fenced locator generation/lease facts | mapping in content identity | Decision §15 |
 
 Approved maximum encoded sizes must be at or below the Preparation 04 memory and
 metadata budgets and must be enforced before allocation. Decoder errors must be typed
@@ -530,7 +541,9 @@ called out in §0.4 and §6.5. Recheck all three complete statuses before editin
 
 ## 7. Ordered implementation sequence
 
-No row begins until `S03-G01`, `S03-G04`, and all of its dependency rows are closed.
+No implementation row begins until `S03-G01`, `S03-G04`, and all of its dependency
+rows are closed. G01 and G04 are now closed; each row still waits for its other
+declared dependencies.
 Each row is a separately reviewable/rollbackable change. After any failure, remove
 only exact run-owned scratch, preserve artifacts/report history, and leave immutable
 loose orphans for the later GC owner unless the test root itself is wholly run-owned.
@@ -594,8 +607,9 @@ semantics. Proposed function names below are part of the execution contract.
 Common preconditions for every live case are `S03-G01–G10`, a pinned product
 binary/config/image, a fresh run-owned sandbox/workspace/session, and fixture
 manifest verification. `V3_FIXTURE_SHA256` means the full owner-approved digest,
-which is currently `PENDING_OWNER`; a test must refuse to run rather than substitute
-a mutable fixture. Public workspace/file behavior is the logical correctness oracle.
+`7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be`;
+a test must refuse to run rather than substitute a mutable fixture. Public
+workspace/file behavior is the logical correctness oracle.
 Outside private inspection is allowed only for layout, allocated space, permissions,
 durability/failpoint state, and residue; it never substitutes for public
 reconstruction. Every case:
@@ -761,9 +775,10 @@ cargo test --locked -p sandbox-runtime-layerstack-core --test host_independence
 cargo test --locked -p sandbox-runtime-layerstack --test portable_root_golden
 ```
 
-Do not create `canonical_v3` or its fixture until `S03-G01` passes. Architecture
-matrix invocations must use the exact owner-approved target/filesystem list and record
-each invocation separately; do not substitute cross-compilation for execution.
+`S03-G01` has passed; create `canonical_v3` only from the approved corpus and verify
+its manifest digest before use. Architecture matrix invocations must use the exact
+owner-approved target/filesystem list and record each invocation separately; do not
+substitute cross-compilation for execution.
 
 ### 12.3 Focused product slices
 
@@ -1159,46 +1174,46 @@ genuine owner/external blocker is reached. Do not implement beyond Stage 03 scop
 Every unchecked item is open. The parenthetical references name the canonical
 progress row and verification row(s).
 
-- [ ] Complete v3 owner amendment and frozen corpus are approved; current custody,
+- [x] Complete v3 owner amendment and frozen corpus are approved; current custody,
   environment, disk, harness, cleanup and dependency entry gates pass
   (`S03-G01–S03-G10`; `S03-V01–V05`).
-- [ ] Immutable v2 read/import bytes and all owner-approved v3 typed goldens,
+- [x] Immutable v2 read/import bytes and all owner-approved v3 typed goldens,
   host-independence and hostile decoder bounds pass (`S03-E01`; `S03-V01–V05`).
-- [ ] Deterministic scalar SeqCDC, typed loose put-if-absent, bounded raw-byte
+- [x] Deterministic scalar SeqCDC, typed loose put-if-absent, bounded raw-byte
   capture/order, persistent page mutation and structural sharing pass
   (`S03-I02–S03-I04`, `S03-E02`; `S03-V06–V11,V30–V35`).
-- [ ] Private refs, clean/dirty checkpoints, fork/pin, checkout, revert, reset and
+- [x] Private refs, clean/dirty checkpoints, fork/pin, checkout, revert, reset and
   checkpoint deletion meet exact cost and attribution semantics
   (`S03-I05,S03-I08,S03-E03`; `S03-V12–V17`).
-- [ ] Branch-scoped operations, exact retry/mismatch/expiry, all nine crash boundaries,
+- [x] Branch-scoped operations, exact retry/mismatch/expiry, all nine crash boundaries,
   head/terminal repair and bounded residue pass (`S03-I06,S03-E05`;
   `S03-V25–V27,V47,V49`).
-- [ ] Exact/ancestor/rename/opaque/hardlink conflicts and bounded two/three-writer
+- [x] Exact/ancestor/rename/opaque/hardlink conflicts and bounded two/three-writer
   disjoint rebase/progress pass (`S03-I07,S03-E04`; `S03-V18–V24,V32`).
-- [ ] Conditional last-v1-carrier locator/source hold and hidden normal-protocol
+- [x] Conditional last-v1-carrier locator/source hold and hidden normal-protocol
   validation pass without `refs/legacy` or public-authority change
   (`S03-I09,S03-I10,S03-E06`; `S03-V28,V29,V42,V51`).
-- [ ] The complete `/eos` allowed/conditional/forbidden map passes at setup, active,
+- [x] The complete `/eos` allowed/conditional/forbidden map passes at setup, active,
   post-commit, restart, failure, ref deletion, teardown and settled boundaries;
   workloads see `/eos` masked and only admitted `upper` is captured
   (`S03-L01,S03-E07`; `S03-V40–V45,V51`).
-- [ ] First import, no-op, two-scale 4 KiB edits, every required mutation,
+- [x] First import, no-op, two-scale 4 KiB edits, every required mutation,
   attribution, refs, conflict/disjoint writers, one lost-response restart, and
   before/peak/settled/cleanup cells complete inside the runner-owned 180 s campaign
   with honest sample sufficiency (`S03-B01`; `S03-V30–V39,V47–V50`).
-- [ ] RSS, permits/owned bytes, workers/tasks/threads, queues, FDs, mappings,
+- [x] RSS, permits/owned bytes, workers/tasks/threads, queues, FDs, mappings,
   readers/encoders/cache, retries, staging, metadata and operation-residue bounds pass;
   quiescence proves zero detached tasks/strong cycles (`S03-R01`; `S03-V36–V38,V49`).
-- [ ] Exact external dependency/feature/edge, system/helper/service/image/network delta
+- [x] Exact external dependency/feature/edge, system/helper/service/image/network delta
   is zero across all frozen invocations and portable core remains safe/std-only
   (`S03-D01`; `S03-V03,V46`).
-- [ ] Strict artifact schema/verifier rejects missing/null/inconsistent fields;
+- [x] Strict artifact schema/verifier rejects missing/null/inconsistent fields;
   append-only report contains planned and actual commands, retained failures, exact
   artifacts/digests and run-owned cleanup (`S03-A01`; `S03-V48–V50`).
-- [ ] Focused final v1 compatibility/public-authority regression passes and all
+- [x] Focused final v1 compatibility/public-authority regression passes and all
   mandatory non-deferred tracker rows contain direct retained evidence
   (`S03-E08,S03-H01`; `S03-V43,V45,V50,V51`).
-- [ ] Stage 07-only qualification remains explicitly deferred rather than compressed
+- [x] Stage 07-only qualification remains explicitly deferred rather than compressed
   into Stage 03 (`S03-Q07`; `S03-V17,V48`).
 
 ### 15.2 Canonical progress tracker
@@ -1208,51 +1223,51 @@ not a zero-valued result. Timestamps are UTC.
 
 | Work ID | Depends on | Deliverable | Current status | Completion condition / exact verification | Run/artifact path and digest | Owner/blocker | Cleanup result | Last updated |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `S03-G01` | — | Complete owner-approved v3 amendment and frozen corpus | `BLOCKED` | Approved decision closes every §5.2 row; decision ID and fixture manifest SHA-256 retained | — | Format/benchmark owner; no approval found | N/A | 2026-07-25 |
-| `S03-G02` | — | Verify retained Stage 00–02 evidence | `NOT_STARTED` | Recompute every complete §0.5 digest and reconcile report/artifact references | — | Implementer | N/A | 2026-07-25 |
-| `S03-G03` | G02 | Fresh public-v1 sole-authority baseline | `NOT_STARTED` | I01 typed E2E plus route/layout evidence | — | Implementer | — | 2026-07-25 |
-| `S03-G04` | — | Accept live shared-worktree custody | `NOT_STARTED` | §0.4 commands; explicit owner for every overlapping dirty file | — | Repository owners | N/A | 2026-07-25 |
-| `S03-G05` | G02,G04 | Freeze exact dependency entry | `NOT_STARTED` | Two agreeing captures for all 16 invocation IDs | — | Implementer | Exact temp captures recorded | 2026-07-25 |
-| `S03-G06` | G04 | Toolchain/E2E/benchmark harness readiness | `NOT_STARTED` | Locked tools, catalog collection and CLI help/validation without network install | — | Implementer | — | 2026-07-25 |
-| `S03-G07` | G04 | Pin host/target/fs/cgroup/image/binary/config | `NOT_STARTED` | Identity manifest retained | — | Implementer | N/A | 2026-07-25 |
-| `S03-G08` | G07 | Disk/inode/RSS headroom | `NOT_STARTED` | Allocated/free/cgroup baseline proves safe observable limits | — | Implementer | N/A | 2026-07-25 |
-| `S03-G09` | G01,G06–G08 | Strict benchmark plan/verifier ready | `BLOCKED` | §12.6 validate + strict positive/negative tests | — | Blocked by G01 | — | 2026-07-25 |
-| `S03-G10` | G04,G06 | Append-only report and exact cleanup plan ready | `NOT_STARTED` | Pre-run report entry and run-owned IDs/artifact root exist | — | Implementer | Planned | 2026-07-25 |
-| `S03-I01` | G01,G04,G05 | Approved v3 codecs and hostile bounds | `BLOCKED` | §12.2; V01–V05 | — | Blocked by G01 | — | 2026-07-25 |
-| `S03-I02` | I01 | Typed loose object store | `BLOCKED` | §12.3 object-store filter; V02,V04 | — | Blocked by I01 | — | 2026-07-25 |
-| `S03-I03` | I01,I02 | Bounded capture/order/SeqCDC | `BLOCKED` | §12.3 SeqCDC/capture filters; V07–V10,V30,V31 | — | Blocked by I01 | — | 2026-07-25 |
-| `S03-I04` | I01–I03 | Persistent content/attribution pages and flat export | `BLOCKED` | §12.3 tree filter; V05–V11,V31,V33 | — | Blocked by I01 | — | 2026-07-25 |
-| `S03-I05` | I02,I04 | Atomic refs/short commit/GC hook | `BLOCKED` | §12.3 refs filter; V12–V17 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-I06` | I02,I04,I05 | Durable operation/recovery/exact retry | `BLOCKED` | §12.3 recovery filter; V25–V27 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-I07` | I03,I04,I06 | Semantic OCC and bounded rebase | `BLOCKED` | §12.3 OCC filter; V18–V24,V32 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-I08` | I05–I07 | Complete ref operations | `BLOCKED` | refs/publication focused tests; V12–V17 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-I09` | I02,I05,I06 | Conditional v1 source protection | `BLOCKED` | §12.3 source-hold filter; V28 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-I10` | I01–I09 | Hidden normal-protocol validation | `BLOCKED` | hidden on/off product tests; V29,V51 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-I11` | I01–I10 | Observability/failpoints/E2E/benchmark/docs closure | `BLOCKED` | §12.4–12.10; V36–V51 | — | Blocked by dependencies | — | 2026-07-25 |
-| `S03-E01` | I01,I11 | Identity/codec/flat/portability typed family | `BLOCKED` | §12.5 `test_s03_i`; IDs I01–I05; V01–V05 | — | Blocked by G01 | — | 2026-07-25 |
-| `S03-E02` | I02–I04,I11 | Publication/file-kind/attribution typed family | `BLOCKED` | §12.5 `test_s03_p`; P01–P05; V06–V11 | — | Blocked by product | — | 2026-07-25 |
-| `S03-E03` | I05,I08,I11 | Ref-semantics typed family | `BLOCKED` | §12.5 `test_s03_r`; R01–R06; V12–V17 | — | Blocked by product | — | 2026-07-25 |
-| `S03-E04` | I07,I11 | OCC/progress typed family | `BLOCKED` | §12.5 `test_s03_o`; O01–O03; V18–V24 | — | Blocked by product | — | 2026-07-25 |
-| `S03-E05` | I06,I11 | Nine failpoint/idempotency typed cases | `BLOCKED` | Each §10 F01–F09 node; V25–V27,V47 | — | Blocked by product | — | 2026-07-25 |
-| `S03-E06` | I09,I10,I11 | v1 source safety/validation family | `BLOCKED` | §12.5 `test_s03_s`; S01–S02; V28,V29 | — | Blocked by product | — | 2026-07-25 |
-| `S03-E07` | I11 | Resource/exposure/ownership typed family | `BLOCKED` | §12.5 `test_s03_b`; B01–B03; V36–V46 | — | Blocked by product | — | 2026-07-25 |
-| `S03-E08` | E01–E07,B01,D01,L01,R01,A01 | Exit-evidence completeness and final focused regression | `BLOCKED` | B04 plus §12.10; V48–V51 | — | Blocked by all evidence | — | 2026-07-25 |
-| `S03-B01` | G09,E01–E07 | Runner-owned 180 s campaign | `BLOCKED` | §12.7 and §13; strict campaign artifact | — | Blocked by G01/product/E2E | Exact run cleanup required | 2026-07-25 |
-| `S03-D01` | G05,I11 | Zero dependency/helper/service/image/network delta | `BLOCKED` | §12.9 all 16 invocations + audit; V46 | — | Blocked by implementation | Exact captures only | 2026-07-25 |
-| `S03-L01` | I02,I05,I06,I09,E07 | Complete `/eos` boundary proof | `BLOCKED` | B02 path manifests; V40–V45,V51 | — | Blocked by implementation | Exact run roots only | 2026-07-25 |
-| `S03-R01` | I03–I11,E07,B01 | Resource reclamation/quiescence | `BLOCKED` | B01/B04/campaign cleanup; V36–V38,V49 | — | Blocked by implementation | Zero active owned state | 2026-07-25 |
-| `S03-A01` | I11,E01–E07,B01 | Strict schemas/artifact verification/append-only report | `BLOCKED` | §12.8 + B04; V48–V50 | — | Blocked by implementation | Retain failed attempts | 2026-07-25 |
-| `S03-DOC01` | — | This implementation guide | `PASS` | Authoring-only checks: 24 local links; mapped paths; CLI help; 34 typed IDs; 51 unique verification rows; 14 mapped checklist items; 37 unique tracker rows; 180 s sum; balanced fences; clean whitespace | This file; record its external SHA-256/Git blob at retention because an embedded self-digest would change the file | Authoring task only; no Stage 03 result | No runtime resources created | 2026-07-25 |
+| `S03-G01` | — | Complete owner-approved v3 amendment and frozen corpus | `PASS` | Approved decision closes every §5.2 row; decision ID and fixture manifest SHA-256 retained | [`contract_v3_owner_decision_g01_1.md`](contract_v3_owner_decision_g01_1.md), decision `PRC-STAGE03-OWNER-DECISION-G01.1`, SHA-256 `27264ef96f97960757eeba0b51bb7d2560446466cbf8e6a11c99a881da834e16`; [`stage03_v3_owner_corpus_v1.json`](stage03_v3_owner_corpus_v1.json), SHA-256 `7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be`; [`gate_resolution_approval_20260725_04.md`](gate_resolution_approval_20260725_04.md), SHA-256 `49ea0a740462ce2652d5a4c4f21f595a44a56af25c0b7222dff3149a63a5f849`; earlier blocker audits retained | User approval mapped without Stage 03 spec drift | N/A | 2026-07-24T22:04:16Z |
+| `S03-G02` | — | Verify retained Stage 00–02 evidence | `PASS` | Recompute every complete §0.5 digest and reconcile report/artifact references | [`stage03_entry_evidence_20260725.md`](stage03_entry_evidence_20260725.md), SHA-256 `a7daa2be2bdca8605f35eb405b8bd43b800d18febecf46f9cf9b4c0f28075329` | All mandatory retained identities verified | N/A | 2026-07-24T22:16:53Z |
+| `S03-G03` | G02 | Fresh public-v1 sole-authority baseline | `PASS` | Fresh packaged PRC-01 route/layout evidence before implementation | Run `20260724T221647.648307Z-52067`; summary SHA-256 `de5fee5ea1d5f2a25ca324d48df45815cfe4fdbc9a7f2458f19ef7efde6447d6`; [`stage03_entry_environment_20260725.md`](stage03_entry_environment_20260725.md), SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | Public v1 sole authority; candidate state absent/zero | Exact registered sandbox destroyed; immutable bundle retained | 2026-07-24T22:16:53Z |
+| `S03-G04` | — | Accept live shared-worktree custody | `PASS` | §0.4 commands; explicit owner for every overlapping dirty file | [`gate_resolution_20260725.md`](gate_resolution_20260725.md), SHA-256 `c4951f4599bb92383c877ec6b634b2b1f6f455f64ef89462f1faae062fa906c5`; refreshed in [`stage03_entry_environment_20260725.md`](stage03_entry_environment_20260725.md), SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | All dirty paths are task-owned; product/test remain at recorded upstreams | N/A | 2026-07-24T22:16:53Z |
+| `S03-G05` | G02,G04 | Freeze exact dependency entry | `PASS` | Two agreeing captures for all 16 invocation IDs | Entry captures A/B, each SHA-256 `1c77ccb2048f4c7383b0bbe6b45f5c999a88e79bcd2ef86ac2650d503e52be1d`; environment record SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | Exact zero external dependency delta | Exact temp captures retained until final comparison | 2026-07-24T22:16:53Z |
+| `S03-G06` | G04 | Toolchain/E2E/benchmark harness readiness | `PASS` | Locked tools, catalog collection and CLI help/validation without network install | [`stage03_entry_environment_20260725.md`](stage03_entry_environment_20260725.md), SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | Rust/Cargo, test/benchmark venvs, 643-case catalog ready | No runtime resource created | 2026-07-24T22:16:53Z |
+| `S03-G07` | G04 | Pin host/target/fs/cgroup/image/binary/config | `PASS` | Identity manifest retained; per-run measured identities remain mandatory | [`stage03_entry_environment_20260725.md`](stage03_entry_environment_20260725.md), SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | Entry implementation identity fixed; rebuild/hash again for measured runs | N/A | 2026-07-24T22:16:53Z |
+| `S03-G08` | G07 | Disk/inode/RSS headroom | `PASS` | Allocated/free/cgroup baseline proves safe observable limits; warmed-idle recheck before campaign | [`stage03_entry_environment_20260725.md`](stage03_entry_environment_20260725.md), SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | 384 MiB cap observable; environment headroom exceeds 128 MiB | N/A | 2026-07-24T22:16:53Z |
+| `S03-G09` | G01,G06–G08 | Strict benchmark plan/verifier ready | `PASS` | §12.6 validate + strict positive/negative tests | Canonical validation PASS; focused runner/strict-artifact/dispatch 22/22 PASS; plan SHA-256 `5511812675ab2f6784b39b701a333200391e51d6e87e870906d0c454d308d8d6`; final run `019f977b-752d-7868-927d-170b8d46a078` | No blocker | Runner-owned final campaign completed under 180 s | 2026-07-25T04:27:25Z |
+| `S03-G10` | G04,G06 | Append-only report and exact cleanup plan ready | `PASS` | Pre-run report entry and run-owned IDs/artifact root exist | `e2e/test-report.md` through terminal closure; environment record SHA-256 `934956160f9016c741622d17e901ebbb028ba575684dfb04c10cea8ae16c96aa` | Append-only discipline preserved every failed attempt and fix | Exact comparator temp dirs and generated product binaries removed after final evidence retention | 2026-07-25T04:27:25Z |
+| `S03-I01` | G01,G04,G05 | Approved v3 codecs and hostile bounds | `PASS` | §12.2; V01–V05 | Product tests: `canonical_contract` 9/9, focused `canonical_v3` 2/2, `hostile_v3_decode` 3/3, `host_independence` 3/3, `portable_root_golden` 3 passed/1 benchmark ignored; `e2e/test-report.md` Stage 03 Iterations 004–007; approved corpus SHA-256 `7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be` | Exact 16-record corpus, typed domains/errors, hostile bounds, SHA-256 adapter, and v1 compatibility green | No runtime resource created; only ordinary Cargo cache | 2026-07-24T22:43:53Z |
+| `S03-I02` | I01 | Typed loose object store | `PASS` | §12.3 object-store filter; V02,V04 | Product `candidate_publication object_store` 3/3 PASS and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 008–009 | Deterministic typed put-if-absent, bounded verified reuse/collision rejection, lazy durable prefixes, and six crash-boundary retries green | All exact temporary object roots removed; only ordinary Cargo cache remains | 2026-07-24T22:49:55Z |
+| `S03-I03` | I01,I02 | Bounded capture/order/SeqCDC | `PASS` | §12.3 SeqCDC/capture filters; V07–V10,V30,V31 | Product `candidate_publication seqcdc` 5/5 PASS, workspace `unit overlay_capture` 6/6 PASS on the pinned host with Linux-only raw/xattr cases retained, and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 010–015; Prep-03 oracle `8e2697cbf6332ac5da6dc615bfab82a720e820e4` | Exact author boundaries, 32 KiB/two-slice ring, direct typed CAS delivery, raw candidate stream, hardlink/kind evidence, external last-writer dedup, fan-in 8, and cap counters green | All exact object/spool/workspace roots removed; only ordinary Cargo cache remains | 2026-07-24T23:07:40Z |
+| `S03-I04` | I01–I03 | Persistent content/attribution pages and flat export | `PASS` | §12.3 tree filter; V05–V11,V31,V33 | Product `candidate_publication tree_mutation` 3/3 PASS and canonical four-package clippy PASS; exact approved eight-object corpus IDs; `e2e/test-report.md` Stage 03 Iterations 016–018 | Multi-page content/segment/attribution persistence, changed-leaf-and-ancestor COW sharing, restart reconstruction, separate bounded blame, and diagnostic-only flat export green; normal complete-tree/flat/history counters zero | All exact temporary loose-object roots removed; only ordinary Cargo cache remains | 2026-07-24T23:22:35Z |
+| `S03-I05` | I02,I04 | Atomic refs/short commit/GC hook | `PASS` | §12.3 refs filter; V12–V17 | Product `candidate_publication refs` 3/3 PASS after bounded lease-read augmentation and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 019–025 | Checksummed atomic heads, exact generation fencing, O(1) checkpoint/fork/pin/lease refs, restart reconstruction, preparation outside the lock, GC barrier before visibility, and zero payload/native writes green | All exact temporary ref/object roots removed; only ordinary Cargo cache remains | 2026-07-24T23:38:36Z |
+| `S03-I06` | I02,I04,I05 | Durable operation/recovery/exact retry | `PASS` | §12.3 recovery filter; V25–V27 | Product `candidate_publication operation_recovery` 3/3 PASS and canonical four-package clippy PASS; exact approved 301-byte operation-state golden; `e2e/test-report.md` Stage 03 Iterations 026–028 | Branch-scoped IDs, request-digest fencing, bounded prepared/terminal states, all F01–F09 old-or-complete boundaries, F08 restart repair, F09 exact lost-response retry, permanent expiry/ack tombstones, 1024-state recovery batches, and eight-attempt/60-second typed bounds green | All exact operation/ref/object and 1025-directory batch roots removed; only ordinary Cargo cache remains | 2026-07-24T23:52:14Z |
+| `S03-I07` | I03,I04,I06 | Semantic OCC and bounded rebase | `PASS` | §12.3 OCC filter; V18–V24,V32 | Product `candidate_publication occ` 4/4 PASS after the typed `CommitRequest` arity correction and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 029–031 | Exact/metadata/ancestor/remove/rename/opaque/hardlink overlaps, stable terminal conflict, bounded base/current path-prefix probes, two- and three-writer merged visibility, and typed terminal attempt-nine contention green; one key buffered and zero flat/full-tree scans | All exact temporary object/ref/operation/spool roots removed; only ordinary Cargo cache remains | 2026-07-25T00:03:35Z |
+| `S03-I08` | I05–I07 | Complete ref operations | `PASS` | refs/publication focused tests; V12–V17 | Product `candidate_publication ref_operations` 4/4 PASS and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 032–033 | Clean checkpoint and explicit fork/pin choice are constant metadata; checkout preserves head bytes; dirty checkpoint is publication plus one ref with exact retry; revert proves bounded actor attribution; reset returns its typed outcome and advances generation with zero objects; delete/restart preserve both roots | All exact temporary object/ref/operation roots removed; only ordinary Cargo cache remains | 2026-07-25T00:11:35Z |
+| `S03-I09` | I02,I05,I06 | Conditional v1 source protection | `PASS` | §12.3 source-hold filter; V28 | Product `candidate_publication source_hold` 3/3 PASS and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 034–036 | Stable catalog-ID lookup verifies raw and typed identity; fenced durable lease survives restart, blocks cleanup with exact bytes, fails closed on locator/catalog drift, releases exactly; all-loose creates none | All exact temporary carrier/locator/lease/object roots removed; only ordinary Cargo cache remains | 2026-07-25T00:23:00Z |
+| `S03-I10` | I01–I09 | Hidden normal-protocol validation | `PASS` | hidden on/off product tests; V29,V51 | Product `workspace_session_publish` focused S03-S02 1/1 PASS, canonical target 16/16 PASS after ledger-synchronized test cleanup, and canonical four-package clippy PASS; `e2e/test-report.md` Stage 03 Iterations 037–042 | Normal private branch-scoped publication advances a durable head; bounded matched/mismatch correlation, queue-saturation fallback, restart/off-mode, source-lease, zero-resource, unchanged v1 bytes/authority, and non-blocking public publish assertions green | Exact temporary roots removed; owned workers joined; source leases, tasks, queue bytes/items, and permits drained; only ordinary Cargo cache remains | 2026-07-25T00:50:36Z |
+| `S03-I11` | I01–I10 | Observability/failpoints/E2E/benchmark/docs closure | `PASS` | §12.4–12.10; V36–V51 | Full typed E2E 34/34; runner surface 22/22; canonical run `019f977b-752d-7868-927d-170b8d46a078`; artifact compatibility 22/22; dependency/audit/docs evidence retained | No blocker | Zero campaign-owned live resources; exact final local cleanup PASS | 2026-07-25T04:27:25Z |
+| `S03-E01` | I01,I11 | Identity/codec/flat/portability typed family | `PASS` | §12.5 `test_s03_i`; IDs I01–I05; V01–V05 | I01–I05 5/5 within complete 34/34 typed E2E run; `e2e/test-report.md` Iteration 175 | No blocker | Exact case-owned sandboxes destroyed | 2026-07-25T04:27:25Z |
+| `S03-E02` | I02–I04,I11 | Publication/file-kind/attribution typed family | `PASS` | §12.5 `test_s03_p`; P01–P05; V06–V11 | P01–P05 5/5 within complete 34/34 typed E2E run; `e2e/test-report.md` Iteration 175 | No blocker | Exact case-owned sandboxes destroyed | 2026-07-25T04:27:25Z |
+| `S03-E03` | I05,I08,I11 | Ref-semantics typed family | `PASS` | §12.5 `test_s03_r`; R01–R06; V12–V17 | R01–R06 6/6 within complete 34/34 typed E2E run; `e2e/test-report.md` Iteration 175 | No blocker | Exact case-owned sandboxes destroyed | 2026-07-25T04:27:25Z |
+| `S03-E04` | I07,I11 | OCC/progress typed family | `PASS` | §12.5 `test_s03_o`; O01–O03; V18–V24 | O01–O03 3/3 within complete 34/34 typed E2E run; private probe retains typed conflict and two-/three-writer progress | No blocker | Exact case-owned sandboxes destroyed | 2026-07-25T04:27:25Z |
+| `S03-E05` | I06,I11 | Nine failpoint/idempotency typed cases | `PASS` | Each §10 F01–F09 node; V25–V27,V47 | F01–F09 9/9 within complete 34/34 typed E2E run; private probe recovery result old-or-one-complete | No blocker | Temporary artifacts reaped; exact case-owned sandboxes destroyed | 2026-07-25T04:27:25Z |
+| `S03-E06` | I09,I10,I11 | v1 source safety/validation family | `PASS` | §12.5 `test_s03_s`; S01–S02; V28,V29 | S01–S02 2/2 within complete 34/34 typed E2E run; settled active workers zero | No blocker | Source leases/tasks/queues/permits drained; sandboxes destroyed | 2026-07-25T04:27:25Z |
+| `S03-E07` | I11 | Resource/exposure/ownership typed family | `PASS` | §12.5 `test_s03_b`; B01–B03; V36–V46 | B01–B03 3/3 within complete 34/34 typed E2E run; dependency/portability audit SHA-256 `a475ad7a23999ee4a231c08d40677186498bddcaf5b44d4e2fbf8683eaa386f7` | No blocker | Zero owned live residue; unrelated gateways untouched | 2026-07-25T04:27:25Z |
+| `S03-E08` | E01–E07,B01,D01,L01,R01,A01 | Exit-evidence completeness and final focused regression | `PASS` | B04 plus §12.10; V48–V51 | B04 1/1 in complete E2E run; final product regressions PASS; artifact compatibility 22/22; final strict artifact SHA-256 `e8d7426a22ae22680f0c1597d8dcbfd5d9814539e33aa85287efe23be44ff334` | No blocker | Final exact generated-binary/temp-capture cleanup PASS | 2026-07-25T04:27:25Z |
+| `S03-B01` | G09,E01–E07 | Runner-owned 180 s campaign | `PASS` | §12.7 and §13; strict campaign artifact | Run `019f977b-752d-7868-927d-170b8d46a078`; 137.27 s; overall/correctness PASS; strict evidence SHA-256 `e8d7426a22ae22680f0c1597d8dcbfd5d9814539e33aa85287efe23be44ff334`; [`benchmark_note.md`](benchmark_note.md) SHA-256 `8b775f3ed998132a72b451034b8d8e529fd427cfbfcd7bedd8a06bd84219778f` | Performance remains honestly `NOT_RUN/INSUFFICIENT_SAMPLE`, not a Stage 03 blocker | All four arms destroyed/retired/closed; zero live campaign resource | 2026-07-25T04:27:25Z |
+| `S03-D01` | G05,I11 | Zero dependency/helper/service/image/network delta | `PASS` | §12.9 all 16 invocations + audit; V46 | Six byte-identical captures SHA-256 `1c77ccb2048f4c7383b0bbe6b45f5c999a88e79bcd2ef86ac2650d503e52be1d`; [`stage03_dependency_portability_audit_20260725.md`](stage03_dependency_portability_audit_20260725.md) SHA-256 `a475ad7a23999ee4a231c08d40677186498bddcaf5b44d4e2fbf8683eaa386f7` | No blocker; approved internal manifest delta only | Exact temporary captures removed after retention | 2026-07-25T04:27:25Z |
+| `S03-L01` | I02,I05,I06,I09,E07 | Complete `/eos` boundary proof | `PASS` | B02 path manifests; V40–V45,V51 | Typed B02/B03/B04 all PASS within complete E2E run; setup/active/commit/restart/failure/delete/teardown/settled and public masking retained | No blocker | All exact case roots removed; future-stage paths absent | 2026-07-25T04:27:25Z |
+| `S03-R01` | I03–I11,E07,B01 | Resource reclamation/quiescence | `PASS` | B01/B04/campaign cleanup; V36–V38,V49 | Strict artifact reports zero active owned resources, detached tasks, strong cycles, route failures, and unexplained residue; cleanup ledger SHA-256 `7cf3607f4a9fb329651ef577393507130c74ba6103cb9a32aa8e1a26069d2059` | No blocker | Independent process/container/listener/runtime inventory clean | 2026-07-25T04:27:25Z |
+| `S03-A01` | I11,E01–E07,B01 | Strict schemas/artifact verification/append-only report | `PASS` | §12.8 + B04; V48–V50 | Focused runner/strict fixtures 22/22; full artifact compatibility 22/22; final report SHA-256 `fd919bddc80e50f5c45a26b5b22b476b14aea77e9346df9c76c27ffeffd2ae53`; append-only test report through terminal closure | No blocker | Immutable result bundle retained; transient owned resources removed | 2026-07-25T04:27:25Z |
+| `S03-DOC01` | — | This implementation guide and closure documents | `PASS` | Final whitespace, checklist/tracker, link, fence, artifact and immutable-document digest checks | This guide (external SHA-256 recorded after final write); benchmark note SHA-256 `8b775f3ed998132a72b451034b8d8e529fd427cfbfcd7bedd8a06bd84219778f`; audit SHA-256 `a475ad7a23999ee4a231c08d40677186498bddcaf5b44d4e2fbf8683eaa386f7`; handoff SHA-256 `471fc5b65a167755b5620f43429e6efc59794fb250f074789c19cf7ef4bf9954` | No blocker | Documentation checks create no runtime resource | 2026-07-25T04:27:25Z |
 | `S03-Q07` | — | Full release qualification matrix | `DEFERRED_STAGE_07` | §15.4 only; no Stage 03 pass claim | — | Stage 07 owner | N/A | 2026-07-25 |
-| `S03-H01` | E08,B01,D01,L01,R01,A01 | Final evidence-backed handoff | `BLOCKED` | Fill §15.5 with every artifact/run/custody/cleanup fact | — | Blocked by mandatory rows | N/A | 2026-07-25 |
+| `S03-H01` | E08,B01,D01,L01,R01,A01 | Final evidence-backed handoff | `PASS` | §15.5 and Stage 04 handoff contain every authority/run/custody/evidence/cleanup/deferral fact | Final §15.5 record; [`handoff_to_stage_04.md`](handoff_to_stage_04.md) SHA-256 `471fc5b65a167755b5620f43429e6efc59794fb250f074789c19cf7ef4bf9954`; prior blocked audits retained as history | No open mandatory Stage 03 row | No owned live resource; exact final local cleanup PASS | 2026-07-25T04:27:25Z |
 
 ### 15.3 Hard blockers
 
 | Blocker | Affected work | Exact resolution required | Owner/status |
 | --- | --- | --- | --- |
-| No approved complete v3 decision/corpus (`S03-G01`) | All v3 code, fixtures, persistence, E2E and benchmarks | One recorded amendment closes §5.2, v2 compatibility and immutable corpus digest | Format/benchmark owner; `BLOCKED` |
-| Requested Stage 03 incoming handoff path is missing (`S03-C01`) | Source ledger only | Accept live Stage 02 outgoing handoff or add a separately reviewed canonical pointer; do not fabricate history | Docs owner; stale path recorded |
-| Docs worktree has pre-existing overlapping authority/prompt edits | Contract/prompt custody | Identify owner and merge intentionally; preserve both changes | Repository owners; `NOT_STARTED` |
+| Resolved owner gate (`S03-G01`) | No remaining blocked work | Decision `PRC-STAGE03-OWNER-DECISION-G01.1` closes §5.2 and freezes immutable corpus SHA-256 `7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be` | User-approved; `PASS` |
+| Requested Stage 03 incoming handoff path is missing from the current branch (`S03-C01`) | Source ledger only | Use the live Stage 02 outgoing handoff; retained remote-ref incoming handoff was inspected and also blocks implementation | Docs owner; stale path reconciled |
+| Guide-authoring custody differs from fresh repository custody | Contract/prompt custody | Fresh complete custody captured in the gate artifact; no pre-existing dirty/untracked files found | Repository owners; `PASS` |
 | Later compaction/squash/GC/materialization owners do not exist in Stage 03 | Cross-stage survival qualification | Run the real retained-root matrix when Stages 04–07 implementations exist | Stage 04–07 owners; `DEFERRED_STAGE_07` |
 
 ### 15.4 Explicit Stage 07 deferrals
@@ -1274,79 +1289,226 @@ These do not excuse any focused Stage 03 gate:
 Keep these rows `DEFERRED_STAGE_07`, not `PASS`, until their owning implementations
 and retained artifacts exist.
 
-### 15.5 Self-contained final handoff template
+### 15.5 Self-contained final handoff
+
+```text
+# Retained interim Stage 03 handoff (superseded by the final record below)
+
+Historical verdict: POC FAIL / BLOCKED
+Interim state at (UTC): 2026-07-24T22:04:16Z
+
+## Authority and scope
+- Owner decision ID / approval artifact / SHA-256:
+  PRC-STAGE03-OWNER-DECISION-G01.1 /
+  contract_v3_owner_decision_g01_1.md /
+  27264ef96f97960757eeba0b51bb7d2560446466cbf8e6a11c99a881da834e16.
+- Approval mapping artifact / SHA-256:
+  gate_resolution_approval_20260725_04.md /
+  49ea0a740462ce2652d5a4c4f21f595a44a56af25c0b7222dff3149a63a5f849.
+- v3 format version and complete approved corpus manifest SHA-256: 3 /
+  7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be.
+- Confirmation D2.5 remained v2-only: YES. PRC-STAGE02-OWNER-DECISION-D2.5 was
+  inspected and grants no v3 authority.
+- Public authority: LegacyV1. This is the retained authority state; no fresh live
+  Stage 03 regression was authorized or run.
+- Stage 07 qualification status: DEFERRED_STAGE_07.
+
+## Git custody
+- Product branch / HEAD / upstream / complete status: upgrade-2.0-phase-1 /
+  cbe45de873cd24fbf48bb7b3a6c5f9f98980313c / same / clean.
+- Test+benchmark branch / HEAD / upstream / complete status:
+  upgrade-2.0-phase-1 / 173191e8694515af43797128070dbdfd2d246040 / same /
+  clean.
+- Docs branch / HEAD / upstream / complete status: layerstack_2_0 /
+  901d6d2181d0795eaaf174a23636a38019aab9a1 /
+  426b6be3284c26a59eb77d39ad6622997e8479c9 / ahead 2; task changes are
+  this guide, the three retained blocker audits, the approved decision, immutable
+  corpus manifest, and gate-resolution approval audit.
+- Files changed by repository: product NONE; test+benchmark NONE; docs
+  implementation_instructions.md plus the gate/decision/corpus artifacts above.
+- Pre-existing dirty/untracked files preserved and owner: NONE found at fresh
+  pre-mutation custody capture.
+
+## Focused product evidence
+- S03-I01 ... S03-I11 command/result/artifact/SHA-256: NOT_RUN while remaining
+  entry gates are closed and dependencies are captured.
+- Immutable v2 bytes/IDs and approved v3 bytes/IDs: retained v2 evidence was not
+  mutated; fourteen approved v3 byte/ID goldens are frozen in the corpus manifest.
+- Portable-core safe/std-only and dependency direction: repository instructions were
+  inspected; no Stage 03 implementation exists to verify.
+
+## Typed E2E evidence
+- S03-E01 IDs I01–I05 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E02 IDs P01–P05 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E03 IDs R01–R06 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E04 IDs O01–O03 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E05 IDs F01–F09 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E06 IDs S01–S02 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E07 IDs B01–B03 / run IDs / verdicts / artifacts: BLOCKED; none run.
+- S03-E08 ID B04/final regression / run IDs / verdict/artifacts: BLOCKED; none run.
+
+## Three-minute campaign
+- Exact command / run and pair IDs: NOT_RUN; candidate implementation does not yet
+  exist.
+- Runner clock start/end / aggregate seconds (must be <=180): NOT_RUN.
+- Budget rows actual seconds: NOT_RUN.
+- Fixture/seed/order are frozen in the approved corpus; prerequisite times are
+  NOT_RUN.
+- Baseline/candidate samples and sufficiency: NOT_RUN.
+- Time/scaling/locality verdicts: BLOCKED.
+- Raw artifact paths and SHA-256: NONE.
+
+## Required evidence summaries
+- Time and R,E,U,E_changed,K,P,N,Q: NOT_RUN.
+- Space and reconciled T components: NOT_RUN.
+- RSS/permits/workers/tasks/threads/queues/FDs/mappings: NOT_RUN.
+- Concurrency/lock/retry/conflict/progress: NOT_RUN.
+- Failpoint/restart/exact retry: NOT_RUN.
+- V1 locator/source hold and protected bytes: NOT_RUN; no candidate paths created.
+- /eos setup/active/commit/restart/failure/delete/teardown/settled: NOT_RUN.
+- Public-v1 behavior, authority and masking: retained LegacyV1 authority; fresh
+  behavior/masking evidence NOT_RUN.
+- Exact external dependency/feature/edge delta: NOT_RUN; no implementation delta.
+- System/helper/service/image/network and portability proof: NOT_RUN.
+
+## Artifacts, cleanup, and history
+- Strict schema/verifier result: NOT_RUN; the Stage 03 corpus is approved.
+- Append-only test-report entry references: NONE; the report was not changed because
+  no live test/benchmark command has run since approval.
+- Exact cleanup/quiescence result: no Docker/E2E/benchmark/product runtime resources
+  were created; runtime cleanup and quiescence were therefore not exercised.
+- Retained terminal/lease/orphan facts: no Stage 03 terminal, lease, or orphan state
+  was created.
+- Retained failed attempt IDs/artifacts: no execution attempt; retain the gate audit
+  and both refreshed-ref re-audits identified above. Two initial read-only search
+  wrappers in re-audit 02 had shell/flag syntax errors; they were disregarded and
+  corrected searches completed successfully.
+
+## Open/deferred
+- BLOCKED/FAIL tracker rows and exact next action: S03-E01–E08, S03-B01, S03-D01,
+  S03-L01, S03-R01, S03-A01, and S03-H01 wait for their declared product and entry
+  prerequisites. G02–G10 and I01–I11 are the active not-started work queue.
+- NOT_RUN/unavailable checks and reason: all gated product, typed E2E, benchmark,
+  dependency-delta, layout, reclamation, artifact-verifier, and final-regression
+  checks; remaining entry/dependency rows have not yet completed.
+- DEFERRED_STAGE_07 checks: every item in §15.4 remains DEFERRED_STAGE_07.
+- Remaining source contradictions: the requested incoming handoff is absent from the
+  current branch but retained on origin/layerstack_2_0; the current Stage 02 outgoing
+  handoff is the live normative handoff.
+
+Completion assertion:
+POC FAIL / BLOCKED at this interim checkpoint because mandatory non-deferred
+implementation and evidence rows are not yet complete. S03-G01 is PASS and no longer
+an external blocker. No approved corpus, source inspection, or retained earlier-stage
+result is being inferred as Stage 03 implementation completion.
+```
+
+Final closure record:
 
 ```text
 # Stage 03 final handoff
 
-Verdict: <POC PASS | POC FAIL / BLOCKED>
-Completed at (UTC): <timestamp>
+Verdict: POC PASS
+Closed at (UTC): 2026-07-25T04:27:25Z
 
 ## Authority and scope
-- Owner decision ID / approval artifact / SHA-256:
-- v3 format version and complete approved corpus manifest SHA-256:
-- Confirmation D2.5 remained v2-only:
-- Public authority: <must be LegacyV1>
-- Stage 07 qualification status:
+- Owner decision: PRC-STAGE03-OWNER-DECISION-G01.1;
+  contract_v3_owner_decision_g01_1.md SHA-256
+  27264ef96f97960757eeba0b51bb7d2560446466cbf8e6a11c99a881da834e16.
+- Approval mapping: gate_resolution_approval_20260725_04.md SHA-256
+  49ea0a740462ce2652d5a4c4f21f595a44a56af25c0b7222dff3149a63a5f849.
+- v3 format/corpus: version 3; SHA-256
+  7090f6646e67e7b8f4cca1dcf87cd9d7f4fed99ae33d87ec44c4436757b704be.
+- D2.5 remains v2-only. Public authority remains legacy_v1.
+- Stage 04–07 authority was not pulled into Stage 03.
 
 ## Git custody
-- Product branch / HEAD / upstream / complete status:
-- Test+benchmark branch / HEAD / upstream / complete status:
-- Docs branch / HEAD / upstream / complete status:
-- Files changed by repository:
-- Pre-existing dirty/untracked files preserved and owner:
+- Product: upgrade-2.0-phase-1; baseline/upstream
+  cbe45de873cd24fbf48bb7b3a6c5f9f98980313c; task-owned dirty source;
+  final campaign source-diff SHA-256
+  d5323b27f1dd7b9e19cf53551162e5608624597b1a9b6aaa9f9dcf1d6b8c8823.
+- Test+benchmark: upgrade-2.0-phase-1; baseline/upstream
+  173191e8694515af43797128070dbdfd2d246040; task-owned dirty source/report;
+  final campaign source-diff SHA-256
+  95adf9fddf75d715a464d095cc7e9192d240d3eaa00597b822795e5756c2ba38.
+- Docs: layerstack_2_0; HEAD
+  901d6d2181d0795eaaf174a23636a38019aab9a1; upstream
+  426b6be3284c26a59eb77d39ad6622997e8479c9; Stage 03 guide/decision/corpus/
+  gate/entry/audit/benchmark/handoff changes retained.
+- No reset, stash, clean, branch switch, or unrelated-resource mutation occurred.
 
-## Focused product evidence
-- S03-I01 ... S03-I11 command/result/artifact/SHA-256:
-- Immutable v2 bytes/IDs and approved v3 bytes/IDs:
-- Portable-core safe/std-only and dependency direction:
+## Implementation and product verification
+- S03-I01–S03-I11 PASS: bounded v3 codec/identities, scalar SeqCDC, typed loose
+  CAS, raw capture/order, persistent content+attribution pages, private refs,
+  durable operations/recovery, semantic OCC, full ref operations, conditional
+  v1 source protection, normal-protocol hidden validation, observations and
+  terminal PTY output-drain synchronization.
+- cargo fmt PASS; portable core 15 non-ignored PASS (one benchmark ignored);
+  candidate_publication 28/28 PASS; workspace unit 34/34 PASS;
+  workspace_session_publish 18/18 PASS; security 1/1 PASS;
+  namespace-execution 68 non-ignored PASS.
+- A package-wide invocation also observed 26 unrelated Stage 05 squash/flatten
+  cases hit the pre-existing explicit macOS Linux-only guard. The Stage 03
+  target in that package passed 28/28; Stage 03 did not modify that guard.
 
-## Typed E2E evidence
-- S03-E01 IDs I01–I05 / run IDs / verdicts / artifacts:
-- S03-E02 IDs P01–P05 / run IDs / verdicts / artifacts:
-- S03-E03 IDs R01–R06 / run IDs / verdicts / artifacts:
-- S03-E04 IDs O01–O03 / run IDs / verdicts / artifacts:
-- S03-E05 IDs F01–F09 / run IDs / verdicts / artifacts:
-- S03-E06 IDs S01–S02 / run IDs / verdicts / artifacts:
-- S03-E07 IDs B01–B03 / run IDs / verdicts / artifacts:
-- S03-E08 ID B04/final regression / run IDs / verdict/artifacts:
+## Typed E2E
+- Complete module: 34/34 PASS in 77.56 s.
+- IDs: I01–I05 5/5; P01–P05 5/5; R01–R06 6/6; O01–O03 3/3;
+  F01–F09 9/9; S01–S02 2/2; B01–B04 4/4.
+- Focused runner/strict-artifact/dispatch surface: 22/22 PASS.
+- Final artifact compatibility: 22/22 PASS.
+- All exact case-owned sandboxes/resources were destroyed/retired.
 
-## Three-minute campaign
-- Exact command / run and pair IDs:
-- Runner clock start/end / aggregate seconds (must be <=180):
-- Budget rows actual seconds:
-- Fixture/seed/order and prerequisite times:
-- Baseline/candidate samples and sufficiency:
-- Time/scaling/locality verdicts:
-- Raw artifact paths and SHA-256:
+## Final 180-second campaign
+- Run: 019f977b-752d-7868-927d-170b8d46a078.
+- Plan SHA-256:
+  5511812675ab2f6784b39b701a333200391e51d6e87e870906d0c454d308d8d6.
+- Cell: sha256:e71292adeb408b5c8629e6ea9a32aa133cf1be8d427f9eb74dabd07e6b7ac371.
+- Runner elapsed: 137.27 s; measured campaign boundary: 136.568017333 s.
+- State completed; failures 0; warnings 0; report ready.
+- Overall PASS; correctness PASS; performance NOT_RUN/INSUFFICIENT_SAMPLE.
+- Strict evidence SHA-256:
+  e8d7426a22ae22680f0c1597d8dcbfd5d9814539e33aa85287efe23be44ff334.
+- Report SHA-256:
+  fd919bddc80e50f5c45a26b5b22b476b14aea77e9346df9c76c27ffeffd2ae53.
+- Summary SHA-256:
+  728d3c0d805ccfdc7146e9c3482838adad8b394c23e79702dc1d2c8009a7b464.
+- Cleanup ledger/result boundary SHA-256:
+  7cf3607f4a9fb329651ef577393507130c74ba6103cb9a32aa8e1a26069d2059 /
+  f5657907f7c00f6bce6970a7c798c450c929866c31584b7ae13cb3623d86a7e5.
+- Both public ABBA pairs match; public mismatches, route failures, fallbacks,
+  active resources after quiescence and unexplained residue are zero.
+- Private probe: 16 valid samples; checkpoint, OCC, F01–F09, exact retry,
+  restart and cleanup assertions PASS.
 
-## Required evidence summaries
-- Time and `R,E,U,E_changed,K,P,N,Q`:
-- Space and reconciled `T` components:
-- RSS/permits/workers/tasks/threads/queues/FDs/mappings:
-- Concurrency/lock/retry/conflict/progress:
-- Failpoint/restart/exact retry:
-- V1 locator/source hold and protected bytes:
-- `/eos` setup/active/commit/restart/failure/delete/teardown/settled:
-- Public-v1 behavior, authority and masking:
-- Exact external dependency/feature/edge delta:
-- System/helper/service/image/network and portability proof:
+## Dependency, portability, layout and cleanup
+- Six entry/earlier-exit/final dependency captures were byte-identical:
+  SHA-256 1c77ccb2048f4c7383b0bbe6b45f5c999a88e79bcd2ef86ac2650d503e52be1d;
+  16 invocations, 1,143 external packages, 2,179 feature pairs, 116 direct
+  edges, exact zero external delta, std-only portable core PASS.
+- Dependency/portability audit SHA-256:
+  a475ad7a23999ee4a231c08d40677186498bddcaf5b44d4e2fbf8683eaa386f7.
+- Pinned local arm64 image:
+  ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90.
+- B02/B03/B04 prove the Stage 03 /eos map, workload masking, capture exclusion,
+  restart/failure/delete/teardown boundaries and settled state.
+- Final exact cleanup removed only generated catalog/gateway/daemon binaries
+  and the three temporary comparator directories after retaining their
+  identities. Results, fixture, ledger, result boundary, source and ordinary
+  Cargo cache/private probe remain.
+- No Stage 03 container, runtime entry, process or listener remains. Three
+  unrelated pre-existing gateways on 7878/17878/17978 were untouched.
 
-## Artifacts, cleanup, and history
-- Strict schema/verifier result:
-- Append-only test-report entry references:
-- Exact cleanup/quiescence result:
-- Retained terminal/lease/orphan facts:
-- Retained failed attempt IDs/artifacts:
-
-## Open/deferred
-- BLOCKED/FAIL tracker rows and exact next action:
-- NOT_RUN/unavailable checks and reason:
-- DEFERRED_STAGE_07 checks:
-- Remaining source contradictions:
+## Retained documents and deferrals
+- benchmark_note.md SHA-256:
+  8b775f3ed998132a72b451034b8d8e529fd427cfbfcd7bedd8a06bd84219778f.
+- handoff_to_stage_04.md SHA-256:
+  471fc5b65a167755b5620f43429e6efc59794fb250f074789c19cf7ef4bf9954.
+- Full performance selection, multi-host/filesystem qualification, later-stage
+  destructive-retention survival and public cutover remain DEFERRED_STAGE_07.
 
 Completion assertion:
-<State why every mandatory non-deferred Stage 03 checklist/tracker row has direct
-retained evidence, or state POC FAIL / BLOCKED. Do not infer completion from compile,
-architecture inspection, one benchmark, or a broad suite.>
+All mandatory non-deferred Stage 03 rows have direct retained evidence and
+are PASS. There is no open Stage 03 blocker. The bounded result is a POC PASS,
+not a Stage 07 performance-selection or release-qualification claim.
 ```

@@ -1,0 +1,237 @@
+{
+  "manifest_version": 1,
+  "decision_id": "PRC-STAGE03-OWNER-DECISION-G01.1",
+  "format_version": 3,
+  "status": "immutable-owner-approved",
+  "canonical_encoding": {
+    "magic_hex": "454f532d4c533200",
+    "version_hex": "0003",
+    "integer_order": "big-endian",
+    "record_header": "magic[8] | kind:u8 | version:u16be | payload_length:u32be",
+    "tlv": "tag:u8 | value_length:u32be | value",
+    "mutable_checksum_preimage": "EOS-LS3-MUTABLE\\0 | kind:u8 | version:u16be | all preceding TLVs"
+  },
+  "contract_goldens": {
+    "chunk_00ff616263": {
+      "record_kind": "0x23",
+      "encoded_length": 20,
+      "sha256": "f52da8e7b9e2824829844b1eebaa5f4a0d3481889c27ab2447552ada6694a62d",
+      "hex": "454f532d4c5332002300030000000500ff616263"
+    },
+    "tree_page_empty_leaf": {
+      "record_kind": "0x20",
+      "encoded_length": 39,
+      "sha256": "201fcdeda514f03eb5ef2d669fb9f21822817f619af459de3272fa7d10377185",
+      "hex": "454f532d4c53320020000300000018010000000101020000000100030000000200000400000000"
+    },
+    "metadata_directory": {
+      "record_kind": "0x13",
+      "encoded_length": 73,
+      "sha256": "8a5529d1c64a88a2a4342f74fb970f07f5b4041b548eda4319820f90c6194621",
+      "hex": "454f532d4c5332001300030000003a0100000004000001ed02000000040000000003000000040000000004000000080000000000000000050000000400000000060000000400000000"
+    },
+    "file_node_empty_directory": {
+      "record_kind": "0x21",
+      "encoded_length": 173,
+      "sha256": "7ff53bc23367dea50f0c9160e58bed19e1d5fd1430eeb28a6d5e625211fda0f1",
+      "hex": "454f532d4c5332002100030000009e0100000001010200000049454f532d4c5332001300030000003a0100000004000001ed02000000040000000003000000040000000004000000080000000000000000050000000400000000060000000400000000030000002101201fcdeda514f03eb5ef2d669fb9f21822817f619af459de3272fa7d10377185040000000100050000000100060000000100070000000100080000000100090000000100"
+    },
+    "segment_page_single_chunk": {
+      "record_kind": "0x22",
+      "encoded_length": 101,
+      "sha256": "a8ad020562376f2f06b57c774a8368ba699c567bdef964d2649ae8f3638c9984",
+      "hex": "454f532d4c53320022000300000056010000000101020000000100030000000200010400000008000000000000000505000000310100000000000000000000000000000005f52da8e7b9e2824829844b1eebaa5f4a0d3481889c27ab2447552ada6694a62d"
+    },
+    "metadata_regular": {
+      "record_kind": "0x13",
+      "encoded_length": 92,
+      "sha256": "62a6a8657abb7e61204f81596371c457d7d066734413d18cdb6fcb10dcceab98",
+      "hex": "454f532d4c5332001300030000004d0100000004000001a40200000004000003e80300000004000003e80400000008000000006553f1000500000004075bcd1506000000170000000100000009757365722e6e6f7465000000027633"
+    },
+    "file_node_regular": {
+      "record_kind": "0x21",
+      "encoded_length": 200,
+      "sha256": "b0f9ce9092600504e7773fc815f2ac0896e57135d56c8ddc9cdfa84f8b5b9c9d",
+      "hex": "454f532d4c533200210003000000b9010000000102020000005c454f532d4c5332001300030000004d0100000004000001a40200000004000003e80300000004000003e80400000008000000006553f1000500000004075bcd1506000000170000000100000009757365722e6e6f74650000000276330300000001000400000009010000000000000005050000002101a8ad020562376f2f06b57c774a8368ba699c567bdef964d2649ae8f3638c9984060000000100070000000100080000000100090000000100"
+    },
+    "tree_page_hello_leaf": {
+      "record_kind": "0x20",
+      "encoded_length": 82,
+      "sha256": "aa6eb3a366c93a9fdd4db823f7d7c80283c70559149ca3281e9d2b65f3e0985b",
+      "hex": "454f532d4c5332002000030000004301000000010102000000010003000000020001040000002b000968656c6c6f2e747874b0f9ce9092600504e7773fc815f2ac0896e57135d56c8ddc9cdfa84f8b5b9c9d"
+    },
+    "file_node_root_directory": {
+      "record_kind": "0x21",
+      "encoded_length": 173,
+      "sha256": "b22d18fd0672b14991cab970f9ff2d85477ce9aefb32198661b11833be392118",
+      "hex": "454f532d4c5332002100030000009e0100000001010200000049454f532d4c5332001300030000003a0100000004000001ed02000000040000000003000000040000000004000000080000000000000000050000000400000000060000000400000000030000002101aa6eb3a366c93a9fdd4db823f7d7c80283c70559149ca3281e9d2b65f3e0985b040000000100050000000100060000000100070000000100080000000100090000000100"
+    },
+    "root_record_v3": {
+      "record_kind": "0x10",
+      "encoded_length": 72,
+      "sha256": "66707bf571e67cfb7a93f75829abcb32d9a6129c6599b802af9fa6887c0191b8",
+      "hex": "454f532d4c5332001000030000003901000000080000000000000001020000000200010300000020b22d18fd0672b14991cab970f9ff2d85477ce9aefb32198661b11833be392118"
+    },
+    "attribution_page_hello_leaf": {
+      "record_kind": "0x25",
+      "encoded_length": 191,
+      "sha256": "565b293643649e3f6532b6c5b878a839ea76f219ce7ca5ddfe92fdf5896db445",
+      "hex": "454f532d4c533200250003000000b0010000000101020000000100030000000200020400000098000968656c6c6f2e7478740000000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111111100000000000000010000000000000002000968656c6c6f2e7478740100000000000000000000000000000005111111111111111111111111111111111111111111111111111111111111111100000000000000010000000000000002"
+    },
+    "attribution_root_v3": {
+      "record_kind": "0x24",
+      "encoded_length": 102,
+      "sha256": "bf898ac512519d33d3673466ea7956d46c62ed19c6da92047efdfc383bd894c7",
+      "hex": "454f532d4c5332002400030000005701000000080000000000000007020000002066707bf571e67cfb7a93f75829abcb32d9a6129c6599b802af9fa6887c0191b80300000020565b293643649e3f6532b6c5b878a839ea76f219ce7ca5ddfe92fdf5896db445"
+    },
+    "head_main_generation_1": {
+      "record_kind": "0x30",
+      "encoded_length": 160,
+      "sha256": "e628f3251c395c2268076f56a3a6a81ef285bca56853dcdebe4a84a7a5e7e540",
+      "hex": "454f532d4c53320030000300000091010000002066707bf571e67cfb7a93f75829abcb32d9a6129c6599b802af9fa6887c0191b80200000020bf898ac512519d33d3673466ea7956d46c62ed19c6da92047efdfc383bd894c703000000080000000000000001040000001000000000000000010000000000000002ff00000020af9244b577f96e01c6e520a47f64f09548e1f9373a7ab260b32633a769c0ed11"
+    },
+    "operation_state_prepared": {
+      "record_kind": "0x31",
+      "encoded_length": 301,
+      "sha256": "c85e2a312ea66429d934860d1fed03a1653bac39f5263b84ecb2bafe191d1dec",
+      "hex": "454f532d4c5332003100030000011e01000000010102000000046d61696e030000001000000000000000010000000000000002040000002022222222222222222222222222222222222222222222222222222222222222220500000001000600000001000700000008000000000000000008000000010209000000210166707bf571e67cfb7a93f75829abcb32d9a6129c6599b802af9fa6887c0191b80a0000002101bf898ac512519d33d3673466ea7956d46c62ed19c6da92047efdfc383bd894c70b000000210133333333333333333333333333333333333333333333333333333333333333330c00000001000d00000001000e0000000800000000000000000f0000000100ff00000020dd2b5ffd9a9f63fc4468250fb7ced5ad14ed61f1b3a7a00648dfc8ce0d69e9ee"
+    },
+    "locator_chunk_in_v1": {
+      "record_kind": "0x32",
+      "encoded_length": 214,
+      "sha256": "addb4610758702088952e9f8425e831078fa3414c728674bfb2495c6e0614312",
+      "hex": "454f532d4c533200320003000000c70100000001230200000020f52da8e7b9e2824829844b1eebaa5f4a0d3481889c27ab2447552ada6694a62d03000000080000000000000001040000000101050000002044444444444444444444444444444444444444444444444444444444444444440600000008000000000000100007000000080000000000000005080000002024397706eb32f8691116fe4728d18eda7eacc40925e0ae26a5780cd8b8b13f80ff0000002066b3e2177cb74f0e6660fe696b59b2b4439d57d45be53e5f9cbb4ff3507332b4"
+    },
+    "source_lease_root_v1": {
+      "record_kind": "0x33",
+      "encoded_length": 186,
+      "sha256": "1df001151efe791d1861f9e3cc7e05c499ca59a1d8a9785b4f411773e7b48351",
+      "hex": "454f532d4c533200330003000000ab010000001055555555555555555555555555555555020000002066707bf571e67cfb7a93f75829abcb32d9a6129c6599b802af9fa6887c0191b803000000204444444444444444444444444444444444444444444444444444444444444444040000000800000000000000010500000008000000000000000106000000080000000000000005ff00000020102c121249be1c8dbc98e67a4c14fad2a141b95c5aeafa8cf001f2d3f50c8cfc"
+    }
+  },
+  "generator": {
+    "algorithm": "SHAKE256_BLOCK_V1",
+    "domain_ascii_nul": "EOS-STAGE03-CORPUS-V1\\0",
+    "seed_u64be": "0x0000000053030001",
+    "block_bytes": 1048576,
+    "block_preimage": "domain | seed:u64be | stream_id:u64be | block_index:u64be",
+    "block_output": "SHAKE256(preimage, min(block_bytes, remaining_bytes))",
+    "line_mode": "after generation replace each global byte whose zero-based offset modulo 128 equals 127 with 0x0a",
+    "inventory_digest": "SHA-256 over strictly byte-sorted entries encoded as path_length:u16be | path | logical_length:u64be | extent_count:u32be | repeated(offset:u64be | length:u64be | SHA-256(extent_bytes)); directories are implicit"
+  },
+  "qualification_corpora": [
+    {
+      "id": "mixed-tree-q1",
+      "stream_id_base": 1000000,
+      "logical_bytes": 536870912,
+      "files": 20000,
+      "layout": "mixed/{index_div_1000:05}/file-{index:08}.bin",
+      "size_rule": "first 10912 files are 26844 bytes; remaining files are 26843 bytes"
+    },
+    {
+      "id": "large-source-q1",
+      "stream_id": 2000000,
+      "logical_bytes": 268435456,
+      "files": 1,
+      "mode": "line_mode",
+      "path": "source/records.bin"
+    },
+    {
+      "id": "no-dedup-q1",
+      "stream_id": 3000000,
+      "logical_bytes": 536870912,
+      "files": 1,
+      "mode": "raw",
+      "path": "binary/no-dedup.bin"
+    },
+    {
+      "id": "many-small-q1",
+      "stream_id_base": 4000000,
+      "logical_bytes": 102400000,
+      "files": 100000,
+      "layout": "small/{index_div_1000:05}/file-{index:08}.bin",
+      "size_rule": "1024 bytes each"
+    },
+    {
+      "id": "sparse-q1",
+      "stream_id_base": 5000000,
+      "logical_bytes": 8589934592,
+      "files": 1,
+      "path": "sparse/eight-gib.bin",
+      "extent_rule": "16 allocated 1 MiB extents at offsets i * 512 MiB for i in 0..15; all other bytes are holes"
+    },
+    {
+      "id": "small-history-q1",
+      "stream_id_base": 6000000,
+      "logical_bytes_per_revision": 4096,
+      "revisions": 64,
+      "rule": "revision r uses stream_id_base + floor(r / 4), yielding four identical revisions per content version"
+    },
+    {
+      "id": "large-history-q1",
+      "stream_id": 7000000,
+      "logical_bytes_per_revision": 268435456,
+      "revisions": 8,
+      "rule": "r0 is line_mode; r1-r5 replace one 4096-byte region centered at floor(length/2)+4096*(r-3) with stream_id+ r; r6 is a full raw rewrite from stream_id+6; r7 is a deterministic full line_mode rewrite from stream_id+7"
+    }
+  ],
+  "stage03_focused_corpora": [
+    {
+      "id": "focused-first-import",
+      "stream_id_base": 8000000,
+      "logical_bytes": 8388608,
+      "files": 1024,
+      "layout": "focused/import/{index_div_128:03}/file-{index:05}.bin",
+      "size_rule": "8192 bytes each"
+    },
+    {
+      "id": "focused-edit-small",
+      "stream_id": 8100000,
+      "logical_bytes": 8388608,
+      "files": 1,
+      "mode": "line_mode",
+      "mutation": "replace exactly 4096 bytes centered at floor(length/2) using stream_id 8100001"
+    },
+    {
+      "id": "focused-edit-growing",
+      "stream_id": 8200000,
+      "logical_bytes": 33554432,
+      "files": 1,
+      "mode": "line_mode",
+      "mutation": "replace exactly 4096 bytes centered at floor(length/2) using stream_id 8200001"
+    },
+    {
+      "id": "focused-mutation-tree",
+      "stream_id_base": 8300000,
+      "logical_bytes": 8388608,
+      "files": 2048,
+      "size_rule": "4096 bytes each",
+      "mutations": [
+        "append 4096 bytes",
+        "truncate one selected file from 4096 to 2048 bytes",
+        "metadata-only mode change 0644 to 0600",
+        "delete one selected file",
+        "rename one selected file within its parent",
+        "replace one selected file with identical content from a different actor"
+      ]
+    }
+  ],
+  "hostile_vectors": [
+    "wrong record kind",
+    "unsupported version",
+    "wrong typed digest domain",
+    "trailing bytes",
+    "unsorted tree names",
+    "duplicate tree names",
+    "oversized count before allocation",
+    "oversized encoded page",
+    "page depth overflow",
+    "dangling child identifier",
+    "noncontiguous segment descriptor",
+    "zero-length sparse descriptor",
+    "unknown required capability",
+    "mutable checksum mismatch",
+    "identifier syntax violation",
+    "arithmetic overflow"
+  ]
+}
