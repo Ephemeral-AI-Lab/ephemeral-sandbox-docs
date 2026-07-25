@@ -1,6 +1,7 @@
 # Stage 04 E2E plan — materialization and activation
 
-Status: `NOT_RUN`.
+Status: `PASS` for the Stage 04 POC selected environment (2026-07-26);
+release-wide qualification remains `DEFERRED_STAGE_07`.
 
 [Stage 04.5](../stage_04_5_materialization_gc_alignment/e2e_test.md)
 supersedes this plan for common publication, bounded recovery/resource ownership,
@@ -90,3 +91,24 @@ Record route counters, cold bytes/entries/time, warm latency distribution, depth
 materialization/upper allocated bytes, duplicate peak, RSS, workers/tasks/FDs/mappings,
 lease fences, failpoint recovery, image/backend/backing-filesystem matrix, commands,
 revision, and artifacts in `benchmark_note.md`.
+
+## 7. Completion record
+
+The exact final typed command `CMD-E03-FINAL-D210` rebuilt the E2E binary and
+passed all 128 collected cases in 47.48 seconds against
+`ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`.
+Its command-record SHA-256 is
+`05bae8e7b06c1a02559c65ed94a96c6400fe5ec2654b871d168ca1338a097de9`.
+Post-run custody found no owned container and no nonterminal candidate oracle.
+
+The final Rust compatibility bundle `CMD-P05-FINAL-V1-RETRY-D209` passed
+formatting, candidate publication, workspace publication/security,
+storage-route observation, and all namespace-execution tests. Its record
+SHA-256 is
+`14c8a83f4b479560e485d3a29520b2240c0302cd157ece45ed5097f9460b411a`.
+Public authority remains `legacy_v1`.
+
+The official benchmark artifact and direct results are frozen in
+[`benchmark_note.md`](benchmark_note.md). The selected arm64/glibc cell is a
+direct POC result; unexecuted qualification cells remain visibly `NOT_RUN` and
+all generalized support claims remain `DEFERRED_STAGE_07`.
