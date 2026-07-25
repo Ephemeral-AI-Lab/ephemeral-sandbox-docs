@@ -2,6 +2,12 @@
 
 Status: `NOT_RUN`.
 
+Entry evidence and inherited invariants are recorded in
+[`handoff_from_stage_03.md`](handoff_from_stage_03.md). Stage 04 execution must
+preserve the Stage 03 v2/v3 identities, public `legacy_v1` authority, exact
+retry/recovery behavior, source holds, GC barriers, PTY drain ordering, and
+shared-worktree custody named there.
+
 ## 1. Reconstruction matrix
 
 Materialize roots covering empty/deep/wide trees, large/tiny/sparse files, raw byte

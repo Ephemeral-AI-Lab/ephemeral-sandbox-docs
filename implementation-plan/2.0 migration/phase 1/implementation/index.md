@@ -1,6 +1,8 @@
 # LayerStack Phase 1 implementation plan
 
-Status: Stage 02 portable-root v2 codec, fixture, and source contract **POC PASS**. Later-stage architecture work remains separate and does not affect this Stage 02 verdict.
+Status: Stage 02 portable-root and Stage 03 corrected-identity/private-publication
+slices are **POC PASS**. Stage 04 is the next implementation boundary. Cumulative
+performance/release qualification remains open in Stage 07.
 
 Phase 1 uses **five contiguous implementation stages after Stage 02**, not nine.
 The merged stage directories are removed; the active sequence is Stage 03 through
@@ -105,7 +107,9 @@ That cannot satisfy later-publication proportionality because a middle edit requ
 rehashing the complete stream. Streaming at Stage 02 `spec.md:366` bounds memory, not
 work.
 
-Before Stage 03 implementation, an owner amendment must:
+The completed Stage 03 owner amendment
+[`PRC-STAGE03-OWNER-DECISION-G01.1`](stage_03_incremental_publication/contract_v3_owner_decision_g01_1.md)
+required:
 
 - preserve v2 fixture bytes/IDs as immutable and readable;
 - define `RootRecordV3` over a typed bounded-page Merkle `TreeNodeId`;
@@ -152,6 +156,8 @@ Documents:
 - [E2E plan](stage_03_incremental_publication/e2e_test.md)
 - [benchmark note](stage_03_incremental_publication/benchmark_note.md)
 - [Stage 02→03 implementation handoff](stage_02_portable_root_contract/handoff_to_stage_03.md)
+- [completed Stage 03 implementation guide](stage_03_incremental_publication/implementation_instructions.md)
+- [Stage 03→04 outgoing handoff](stage_03_incremental_publication/handoff_to_stage_04.md)
 
 This is a vertical slice, not an algorithm-only experiment. It includes:
 
@@ -176,6 +182,7 @@ Documents:
 - [spec](stage_04_candidate_materialization/spec.md)
 - [E2E plan](stage_04_candidate_materialization/e2e_test.md)
 - [benchmark note](stage_04_candidate_materialization/benchmark_note.md)
+- [incoming handoff from Stage 03](stage_04_candidate_materialization/handoff_from_stage_03.md)
 
 This stage adds on-demand cold materialization, immutable native generations, exact
 session leases, same-key single-flight builds, one `CURRENT` pointer, bounded mount
@@ -222,6 +229,8 @@ Stage 07 adds no storage mechanism. It runs the complete crash, concurrency,
 performance, space, memory, image, architecture, rollback, and long-soak matrices.
 Candidate default occurs only after opt-in qualification passes. Legacy retirement is
 a separate destructive approval after rollback rehearsal and evacuation proof.
+Its spec and benchmark note explicitly own `S07-X03-01` through `S07-X03-08`,
+the eight release-qualification items transferred from Stage 03 `S03-Q07`.
 
 ## 5. Old-stage-to-new-stage mapping
 
@@ -313,8 +322,9 @@ Preparation 04 is preserved without relaxation:
   per-publication, global semaphore, depth, RSS, and space limits remain normative.
 
 The overall status is recorded in
-[the Stage 03–07 benchmark scorecard](stage_03_07_benchmark_note.md). No architecture
-review result changes `NOT_RUN` to `PASS`.
+[the Stage 03–07 benchmark scorecard](stage_03_07_benchmark_note.md). Only retained
+execution evidence may change a row from `NOT_RUN`/`OPEN`; Stage 03’s bounded POC
+does not pass the cumulative Stage 07 qualification rows.
 
 ## 10. Phase 2/3 and environment audit
 

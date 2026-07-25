@@ -1,9 +1,12 @@
 # LayerStack Stage 03–07 benchmark scorecard
 
-Overall status: **NOT_RUN / OPEN**.
+Overall status: **CUMULATIVE QUALIFICATION OPEN**.
 
-The architecture review changed specifications only. It produced no performance,
-space, memory, correctness, portability, or rollout result.
+Stage 03 now has a bounded correctness POC PASS with retained artifacts. It did
+not make a performance-selection, release-qualification, default, rollout, or
+retirement claim. Stages 04–07 remain `NOT_RUN`, and the eight Stage 03
+deferrals are explicitly transferred to the
+[Stage 07 ledger](stage_07_qualification_retirement/benchmark_note.md#imported-stage-03-deferral-ledger).
 
 Normative thresholds:
 [Preparation 04](../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md).
@@ -12,11 +15,15 @@ Normative thresholds:
 
 | Active stage | Scope | Status | Note |
 | --- | --- | --- | --- |
-| 03 | v3 identity, incremental publication, refs/OCC/recovery | `NOT_RUN` | [note](stage_03_incremental_publication/benchmark_note.md) |
+| 03 | v3 identity, incremental publication, refs/OCC/recovery | `POC PASS / S03-Q07 OPEN` | [note](stage_03_incremental_publication/benchmark_note.md) |
 | 04 | materialization and strict native activation | `NOT_RUN` | [note](stage_04_candidate_materialization/benchmark_note.md) |
 | 05 | packs/locators, retention, GC, squash | `NOT_RUN` | [note](stage_05_retention_gc_packs/benchmark_note.md) |
 | 06 | candidate authority and v1 authority rollback | `NOT_RUN` | [note](stage_06_candidate_authority/benchmark_note.md) |
 | 07 | qualification/default/retirement | `NOT_RUN` | [note](stage_07_qualification_retirement/benchmark_note.md) |
+
+Stage 03’s POC status does not close any cumulative release row below. The
+Stage 07 owner must close `S07-X03-01` through `S07-X03-08` with the release
+artifact evidence defined in the Stage 07 spec.
 
 ## 2. Correctness and crash scorecard
 

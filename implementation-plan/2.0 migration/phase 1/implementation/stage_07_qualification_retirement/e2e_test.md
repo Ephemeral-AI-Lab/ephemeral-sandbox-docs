@@ -2,6 +2,27 @@
 
 Status: `NOT_RUN`.
 
+## 0. Imported Stage 03 deferral matrix
+
+The eight `S03-Q07` children transferred in
+[`spec.md` §0](spec.md#0-imported-stage-03-deferrals) are mandatory Stage 07
+work, not optional context:
+
+| Transfer ID | Exercised by this plan | Required terminal evidence |
+| --- | --- | --- |
+| `S07-X03-01` | §7 environment matrix | every supported/unsupported cell is explicit; immutable revision/image and effective kernel/filesystem/backend facts; cross-cell ID equality |
+| `S07-X03-02` | §3 performance, space and memory | complete 64/256/1024 MiB × 1/16/64-root RSS/resource matrix and bounded-owner counters |
+| `S07-X03-03` | §3 and §8 evidence/decision | matched five-minute baseline/candidate campaigns, three valid invocations per selection cell and explicit threshold decision |
+| `S07-X03-04` | §§1–4 cumulative/fault/soak/rollback | exhaustive corpus, long soak, restart storm, release variance and exact cleanup/residue evidence |
+| `S07-X03-05` | §§1 and 3 | real Stage 04 cold/warm materialization, strict activation, lease/fence and capability replay |
+| `S07-X03-06` | §§1–3 and 5 | real Stage 05 pack/locator/GC/squash/destructive-retention replay and fault campaign |
+| `S07-X03-07` | §§4–5 | genuine Stage 06 rollback/re-cutover plus separately approved Stage 07 retirement and candidate-only restart |
+| `S07-X03-08` | §§1, 2 and 5 | retained content/attribution/checkpoint proof across every real destructive later-stage transition |
+
+All rows start `OPEN`. Intermediate-stage results are prerequisite inputs; Stage
+07 must bind the terminal verdict to the exact release artifact, retained raw
+artifacts and cleanup boundary.
+
 ## 1. Cumulative correctness
 
 Run all Stage 00–06 suites on the release artifact. Add cross-stage
@@ -93,3 +114,5 @@ percentage compatibility.
 The [overall scorecard](../stage_03_07_benchmark_note.md) links every raw artifact,
 command, revision, threshold, result, and approval. Missing cells remain `OPEN`.
 Qualification, default, and retirement decisions are separate signed/owned entries.
+The decision record must name every `S07-X03-*` row and may not collapse the eight
+transfers into one inferred pass.

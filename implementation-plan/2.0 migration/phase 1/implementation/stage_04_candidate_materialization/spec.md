@@ -7,6 +7,7 @@ Normative dependencies:
 - [implementation index](../index.md)
 - [minimal storage contract](../layerstack_storage_contract.md)
 - [Stage 03](../stage_03_incremental_publication/spec.md)
+- [Stage 04 incoming handoff from completed Stage 03](handoff_from_stage_03.md)
 - [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 
 ## 1. Outcome
