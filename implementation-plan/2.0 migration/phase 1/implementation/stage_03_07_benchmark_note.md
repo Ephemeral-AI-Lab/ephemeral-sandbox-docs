@@ -17,7 +17,7 @@ Normative thresholds:
 | --- | --- | --- | --- |
 | 03 | v3 identity, incremental publication, refs/OCC/recovery | `POC PASS / S03-Q07 OPEN` | [note](stage_03_incremental_publication/benchmark_note.md) |
 | 04 | materialization and strict native activation | `NOT_RUN` | [note](stage_04_candidate_materialization/benchmark_note.md) |
-| 05 | packs/locators, retention, GC, squash | `NOT_RUN` | [note](stage_05_retention_gc_packs/benchmark_note.md) |
+| 05 | verified replacement, packs/locators, retention, GC, singleton retirement | `NOT_RUN` | [note](stage_05_retention_gc_packs/benchmark_note.md) |
 | 06 | candidate authority and v1 authority rollback | `NOT_RUN` | [note](stage_06_candidate_authority/benchmark_note.md) |
 | 07 | qualification/default/retirement | `NOT_RUN` | [note](stage_07_qualification_retirement/benchmark_note.md) |
 
@@ -38,7 +38,8 @@ artifact evidence defined in the Stage 07 spec.
 | checkpoint/branch/MCTS/checkout/revert/reset semantics | `NOT_RUN` | — |
 | exact cold reconstruction and strict no-fallback warm route | `NOT_RUN` | — |
 | last-locator/source-protection/restart safety | `NOT_RUN` | — |
-| concurrent GC barrier, grace, trash, final recheck | `NOT_RUN` | — |
+| two-phase root admission, two complete GC observations, final typed recheck | `NOT_RUN` | — |
+| singleton retirement `Pending`/`Deleting`/`Done` recovery | `NOT_RUN` | — |
 | same-root squash/checkpoint survival | `NOT_RUN` | — |
 | candidate cutover, genuine v1 authority rollback, re-cutover | `NOT_RUN` | — |
 | retirement evacuation and candidate-only restart | `NOT_RUN` | — |
@@ -60,7 +61,8 @@ artifact evidence defined in the Stage 07 spec.
 | concurrent session sharing | shared immutable carriers, isolated private uppers, stable leases | `NOT_RUN` |
 | squash | `O(S+E_s)` build, bounded pointer pause | `NOT_RUN` |
 | compaction | selected bytes/records only, bounded merge | `NOT_RUN` |
-| GC | `O(V+edges)` disk mark, streamed `O(A)` sweep, bounded RAM | `NOT_RUN` |
+| GC | `O(V+E+Sort(V+E))` disk mark, streamed/sliced `O(A+V)` sweep, `O(B)` RAM | `NOT_RUN` |
+| retirement | bounded exact-path batches and ledger service; no foreground scan | `NOT_RUN` |
 | authority rollback | streamed `O(R+E)`, bounded quiesce/pointer pause | `NOT_RUN` |
 | foreground tails under maintenance | Preparation 04 limits | `NOT_RUN` |
 
@@ -72,7 +74,7 @@ artifact evidence defined in the Stage 07 spec.
 | attribution-page sharing and measured blame metadata | `NOT_RUN` |
 | no current full payload duplication outside bounded migration/build overlap | `NOT_RUN` |
 | metadata amplification, locator runs, operation outcomes/residue | `NOT_RUN` |
-| pack slack, unreachable bytes, mark-run/trash staging | `NOT_RUN` |
+| pack slack, unreachable bytes, mark/candidate work and retirement trash | `NOT_RUN` |
 | materializations only for active/explicitly pinned roots | `NOT_RUN` |
 | materialization/staging/upper quotas and no active lease eviction | `NOT_RUN` |
 | exact Preparation 04 RSS/queue/worker/buffer/cache/semaphore caps | `NOT_RUN` |
@@ -81,9 +83,9 @@ artifact evidence defined in the Stage 07 spec.
 | restart residue bounded and measured | `NOT_RUN` |
 
 Each space report separates logical payload, physical payload, duplicate overlap,
-metadata, operation staging, GC mark/candidate/trash, native generations, uppers, pack
-slack, and unreachable residue. A zero denominator uses a reported absolute metadata
-floor rather than a misleading ratio.
+metadata, operation staging, GC mark/candidate work, retirement trash, held native/
+locator generations, uppers, pack slack, and unreachable residue. A zero denominator
+uses a reported absolute metadata floor rather than a misleading ratio.
 
 ## 5. Environment/dependency scorecard
 
@@ -130,10 +132,10 @@ Every populated row records:
 - corpus/fixture/image digest;
 - host, kernel, filesystem/provider, CPU architecture, target image;
 - Linux Engine/Desktop-VM backend, mount capability profile, and `/eos` storage kind;
-- declared variables (`R,E,U,E_changed,K,P,N,Q,D,V,A,S`);
+- declared variables (`R,E,U,E_changed,K,P,N,Q,D,V,A,S,E_s,L,G,B`);
 - raw artifact path and sample distribution;
 - peak/settled byte and resource counters;
-- threshold, measured value, `PASS`/`FAIL`;
+- threshold, measured value, `PASS`/`FAIL`/`OPEN`;
 - variance, failure, and retry explanation;
 - owner approval for qualification/default/retirement decisions.
 

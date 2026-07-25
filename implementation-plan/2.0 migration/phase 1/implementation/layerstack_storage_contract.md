@@ -22,7 +22,7 @@ and verification slices; they must not invent another durable layout or identity
 | Publication must recover automatically and a lost response must be retryable. | Stage 03 and user-required publication idempotency | A durable operation keyed by caller `PublicationId`, plus an atomic branch-head commit. |
 | Same-path races conflict while disjoint mutations progress. | Stage 03 and user-required OCC | A branch generation and changed-path comparison against the immutable base and current roots. |
 | Materialization, squash, packing, and GC can fail after producing bytes but before visibility. | Existing atomic file helpers in `ephemeral-sandbox/crates/sandbox-runtime/layerstack/src/storage/fs.rs:113-139,151-179,201-240`; Preparation 04 failure gates | Write-private, verify, fsync, atomically replace one pointer, retain the old generation until safe. |
-| GC must not miss a ref created during marking and cannot retain all live IDs in RAM. | Preparation 04 `:327-366,498-565`; user-required GC safety | Disk-backed mark runs, a ref-creation barrier, trash/grace, and a final recheck. |
+| GC must not miss a ref created during marking and cannot retain all live IDs in RAM. | Preparation 04 `:327-366,498-565`; user-required GC safety | Disk-backed mark runs, two-phase root admission, two complete negative observations, and a final typed recheck followed by one bounded retirement ledger. |
 | Candidate authority must roll back to v1 until retirement. | Stages 06–07 migration requirements | One authority fence plus the common migration operation; existing v1 artifacts remain in their current paths until retirement. |
 | Phase 2 needs cheap independent branch, checkpoint, and MCTS roots. | Phase 2 compatibility requirement | All logical visibility is one atomic ref to a content/attribution root pair; writable state remains session-private until publication. |
 | Phase 3 must change providers without changing logical identity. | Phase 3 compatibility requirement | Physical locators and materializations are outside root/object preimages. |
@@ -154,7 +154,7 @@ directory.
 │   │   └── leases/<lease-id>                         active snapshot/location/generation protection
 │   ├── operations/<operation-id>/
 │   │   ├── STATE                                     sole recovery/idempotency record
-│   │   └── work/                                     bounded private spill/build/mark/trash
+│   │   └── work/                                     bounded private spill/build/mark/retirement trash
 │   ├── materializations/<materialization-id>/
 │   │   ├── CURRENT                                   selected immutable native generation
 │   │   └── generations/<generation>/
@@ -220,17 +220,17 @@ product requirement.
 | `.storage-writer.lock` | Reuses the existing cross-process exclusion primitive for brief linearization; avoids a lock namespace. | Kernel lock only; never deletion authority. |
 | `CONTROL` | One checksummed atomic store-control record: format version, authority mode/epoch, rollback fence, and optional active migration operation. Detailed migration proof remains in that operation. | Replace temp→fsync→rename→parent-fsync under the writer lock. |
 | `objects/loose/...` | Deterministic first durable location for immutable logical content and attribution bytes. | Publish by no-replace install; delete only through GC. |
-| `objects/packs/*.pack` | Optional physical compaction. | Immutable; installed before locator selection; deleted after grace and final recheck. |
+| `objects/packs/*.pack` | Optional physical compaction. | Immutable; installed before locator selection; retired only after replacement, holds, two complete GC observations when logical liveness applies, and final recheck. |
 | `objects/locators/*.sst` | Bounded immutable mapping only for locations not derivable from a loose ID: pack range or approved existing v1/external carrier range. | Merged/streamed; selected by `CURRENT`. |
-| `objects/locators/CURRENT` | One atomic physical-location generation. | Old run set remains usable until readers release and GC grace passes. |
+| `objects/locators/CURRENT` | One atomic physical-location generation. | Old run set remains usable until readers release and the final typed retirement predicate passes. |
 | `refs/heads/*` | Current branch visibility and OCC generation. | Independently atomic; ref creation participates in the GC barrier. |
 | `refs/checkpoints/*` | Optional named retention without payload copying. | One atomic content/attribution ref; deletion removes retention edges, not payload. |
 | `refs/pins/*` | Explicit retention of an otherwise unnamed snapshot or native-materialization policy. | One atomic typed-subject ref. |
 | `refs/leases/*` | Restart-visible protection for an active snapshot/location/materialization with a fence and conservative expiry. | Expiry is evidence for final recheck, never sole deletion authority. |
 | `operations/<id>/STATE` | The single recovery and idempotency record for a workflow that crosses a durable failure boundary. | Bounded terminal retention; later collected only after retry window and referenced results are safe. |
-| `operations/<id>/work` | Private spill runs, build output, migration proof/cursor, GC mark runs/root log, or trash for that operation. | Exact-owner recovery; never scanned as truth. |
+| `operations/<id>/work` | Private spill runs, build output, migration proof/cursor, GC mark runs/root log/candidates, or the singleton retirement operation's exact private trash. | Exact-owner recovery; never scanned as truth. |
 | `materializations/<id>/generations/*` | Verified native carrier generations enable warm native execution and identity-preserving squash. | Immutable after install; only `CURRENT` is selected for new sessions. |
-| `materializations/<id>/CURRENT` | One activation point for a verified generation. | Atomic replace; old generation remains protected by exact session leases plus grace/final recheck. |
+| `materializations/<id>/CURRENT` | One activation point for a verified generation. | Atomic replace; old generation remains protected by exact session holds until the final typed retirement predicate passes. |
 | `gc/CURRENT` | Names the one active GC operation so ref commits can append barrier roots and restart can retain uncertainty. | Set/clear under writer lock; no separate epoch hierarchy. |
 | existing v1 files/directories | Preserve real rollback read/write authority until retirement. | Never moved into a new namespace; exact targets enter deletion only after evacuation proof and destructive approval. |
 
@@ -252,11 +252,12 @@ rename, and parent fsync.
 | checkpoint | `root_id`; `attribution_root_id` |
 | pin | protected typed subject (`root_id` plus its `attribution_root_id` when history/blame is retained, or materialization policy subject) and bounded reason class |
 | lease | protected subject `{content-attribution snapshot, locator-generation, materialization-generation, operation}`; fence; owner token; conservative expiry/renewal evidence |
-| operation `STATE` | kind; scope and caller operation/publication ID; request digest; phase; input refs/generations; prepared result IDs; terminal outcome/error class; retry-retention fence; migration cursor/coverage proof only when kind is migration |
+| operation `STATE` | kind; scope and caller operation/publication ID; request digest; phase; input refs/generations; prepared result IDs; terminal outcome/error class; retry-retention fence; migration cursor/coverage proof only when kind is migration; exact inventory and eligibility fences only when kind is retirement |
 | materialization `MANIFEST` | materialization tuple; generation/fence; ordered relative carrier descriptors; reconstructed capability set; logical verification root/digest; entry/allocated-byte counts; build operation ID |
 | materialization `CURRENT` | generation; fence |
 | locator `CURRENT` | ordered immutable run IDs; fence |
-| GC operation work | phase/cursors; disk-backed root log and sorted mark runs; trash inventory; grace fence |
+| GC operation work | phase/cursors; disk-backed root log, sorted mark runs, candidate inventory, cycle identity, and prior-complete-cycle reference |
+| singleton retirement operation | bounded `Pending`/`Deleting`/`Done` batches; typed subject and eligibility fences; exact normalized source/private-trash paths; expected type, length/allocation, and digest; retry/reason code |
 
 There is no stored per-path version table. OCC reads the base and current persistent
 tree pages for only the changed paths. There is no reference-count deletion authority.
@@ -312,8 +313,10 @@ authorize exact cleanup:
 | materialization build | only while building/recovering | private generation may exist before `CURRENT`; same-key callers share one fenced build |
 | squash | reuses materialization build | same generation verification and pointer switch; no squash state family |
 | pack/locator compaction | only while output is resumable | private pack/run precedes locator `CURRENT` |
-| GC | yes | disk mark cursors, barrier roots, grace, and exact trash inventory |
-| migration/cutover/authority rollback/retirement | yes | quiesce, parity/coverage proof, authority response recovery, and exact v1 targets |
+| GC | yes | disk mark cursors, provisional barrier roots, and complete negative-observation evidence |
+| store-scoped retirement ledger | yes, one stable operation | bounded exact-path `Pending`/`Deleting`/`Done` recovery for every eligible physical subject |
+| migration/cutover/authority rollback | yes | quiesce, parity/coverage proof, authority response recovery, and protected v1 sources |
+| Stage 07 retirement authorization | yes | destructive approval, rollback fence, and exact v1 eligibility proof; physical rename/unlink is delegated to the singleton retirement ledger |
 
 Terminal state is retained only for its declared retry/ack or recovery window, then its
 operation-owned roots/work are released and ordinary GC decides byte liveness. There
@@ -328,16 +331,23 @@ is no permanent receipt, transaction, or operation-history family.
 2. Snapshot `{base_root, base_attribution_root, base_generation}` from the branch
    head. Capture a bounded changed-path stream and build content plus attribution pages
    outside the writer lock. Install immutable objects idempotently.
-3. Persist operation phase `prepared` with result content/attribution roots and the
-   changed-path spill/run.
-4. Under the writer lock:
-   - if the head is unchanged, append/fsync the result content and attribution roots
-     to the active GC root log when `gc/CURRENT` exists, then atomically install the
-     new head containing both;
+3. Persist operation phase `prepared` with the result content/attribution root envelope
+   and the changed-path spill/run.
+4. Before complete graph validation, use the Stage 05 two-phase root-admission
+   protocol:
+   - under the writer lock, read `gc/CURRENT`; when present, append and fsync the
+     provisional typed root pair to that cycle's bounded root log;
+   - release the lock and validate the complete graph through protected, verified
+     locators using bounded traversal;
+   - reacquire the writer lock and append/fsync the root pair to a different active GC
+     if the GC fence changed before visibility.
+5. Under the same final writer-lock acquisition:
+   - if the head is unchanged and graph validation succeeded, atomically install the
+     new head containing both roots;
    - if it advanced, release the lock, compare only changed paths in base/current;
-     same-path differences produce a typed conflict; disjoint changes rebase on the
-     new root outside the lock and retry within a fixed retry/time budget.
-5. Before releasing the branch/writer commit exclusion, persist the terminal operation
+     same-path differences produce a typed conflict; disjoint changes rebase outside
+     the lock and repeat admission for the new root within the fixed retry/time budget.
+6. Before releasing the branch/writer commit exclusion, persist the terminal operation
    outcome. If the process dies after head commit but before this write, the next
    recovery or writer observes `head.publication_id` and repairs the terminal result
    before permitting another head advance. The head, not the outcome record, is
@@ -382,9 +392,9 @@ fork creates a complete native tree.
 `materializations/` is a managed native view of portable logical state. It is cache-like
 because a root can be reconstructed from verified logical objects, but it is not
 blindly disposable: a selected generation can serve active sessions and can
-temporarily be the last verified physical locator for native carrier data. Deletion
-therefore uses leases, last-locator checks, grace, and final recheck rather than cache
-eviction alone.
+temporarily be the last verified physical locator for native carrier data. Retirement
+therefore uses exact holds, last-locator checks, and a final typed recheck rather than
+cache eviction alone.
 
 Materialization reconstructs an immutable private generation from a root. Linux Phase
 1 stores one or more immutable native carrier directories, ordered newest-first for
@@ -423,37 +433,46 @@ generation is idempotent.
 Loose deterministic paths require no locator. Packing streams verified objects into an
 immutable pack and writes an immutable locator run. After both are durable, a short
 writer-lock section atomically replaces locator `CURRENT`. Source locations remain
-valid through reader leases, at least one completed later durable grace boundary, and
-final recheck. The last usable locator is never removed before a verified replacement
-is selected.
+valid through exact reader holds and the final typed retirement predicate. Logical
+objects require two complete negative GC observations; superseded locator carriers
+also require proof that no current or held locator generation selects them. The last
+usable locator is never removed before a verified replacement is selected.
 
 ### 6.5 GC
 
-1. Create a GC operation with disk-backed mark runs and root log; under the writer
-   lock set `gc/CURRENT`.
-2. Snapshot content and attribution roots from refs, active/prepared operations,
-   active materializations, current locators, and policy into the root log. Traverse
-   both typed graphs in bounded batches and external-sort/deduplicate mark runs. No
-   all-live `HashSet` is permitted.
-3. Every concurrent ref or materialization visibility commit appends/fsyncs its root
-   to the same log before visibility. Drain appended roots to a fixed point.
-4. Under the writer lock, close the barrier only after no undrained root remains.
-5. Stream candidate comparison into private deletion-candidate records while bytes
-   remain readable at their normal locations.
-6. After at least one complete later durable GC grace boundary, take the mutation
-   closure lock and final-recheck all refs, leases, operations, active
-   materializations, locator `CURRENT`, and newly conservative state. For one bounded
-   batch still unreachable and not the last locator, rename exact paths into the GC
-   operation's `work/trash`, fsync, and record `deleting` before releasing the lock.
-   New ref creation always validates a complete reachable graph and therefore cannot
-   resurrect a now-missing object.
-7. Unlink the exact trash batch outside the lock. On restart, ambiguous pre-`deleting`
-   trash is restored before ref mutations are admitted; durable `deleting` state may
-   resume exact unlink. Uncertainty retains.
+1. Create one GC operation with disk-backed mark runs, candidate inventory, and a
+   bounded root log; under the writer lock set `gc/CURRENT` and snapshot all typed
+   logical seeds.
+2. Traverse content and attribution graphs in bounded pages and external-sort/dedup
+   immutable mark runs. No resident all-live set is permitted.
+3. Every concurrent mutation that can expose a root uses two-phase admission: log and
+   fsync a provisional root before complete validation, then register with a changed
+   GC fence immediately before visibility. Drain logged roots to a fixed point.
+4. During `Closing`, classify bounded slices against the immediately preceding
+   complete cycle. Under the writer lock, complete the cycle and clear `gc/CURRENT`
+   only when no undrained root remains.
+5. Cycle `n` may record an unreachable candidate but may not delete it. Cycle `n+1`
+   may submit it to retirement only after absence from both complete conservative
+   marks and a current typed eligibility proof. Time may schedule a cycle but never
+   supplies negative reachability evidence.
+6. The singleton retirement operation writes and fsyncs one bounded exact inventory in
+   `Pending`. It services that inventory in fixed 16-path/64-KiB encoded writer-lock
+   slices. Before each slice it rechecks the applicable roots, operations, selectors,
+   holds, authority/migration fences, active root log, and last-carrier conditions;
+   it renames only that slice's recorded sources to recorded private-trash
+   destinations, fsyncs both parents, and releases the lock. A fully equivalent
+   replaced generation requires selector/hold/last-carrier proof but not logical GC
+   evidence.
+7. After every source has moved, record `Deleting`. Outside the lock unlink only
+   recorded destinations, fsync their parent, and record `Done`. `Pending` ambiguity
+   restores every exact moved source; durable `Deleting` resumes exact unlink.
+   Corrupt or incomplete evidence retains. Slicing adds no durable state.
 
-Restart resumes from durable cursors or conservatively abandons the cycle and retains
-trash. It never guesses that data is dead. GC worker count, run fan-in, queue size,
-open files, maps, and deletion batch are fixed configuration bounds.
+Restart resumes checked cursors or abandons a GC conservatively. It recovers the
+singleton retirement ledger from `Pending`/`Deleting`/`Done`; it never infers
+deletion authority from paths, mtime, elapsed time, or lease expiry. Worker count,
+run fan-in, queue size, open files, mappings, root log, GC work quota, ledger size,
+retirement batch, and writer-lock slice are fixed configuration bounds.
 
 ### 6.6 Lifecycle diagrams
 
@@ -507,7 +526,7 @@ flowchart LR
     G2 --> C["atomic CURRENT -> generation 2"]
     G1 --> O["old sessions keep leases"]
     C --> N["new sessions use generation 2"]
-    O --> GC["lease release + grace + final recheck"]
+    O --> GC["hold release + final typed retirement recheck"]
 ```
 
 Checkpoint, rollback operations, and MCTS all reuse roots rather than copying payload:
@@ -533,11 +552,12 @@ the concurrent-creation barrier closes:
 flowchart LR
     RR["content/attribution roots from heads + checkpoints + pins + leases"] --> MARK["disk-backed mark"]
     RO["prepared operations + current materializations + locators + migration CONTROL"] --> MARK
-    NEW["concurrent ref/materialization commit"] -->|"append + fsync before visibility"| MARK
-    MARK --> SWEEP["streamed candidates"]
-    SWEEP --> GRACE["later durable grace boundary"]
-    GRACE --> CHECK["final refs/leases/operations/locator recheck"]
-    CHECK -->|"still unreachable; not last locator"| TRASH["bounded exact trash batch"]
+    NEW["prospective ref/materialization/authority root"] -->|"provisional append + fsync before validation;<br/>re-register if fence changes before visibility"| MARK
+    MARK --> SWEEP["cycle n streamed candidates"]
+    SWEEP --> NEXT["cycle n+1 complete negative observation"]
+    NEXT --> CHECK["final refs/holds/operations/selectors/authority recheck"]
+    CHECK -->|"still eligible; not last carrier"| LEDGER["singleton retirement ledger"]
+    LEDGER --> TRASH["Pending -> exact rename -> Deleting -> unlink -> Done"]
     CHECK -->|"uncertain or reachable"| KEEP["retain"]
 ```
 
@@ -554,13 +574,14 @@ flowchart LR
 | ref/barrier append before ref rename | conservative extra GC root | retain; next GC removes if unreachable |
 | materialization before verified generation | old `CURRENT`, private work | resume or reap exact operation |
 | materialization after generation fsync, before `CURRENT` | old active generation plus orphan complete generation | verify and finish or later collect |
-| materialization after `CURRENT` | new active generation | retain old until lease/grace/final recheck |
+| materialization after `CURRENT` | new active generation | retain old until exact holds release and final typed retirement recheck |
 | squash at any point | same logical `RootId`; old or new physical generation active | same recovery as materialization |
 | pack before locator `CURRENT` | source location still selected | orphan pack/run may be collected |
-| pack after locator `CURRENT` | replacement selected, sources retained | lease/grace/final recheck before source delete |
+| pack after locator `CURRENT` | replacement selected, sources retained | exact holds and final typed predicate before source retirement |
 | GC during mark | `gc/CURRENT`, durable root log/runs/cursor | resume or abandon conservatively |
-| GC after final recheck/move to trash | bounded exact batch recorded; new refs validate and cannot select it | restore ambiguous pre-commit trash, or resume exact durable `deleting` unlink |
-| GC during final unlink | some exact candidates deleted after proof | resume exact inventory; never infer a broad directory target |
+| GC complete with candidates | one complete negative observation | retain normal readable sources until the next complete cycle and retirement recheck |
+| retirement `Pending` around rename | exact source/destination inventory | restore exact destination to source on ambiguity; never infer a target |
+| retirement `Deleting` during unlink | exact destinations were durably authorized | resume exact inventory; independently reinstalled sources remain |
 | authority change before `CONTROL` rename | old authority | retry |
 | authority change after `CONTROL` rename | new authority/epoch | resume migration or rollback rules from `CONTROL` and its named operation |
 
@@ -582,12 +603,12 @@ objects, and `B` the configured memory budget.
 | dirty checkpoint | ordinary incremental-publication cost plus one ref | only changed payload/pages |
 | warm activation/execution | `O(D)`, final `D≤64` | no CDC/object/pack/GC work |
 | cold reconstruction | `O(R+E+D)` streamed | only active or explicitly pinned materialization |
-| squash/materialization build | `O(S+E_s)` outside lock; pointer CAS/replace inside | temporary one bounded new generation; old grace-protected |
+| squash/materialization build | `O(S+E_s)` outside lock; pointer CAS/replace inside | temporary one bounded new generation; old generation protected by exact holds |
 | same-root concurrent session admission | `O(D)` validation per session; shared immutable carriers/page cache | one private upper/work/execution tree per session; no copied lower payload |
 | same-key concurrent cold requests | one fenced build plus bounded waiters | no intentionally duplicated active build; a crash-race orphan is bounded recovery residue |
 | locator compaction | proportional to selected objects/bytes; bounded external merge | at most bounded target plus protected sources |
 | GC mark | `O(V+strong-edges)` disk-backed | `O(B)` resident memory plus bounded mark runs |
-| GC sweep | streamed/sliced `O(A)` | bounded trash batch; no all-live resident set |
+| GC sweep | streamed/sliced `O(A)` | bounded candidate pages; no all-live resident set |
 | restart | incomplete-operation work plus bounded active metadata | never total history in memory |
 
 The exact Preparation 04 limits remain normative: 32 KiB CDC windows/rings, at most
@@ -703,8 +724,9 @@ kernel, filesystem, architecture, and backend results.
 6. Physical compaction and squash do not change logical identity.
 7. Idempotent retry returns the committed result or a stable conflict, never duplicates
    a logical publication.
-8. GC deletion requires reachability proof plus barrier, grace, and final recheck;
-   uncertainty retains.
+8. Logical GC deletion requires two complete negative observations plus two-phase root
+   admission and a final typed recheck; one bounded retirement ledger performs exact
+   physical deletion, and uncertainty retains.
 9. No temporary architecture exists solely to preserve an old stage boundary.
 10. Every performance statement is labeled requirement or measured result.
 11. A session leases one exact immutable materialization generation and owns a private

@@ -19,8 +19,10 @@ A single atomic top-level `CONTROL` contains format version, authority mode/epoc
 rollback eligibility, and an optional active migration-operation ID. Migration
 cursor, bounded v1↔v3 correspondence/coverage proof, and detailed recovery state remain
 in that common operation's `STATE`/`work`. Existing v1 artifacts remain in their
-current paths, and ordinary locator/source leases protect them when required. There is
-no `refs/legacy`, new legacy directory, or continuous legacy-shadow control family.
+current paths, and ordinary Stage 05 typed locator/source holds, persisted as the
+existing lease class when restart visibility is required, protect them. There is no
+`refs/legacy`, new legacy directory, continuous legacy-shadow control family, or
+Stage 06 deletion queue.
 
 The complete migration-time path layout is
 [the canonical `/eos` tree](../layerstack_storage_contract.md#4-complete-eos-ownership-and-storage-tree).
@@ -53,13 +55,17 @@ Provider/backend location never affects v3 identity.
    apply the caller-supplied stable logical migration/publication `ActorId` to changed
    paths. Record exact v1-manifest↔candidate-snapshot correlation in bounded migration
    operation work.
-4. Materialize the candidate root and verify exact logical parity through public APIs.
+4. Before complete parity validation, provisionally register the candidate content/
+   attribution root pair through the Stage 05 two-phase root-admission protocol. Then
+   materialize the candidate root and verify exact logical parity through public APIs.
 5. Prove every retained candidate root has a safe selected locator or
    source-protection lease, and persist the migration cursor/coverage proof in the
    migration operation `STATE`.
-6. Under the writer/authority lock, participate in the GC barrier and atomically replace
-   `CONTROL` with `{format_version,authority=candidate,new_epoch,
-   rollback_allowed=true,active_migration_operation_id}`.
+6. Acquire the existing storage writer lock—this is also the authority fence—recheck
+   the candidate head, coverage proof, and source holds; if `gc/CURRENT` differs from
+   the provisional fence, append/fsync the root pair to the new active GC root log.
+   Atomically replace `CONTROL` with `{format_version,authority=candidate,new_epoch,
+   rollback_allowed=true,active_migration_operation_id}` in the same lock acquisition.
 7. Resume publications through the candidate branch only.
 8. Repair a lost response from the authority epoch and migration operation; never
    repeat the cutover as a new publication.
@@ -68,7 +74,8 @@ Provider/backend location never affects v3 identity.
    that operation. This cleanup does not advance the authority epoch.
 
 V1 remains unchanged and non-authoritative after the switch. It need not be continuously
-updated.
+updated. Stage 06 never submits v1 paths to retirement; Stage 07 alone may make those
+paths eligible after separately approved rollback fencing.
 
 ## 4. Public candidate publication
 
@@ -77,6 +84,12 @@ root, generation, and publication ID, is the only public publication linearizati
 point. Response recovery, OCC, checkpoints, reset/revert, and GC barrier rules are
 unchanged. Authority code does not add another receipt, generation, head, or
 transaction.
+
+Every authority mutation that can select a content/attribution snapshot uses Stage
+05's two-phase admission: provisional durable root registration before expensive
+validation, then registration with any changed GC fence immediately before the
+`CONTROL` switch. Root-log capacity failure aborts the active GC conservatively before
+authority visibility or returns bounded `ResourceExhausted`; it never skips admission.
 
 At admission, a request captures authority epoch. Before head commit it verifies the
 same epoch and candidate authority. Epoch change yields a typed retry; work may remain
@@ -99,9 +112,12 @@ Rollback may be cold `O(R+E)`; it is not required to be `O(1)`.
    filesystem operations only.
 6. Verify exact parity and sync the complete v1 carrier/metadata/manifest candidate.
 7. Publish the v1 manifest atomically while routing still names candidate authority.
-8. Recheck the expected candidate head/epoch and persist the reverse-coverage proof in
-   the rollback operation `STATE`. Under the writer/authority lock replace `CONTROL`
-   with `{format_version,authority=legacy,new_epoch,rollback_allowed=true,
+8. Recheck the expected candidate head/epoch, persist the reverse-coverage proof in the
+   rollback operation `STATE`, and provisionally register the retained candidate
+   snapshot through Stage 05 root admission before final validation. Under the existing
+   storage writer lock, register with a changed active GC fence if necessary, recheck
+   the candidate head/epoch and v1 source holds, then replace `CONTROL` with
+   `{format_version,authority=legacy,new_epoch,rollback_allowed=true,
    active_migration_operation_id}`.
 9. Persist the terminal rollback outcome, then atomically clear
    `CONTROL.active_migration_operation_id` if the same authority epoch still names
@@ -142,15 +158,31 @@ an active session's mount plan.
 | v1 rollback build incomplete | candidate | resume/reap; no route change |
 | v1 manifest published, before `CONTROL` | candidate | recheck head/epoch and finish or discard prepared v1 |
 | legacy `CONTROL`, before response | legacy | return committed epoch |
+| GC fence changes after provisional registration | unchanged | register the selected roots with the new active cycle before retrying `CONTROL` |
+| GC root log reaches its hard cap | unchanged | abort that GC conservatively or return bounded `ResourceExhausted`; retain both stores |
 | corrupt/missing coverage or locator | unchanged | fail closed; retain both stores |
 
 No boot logic infers authority from newest mtime, directory contents, or which manifest
 exists.
 
+The lock/permit order is the shared storage order:
+
+```text
+byte/worker/FD permits
+    -> optional per-key operation ownership
+        -> storage writer lock
+```
+
+No graph traversal, materialization, parity scan, wait, worker join, or permit
+acquisition occurs while holding the writer lock. Only bounded root-log append/fsync,
+fence/head/source-hold rechecks, `CONTROL` replacement, and parent fsync occur there.
+
 ## 8. Complexity, space, and bounds
 
 - forward first import or rollback reconstruction: streamed `O(R+E)`;
 - authority switch: bounded atomic metadata under lock;
+- authority switch includes at most a bounded Stage 05 root-log append/fsync and
+  recheck; root-log saturation follows Stage 05 abort/backpressure policy;
 - normal candidate publication: unchanged Stage 03 incremental bound;
 - authority rollback reconstructs content into v1 but retains the candidate
   attribution graph; re-cutover attribution work is included in the streamed import;
@@ -160,7 +192,9 @@ exists.
   buffers, FDs, mappings, and quiesce duration are explicitly
   bounded/backpressured;
 - no continuous reverse-copy queue, cursor history, or duplicate current tree is kept
-  merely for fast rollback.
+  merely for fast rollback;
+- Stage 06 owns no trash, unlink worker, retirement ledger, or direct v1 deletion;
+  ordinary typed source holds are released only by the Stage 07-approved flow.
 
 ## 9. Exit criteria
 
@@ -171,6 +205,9 @@ exists.
 - all public roots remain v1-representable until retirement approval;
 - lost-response retry returns the committed authority epoch/result;
 - legacy artifacts remain complete and protected;
+- authority changes use Stage 05 two-phase root admission and never bypass a full root
+  log;
+- Stage 06 never authorizes or performs v1 physical retirement;
 - attribution remains queryable from retained candidate refs across rollback and is
   correctly extended on re-cutover after intervening v1 writes;
 - no new legacy directory or legacy ref class exists;

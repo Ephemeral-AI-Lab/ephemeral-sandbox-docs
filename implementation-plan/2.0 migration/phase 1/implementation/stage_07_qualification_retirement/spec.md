@@ -23,11 +23,11 @@ environment, cleanup, and approval.
 | Transfer ID | Stage 03 deferred scope | Required prerequisite | Stage 07 closure evidence | Initial status |
 | --- | --- | --- | --- | --- |
 | `S07-X03-01` | full host/filesystem/architecture qualification beyond the approved Stage 03 portability cases | Stage 03–06 release candidate and complete environment adapter support | every §8 cell identified by immutable image/revision, guest kernel, backing filesystem/provider, mount/backend capabilities and architecture; cross-cell logical IDs match; unsupported cells fail closed | `OPEN` |
-| `S07-X03-02` | full 64/256/1024 MiB × 1/16/64-root RSS matrix | final publication, materialization, pack/locator, GC and authority routes | Preparation 04 matrix with idle/peak/settled RSS, queues, buffers, workers/tasks, FDs/mappings, cache/permit ownership, raw distributions and cap verdicts | `OPEN` |
+| `S07-X03-02` | full Preparation 04 64/256/1024 MiB input/history × 1/16/64-root RSS matrix | final publication, materialization, pack/locator, GC and authority routes | Preparation 04 matrix with idle/peak/settled RSS, queues, buffers, workers/tasks, FDs/mappings, cache/permit ownership, raw distributions and cap verdicts | `OPEN` |
 | `S07-X03-03` | full five-minute matched candidate/baseline allowance and three-invocation selection-advantage decision | qualified baseline/candidate pair on the same release revision, corpus and host cell | matched five-minute campaigns plus at least three valid invocations per decision cell, variance and exclusion accounting, threshold comparison and explicit selection decision | `OPEN` |
 | `S07-X03-04` | exhaustive corpus, long-duration soak, restart storm and release-variance matrix | all Stage 03–06 mechanisms and fault seams integrated | corpus manifest/digest, soak duration, restart/fault schedule, per-release distributions, cleanup ledger, unexplained-residue zero and bounded rollback behavior | `OPEN` |
 | `S07-X03-05` | real Stage 04 materialization/activation behavior | Stage 04 exit evidence | release-artifact replay of exact cold reconstruction, strict no-fallback warm route, generation fencing/leasing, capability rejection and resource/space bounds | `OPEN` |
-| `S07-X03-06` | real Stage 05 packs, locator compaction, GC, squash and destructive retention | Stage 05 exit evidence | release-artifact replay of pack/locator replacement, same-root squash, disk-backed trace/sweep, grace/trash/final recheck, restart and last-location safety | `OPEN` |
+| `S07-X03-06` | real Stage 05 packs, locator compaction, GC, squash and destructive retention | Stage 05 exit evidence | release-artifact replay of common verified replacement, two-phase root admission, two complete GC observations, singleton `Pending`/`Deleting`/`Done` retirement, restart and last-location safety | `OPEN` |
 | `S07-X03-07` | Stage 06 public authority cutover/fallback plus Stage 07 retirement | Stage 06 reversible cutover/rollback exit evidence | genuine candidate→v1 rollback, verified v1 publication, re-cutover, separate qualification/default/retirement approvals, evacuation proof and candidate-only restart | `OPEN` |
 | `S07-X03-08` | end-to-end attribution/checkpoint survival through real later-stage destructive operations | `S07-X03-05` through `S07-X03-07` prerequisites | immutable attribution and retained checkpoint roots survive materialize→squash→compact→GC→restart→cutover/rollback→retirement rehearsal with unchanged content identity and exact blame | `OPEN` |
 
@@ -61,8 +61,9 @@ Qualification requires one coherent artifact set proving:
   compaction, GC, and restart without content-identity changes;
 - exact cold reconstruction and strict warm native routing;
 - same-root squash and checkpoint survival;
-- locator replacement, concurrent GC barrier, grace/trash/final recheck, conservative
-  restart, and last-locator protection;
+- locator replacement, two-phase root admission, two complete negative GC
+  observations, singleton retirement recovery, conservative restart, and
+  last-locator protection;
 - genuine candidate→v1 authority rollback and re-cutover;
 - safe Rust, bounded resources, no detached tasks/cycles, and no all-live resident set;
 - complete Preparation 04 performance/space gates;
@@ -104,34 +105,52 @@ Retirement requires all of:
    retirement operation contains the approval that will atomically mark rollback
    ineligible;
 8. exact legacy deletion targets are enumerated and backed up/recoverable according to
-   release policy.
+   release policy;
+9. candidate-only admission is proven unable to create a new v1 locator/source
+   dependency after the rollback fence; and
+10. the Stage 05 singleton retirement ledger has capacity for each admitted bounded
+    batch, or retirement remains safely incomplete and backpressured.
 
 If any proof is uncertain, retain legacy.
 
 ## 5. Retirement operation
 
-Retirement is one common maintenance operation:
+Retirement authorization is one common maintenance operation. It does not own a
+second deletion state machine:
 
 1. fence authority and mutation admissions;
 2. recheck all prerequisites and active ownership;
-3. record the approval identifier and retirement proof in the operation `STATE`, then
-   atomically update top-level `CONTROL` to `{format_version,
+3. under the existing storage writer lock, record the approval identifier and
+   retirement proof in the operation `STATE`, then atomically update top-level
+   `CONTROL` to `{format_version,
    authority=candidate-retired,new_epoch,rollback_allowed=false,
    active_migration_operation_id}`;
-4. release ordinary migration/source leases only after every retained root has a
-   verified non-v1 locator;
-5. hand exact existing v1 `manifest.json`, `workspace.json`, `base`, `layers`,
-   `staging`, and `.layer-metadata` targets to Stage 05
-   grace/final-recheck deletion;
-6. retain the terminal operation only for the declared bounded response/audit window,
-   then release its work; there is no retirement receipt/ref family;
-7. clear `CONTROL.active_migration_operation_id` after the operation is terminal and
-   the same authority epoch still names it;
-8. resume candidate-only admissions.
+4. derive from that `CONTROL` state the admission rule that rejects any new dependency
+   on a v1 locator/source, then resume candidate-only admissions; this adds no second
+   durable flag, and no long delete runs under the authority fence;
+5. release ordinary migration/source holds only after every retained root has a
+   verified selected non-v1 locator;
+6. stream the disk-backed exact typed inventory of existing-v1 `manifest.json`,
+   `workspace.json`, `base`, `layers`, `staging`, and `.layer-metadata` subjects in
+   bounded pages/batches to the Stage 05 singleton retirement ledger; it is never a
+   resident all-target collection, and the authorization operation's target inventory
+   is negative/deletion evidence, not a logical root or source hold;
+7. require every batch's final predicate to recheck matching
+   `CONTROL={authority=candidate-retired,authority_epoch,rollback_allowed=false}`, no
+   active v1-dependent root/operation/session/selector/hold, and every required
+   replacement locator before its exact rename;
+8. keep the authorization operation recoverable until every submitted batch is
+   `Done` or explicitly withdrawn with the source retained; then retain its terminal
+   result only for the declared bounded response/audit window and release its work;
+   there is no retirement receipt/ref family;
+9. clear `CONTROL.active_migration_operation_id` after the operation is terminal and
+   the same authority epoch still names it.
 
-The operation never recursively deletes `/eos`, `/eos/layer-stack`, a workspace root,
-or a glob-derived target. Product data removal is exact and recoverable until its
-declared final boundary.
+Stage 07 never calls unlink or recursively deletes `/eos`, `/eos/layer-stack`, a
+workspace root, or a glob-derived target. The Stage 05 ledger accepts only normalized
+exact relative paths under pre-opened LayerStack-owned directories. Product data
+removal is recoverable in `Pending` and durably authorized in `Deleting`; corrupt or
+ambiguous state retains.
 
 After retirement, rollback means candidate checkpoint/head reset/revert; v1 authority
 rollback is unavailable and APIs report that explicitly.
@@ -201,6 +220,11 @@ prose.
 failure leaves candidate authority intact or stops safely before candidate-only state;
 it never guesses that rollback data is disposable.
 
+After `candidate-retired`, a physical-deletion failure does not restore v1 authority
+or invent a rollback path. It leaves the exact source or `Pending`/`Deleting` ledger
+state retained and observable until bounded retry, operator repair, or explicit
+withdrawal. Stage completion still waits for explained convergence.
+
 ## 10. Exit
 
 Stage 07 completes only when:
@@ -208,8 +232,9 @@ Stage 07 completes only when:
 - qualification approval is recorded;
 - candidate default soak passes;
 - retirement approval is explicit;
-- exact legacy evacuation/deletion evidence passes;
+- exact legacy evacuation and Stage 05 retirement-ledger evidence passes;
 - migration-only state is gone;
 - candidate-only restart and GC pass;
+- Stage 07 introduced no direct unlink path, trash owner, or deletion state family;
 - documentation, benchmark notes, links, and terminology agree with the one canonical
   storage contract.

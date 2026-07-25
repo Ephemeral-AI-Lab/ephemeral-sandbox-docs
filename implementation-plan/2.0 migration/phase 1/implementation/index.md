@@ -22,8 +22,11 @@ The prior simplified design was still over-engineered. The durable core is:
 3. one recoverable operation protocol;
 4. immutable native generations selected by one pointer;
 5. optional immutable locator runs selected by one pointer;
-6. disk-backed tracing GC with a ref-creation barrier;
-7. one authority fence plus temporary common-operation migration proof.
+6. one verified build→publish→hold-old→retire lifecycle for physical generations;
+7. disk-backed tracing GC with two-phase root admission and two complete negative
+   observations;
+8. one bounded singleton retirement ledger for exact physical deletion; and
+9. one authority fence plus temporary common-operation migration proof.
 
 Separate root files, receipt and control families, lock directories, per-operation
 journal types, separate squash state, permanent quarantine/trash, and Stage 04 shadow
@@ -61,7 +64,7 @@ orientation map:
 │   │   └── leases/<lease-id>                         active snapshot/location/generation protection
 │   ├── operations/<operation-id>/
 │   │   ├── STATE                                     sole recovery/idempotency record
-│   │   └── work/                                     bounded private spill/build/mark/trash
+│   │   └── work/                                     bounded private spill/build/mark/retirement trash
 │   ├── materializations/<materialization-id>/
 │   │   ├── CURRENT                                   selected immutable native generation
 │   │   └── generations/<generation>/
@@ -141,7 +144,7 @@ safe point to correct the format.
 | bounded MCTS native depth | inactive refs only; active private uppers; materialization flattening | Stage 04 / Phase 2 suites |
 | compaction without identity change | pack/locator pointer replacement | Stage 05 / Stage 07 |
 | checkpoint survival across squash | squash is materialization generation replacement | Stage 05 / Stage 07 |
-| concurrent GC safety | disk mark runs, root barrier, grace, final recheck | Stage 05 / Stage 07 |
+| concurrent GC safety | disk mark runs, two-phase root admission, two complete negative observations, final typed recheck | Stage 05 / Stage 07 |
 | migration and authority rollback | one authority state; verified on-demand reverse materialization | Stage 06 / Stage 07 |
 | Phase 3 backend portability | provider-neutral objects/refs; physical adapters only | contract / provider contract suites |
 | environment/dependency constraints | safe internal Rust and existing mandatory dependencies only | every stage / Stage 07 matrix |
@@ -199,9 +202,11 @@ Documents:
 - [E2E plan](stage_05_retention_gc_packs/e2e_test.md)
 - [benchmark note](stage_05_retention_gc_packs/benchmark_note.md)
 
-This stage adds pack/locator maintenance, disk-backed tracing GC, the ref-creation
-barrier, grace/final recheck, policy retention, and identity-preserving squash through
-the existing materialization-generation switch.
+This stage adds pack/locator maintenance, disk-backed tracing GC, two-phase root
+admission, two complete negative observations, policy retention, one shared verified
+generation lifecycle, and one singleton exact-path retirement ledger. Stage 04 still
+owns materialization/squash construction; Stage 05 owns generic old-generation
+retirement after the existing materialization-generation switch.
 
 ### Stage 06 — reversible candidate authority
 
@@ -215,7 +220,8 @@ Candidate authority is enabled only after verified catch-up. Authority rollback 
 real write-and-read rollback: quiesce/fence publications, materialize and verify the
 selected candidate root into private v1 staging, atomically publish v1, switch the one
 authority state, and resume v1 writes. A continuous legacy-shadow architecture is not
-required.
+required. Authority changes use Stage 05 two-phase root admission and ordinary typed
+source holds; Stage 06 owns no deletion path.
 
 ### Stage 07 — qualification, default, and retirement
 
@@ -229,6 +235,8 @@ Stage 07 adds no storage mechanism. It runs the complete crash, concurrency,
 performance, space, memory, image, architecture, rollback, and long-soak matrices.
 Candidate default occurs only after opt-in qualification passes. Legacy retirement is
 a separate destructive approval after rollback rehearsal and evacuation proof.
+Stage 07 makes exact v1 subjects eligible only after fencing rollback; the Stage 05
+singleton retirement ledger remains the sole physical rename/unlink owner.
 Its spec and benchmark note explicitly own `S07-X03-01` through `S07-X03-08`,
 the eight release-qualification items transferred from Stage 03 `S03-Q07`.
 
@@ -317,7 +325,7 @@ Preparation 04 is preserved without relaxation:
 - materializations exist only for active or explicitly pinned roots;
 - cold reconstruction is streamed and bounded;
 - metadata, operation residue, locator amplification, packs, duplicate bytes, mark
-  runs, and trash overlap are measured;
+  runs, held generations, and retirement-trash overlap are measured;
 - all Preparation 04 queue, worker, buffer, merge-fan-in, encoder, cache,
   per-publication, global semaphore, depth, RSS, and space limits remain normative.
 
@@ -362,7 +370,8 @@ measured.
    retained within a bounded advertised window; after expiry retry must return
    `OutcomeExpired`, never republish.
 4. **Correctness:** ref creation, materialization activation, and authority switch must
-   participate in the same GC barrier before visibility.
+   use the same two-phase root admission before validation and again on GC-fence change
+   before visibility.
 5. **Performance:** bounded-page fanout, write amplification, global metadata-lock
    contention, locator-run caps, and GC external-run costs are unmeasured.
 6. **Space:** imported v1 payload needs a durable source-protection lease until
