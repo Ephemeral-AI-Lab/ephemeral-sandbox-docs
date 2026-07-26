@@ -1875,13 +1875,14 @@ Before proposing `PASS`:
 
 ### M.3 Current handoff state
 
-This instruction document hands implementation forward with:
+Implementation completed on 2026-07-27. The authoritative result record is
+[the Stage 04.5 handoff](implementation_handoff.md):
 
-- overall Stage 04.5 status: `OPEN`;
-- live test/benchmark status: `NOT_RUN`;
+- overall Stage 04.5 status: `PASS WITH OWNER-APPROVED PERFORMANCE EXCEPTIONS`;
+- live typed E2E status: `77/77 PASS`;
+- live benchmark status: complete within the one-clock `180 s` boundary; raw
+  strict performance exceptions retained and explicitly dispositioned;
 - public authority: `legacy_v1`;
-- exact unresolved contradiction: current production retirement/deletion entry points
-  conflict with Stage 04.5's no-deletion authority;
-- external decision blocker: none identified;
-- implementation performed while authoring this guide: none;
-- live tests or benchmarks performed while authoring this guide: none.
+- production retirement/deletion reachability: removed;
+- external decision blocker: none;
+- Stage 05 handoff: ready.

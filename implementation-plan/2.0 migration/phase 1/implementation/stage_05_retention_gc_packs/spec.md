@@ -10,6 +10,7 @@ Normative dependencies:
 - [minimal storage contract](../layerstack_storage_contract.md)
 - [Stage 04](../stage_04_candidate_materialization/spec.md)
 - [Stage 04.5 alignment gate](../stage_04_5_materialization_gc_alignment/spec.md)
+- [incoming Stage 04.5 implementation handoff](handoff_from_stage_04_5.md)
 - [Stage 06](../stage_06_candidate_authority/spec.md)
 - [Preparation 04](../../prep/04-seqcdc-space-time-complexity-and-acceptance-criteria.md)
 

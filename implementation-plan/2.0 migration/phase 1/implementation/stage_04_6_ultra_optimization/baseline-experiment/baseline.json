@@ -1,0 +1,87 @@
+{
+  "schema_name": "eos_stage04_6_repository_materialization_baseline",
+  "schema_version": 1,
+  "status": "recorded_baseline_not_acceptance_gate",
+  "recorded_date": "2026-07-27",
+  "source": {
+    "branch": "upgrade-2.0-phase-1",
+    "head": "68c6e2bdeb490c2e7a24f3791dba865c38d9e737",
+    "dirty_worktree": true,
+    "target": "aarch64-unknown-linux-musl",
+    "profile": "release",
+    "test": "repository_materialization_benchmark::materialize_repository_corpus",
+    "test_source_sha256": "2fb799359a5f243e52ac680dd28fae1d0484dd5eb7d49bf4237874b9393f904d"
+  },
+  "corpus": {
+    "preserved_path": "/Users/yifanxu/Ephemeral-AI-Lab/experiment/materialization-benchmark-20260727/corpus/console-release",
+    "directories": 694,
+    "files": 3602,
+    "logical_bytes": 912350100,
+    "mib": 870.0848579406738,
+    "gib": 0.8496922440826893,
+    "files_at_least_one_mib": 214
+  },
+  "measurements": {
+    "publication_cdc_cas": {
+      "elapsed_ns": 107024411507,
+      "mb_per_second": 8.52469158347418,
+      "mib_per_second": 8.129779418443851,
+      "matched": true
+    },
+    "cold_complete_materialization": {
+      "elapsed_ns": 9987675338,
+      "mb_per_second": 91.34759282060274,
+      "mib_per_second": 87.1158531385448,
+      "disposition": "built",
+      "generation": 1,
+      "maximum_buffer_bytes": 262140,
+      "manifest_sha256": "cfe8e5898f7a2185ba70a273554cb5255541b841d33de6b526b16e6f5029493b",
+      "native_tree_sha256": "e84c8a8cea89c9f65a3163a4947b753bc07c736af885d227db91732c181ea400"
+    },
+    "same_key_materializer_reuse": {
+      "elapsed_ns": 6361909169,
+      "mb_per_second": 143.4082247583249,
+      "mib_per_second": 136.76474071342938,
+      "disposition": "reused"
+    },
+    "warm_generation_lookup": {
+      "samples_ns": [
+        32750,
+        33167,
+        35375,
+        38541,
+        69708
+      ],
+      "median_ns": 35375
+    },
+    "post_measurement_preservation_copy": {
+      "elapsed_ns": 2046828709,
+      "included_in_product_intervals": false
+    }
+  },
+  "environment": {
+    "host_model": "Apple M3 Max",
+    "host_architecture": "arm64",
+    "host_memory_bytes": 38654705664,
+    "host_os": "macOS 26.4.1 (25E253)",
+    "docker_client": "29.5.2",
+    "docker_server": "29.5.2",
+    "container_image": "ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90",
+    "container_network": "none",
+    "rustc": "1.96.0 (ac68faa20 2026-05-25)"
+  },
+  "preserved_artifacts": {
+    "experiment_root": "/Users/yifanxu/Ephemeral-AI-Lab/experiment/materialization-benchmark-20260727",
+    "benchmark_json_sha256": "614a64e999b07f1a2565aa801cd95e4551f3cfad3af2076463dbdad5c650c908",
+    "command_evidence_sha256": "424c62b1a5cf7958699d5318c6dd872c52f796609c0b04cc20538cb23e74cea3",
+    "cleanup_evidence_sha256": "f84618fc44e1aec971fa66ab8e664c031a1ad3813f413be467358cd44dc974b9",
+    "materialized_carrier_preserved": true
+  },
+  "limitations": {
+    "sample_count": 1,
+    "main_branch_comparison": false,
+    "native_copy_control": false,
+    "formal_acceptance_gate": false,
+    "corpus_is_typical_source_checkout": false
+  }
+}

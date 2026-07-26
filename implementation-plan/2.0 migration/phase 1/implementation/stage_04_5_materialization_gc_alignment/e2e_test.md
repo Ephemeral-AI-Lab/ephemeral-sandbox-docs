@@ -1,7 +1,8 @@
 # Stage 04.5 E2E plan — materialization/GC lifecycle alignment
 
-Status: `NOT_RUN`. No item in this document is a `PASS` without a raw artifact
-and revision-linked result.
+Status: **PASS**. All `77` typed Stage 04.5 cases passed without skips or
+xfails in `CMD-S045-406`; the raw evidence and revision-linked completion
+summary are recorded in [the Stage 04.5 handoff](implementation_handoff.md).
 
 Normative sources:
 

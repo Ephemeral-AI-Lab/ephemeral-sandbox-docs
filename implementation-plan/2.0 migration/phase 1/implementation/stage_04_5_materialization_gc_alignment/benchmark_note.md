@@ -1,8 +1,12 @@
 # Stage 04.5 benchmark note — materialization/GC lifecycle alignment
 
-Status: **NOT_RUN**. Every result is `OPEN` until a matched raw artifact is
-recorded. The architecture preserves target complexity shapes; that is not
-measured performance evidence.
+Status: **COMPLETE — PASS WITH OWNER-APPROVED PERFORMANCE EXCEPTIONS**.
+Run `019fa006-36da-7f9f-ae82-3b3af89f2bab` completed the one-clock campaign
+within `180 s` with sufficient matched p50/p95 samples, zero retries, and green
+functional, authority, resource, space, cleanup, and quiescence gates. The raw
+strict verdict remains `FAIL`; the unchanged measurements and explicit owner
+disposition are recorded in
+[the Stage 04.5 handoff](implementation_handoff.md).
 
 Normative sources:
 

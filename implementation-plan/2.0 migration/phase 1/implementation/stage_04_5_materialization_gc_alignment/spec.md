@@ -1,8 +1,9 @@
 # Stage 04.5 — materialization/GC lifecycle alignment
 
-Status: specification only. The alignment audit found compatible Stage 04
-primitives, but the implementation and all evidence in this directory remain
-`OPEN`.
+Status: **IMPLEMENTED — PASS WITH OWNER-APPROVED PERFORMANCE EXCEPTIONS**.
+The raw strict benchmark thresholds and exceptions remain visible in
+[the Stage 04.5 handoff](implementation_handoff.md); correctness, authority,
+resource, space, cleanup, and quiescence gates passed.
 
 Normative dependencies:
 

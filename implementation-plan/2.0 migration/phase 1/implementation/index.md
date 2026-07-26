@@ -1,10 +1,10 @@
 # LayerStack Phase 1 implementation plan
 
 Status: Stage 02 portable-root and Stage 03 corrected-identity/private-publication
-slices are **POC PASS**. Stage 04 implementation exists, but its evidence and the
-Stage 04.5 materialization/GC alignment gate remain **OPEN**. Stage 05 cannot start
-until Stage 04.5 passes. Cumulative performance/release qualification remains open
-in Stage 07.
+slices are **POC PASS**. Stage 04 implementation exists, and the Stage 04.5
+materialization/GC alignment gate is **PASS WITH OWNER-APPROVED PERFORMANCE
+EXCEPTIONS**. Stage 05 may start from the frozen handoff. Cumulative
+performance/release qualification remains open in Stage 07.
 
 Phase 1 uses **six ordered implementation boundaries after Stage 02**, not nine:
 Stage 03, Stage 04, the Stage 04.5 compatibility gate, and Stages 05–07. Stage 04.5
@@ -205,6 +205,7 @@ Documents:
 - [spec](stage_04_5_materialization_gc_alignment/spec.md)
 - [E2E plan](stage_04_5_materialization_gc_alignment/e2e_test.md)
 - [benchmark note](stage_04_5_materialization_gc_alignment/benchmark_note.md)
+- [implementation handoff to Stage 05](stage_04_5_materialization_gc_alignment/implementation_handoff.md)
 
 This compatibility gate separates private construction from common publication,
 collapses materialization durability into the shared four-state operation lifecycle,
@@ -220,6 +221,7 @@ Documents:
 - [spec](stage_05_retention_gc_packs/spec.md)
 - [E2E plan](stage_05_retention_gc_packs/e2e_test.md)
 - [benchmark note](stage_05_retention_gc_packs/benchmark_note.md)
+- [incoming handoff from Stage 04.5](stage_05_retention_gc_packs/handoff_from_stage_04_5.md)
 
 This stage adds pack/locator maintenance, disk-backed tracing GC, two-phase root
 admission, two complete negative observations, policy retention, one shared verified
