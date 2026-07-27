@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="MPLA component responsibilities, ownership boundaries, resource control, and adapter seams.">
+  <title>Act 04 · MPLA System Components</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div><span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a><a href="act-04-system-components.html" aria-current="page"><b>04</b>Components</a><a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div><div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Components</span></div><span class="kicker">Act 04 · Responsibilities</span><h1>Every durable byte has one owner</h1><p class="lede">MPLA is less a monolith than a set of narrow authorities: workspace mutation, payload placement, canonical construction, ref visibility, projection acceleration, and resource supervision.</p></div>
+      <p class="boundary-note">No component may infer authority from a pathname. Allocation IDs, owner epochs, receipts, generations, and leases make ownership explicit.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#map">Component map</a></li><li><a href="#authority">Authority table</a></li><li><a href="#arena">Allocation arena</a></li><li><a href="#pipeline">Streaming pipeline</a></li><li><a href="#supervision">Supervision</a></li><li><a href="#adapters">Adapter seam</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="map">
+          <div class="section-head"><span class="micro-label">System map</span><h2>A small canonical core is surrounded by storage and execution services</h2><p>The large work—scanning, sorting, hashing, packing—stays outside short ownership, locator, and ref writer sections.</p></div>
+          <figure class="diagram">
+            <div class="flow-grid cols-3">
+              <article class="flow-node gold"><span>Adapter plane</span><strong>OCI qualifier + mount</strong><p>Probes semantics, prepares runtime view, verifies external readiness.</p></article>
+              <article class="flow-node rose"><span>Sealing plane</span><strong>Workspace + ownership</strong><p>Allocates, leases, quiesces, seals, adopts, and rotates writable state.</p></article>
+              <article class="flow-node blue"><span>Checkpoint plane</span><strong>Scanner + sort + Merkle</strong><p>Normalizes filesystem meaning and builds paired immutable roots.</p></article>
+              <article class="flow-node green"><span>Payload plane</span><strong>PayloadStore + locators</strong><p>Owns packs, adopted allocations, and immutable forward/reverse generations.</p></article>
+              <article class="flow-node gold"><span>Projection plane</span><strong>Receipts + carriers</strong><p>Builds bounded native realizations; safe to evict and reconstruct.</p></article>
+              <article class="flow-node blue"><span>Control plane</span><strong>Ref + recovery + scheduler</strong><p>Serializes final visibility, replays operations, and enforces budgets.</p></article>
+            </div>
+            <figcaption>Canonical semantics do not depend on one runtime. OCI is the required adapter today; the core interfaces do not encode OverlayFS structures.</figcaption>
+          </figure>
+        </section>
+
+        <section class="content-section" id="authority">
+          <div class="section-head"><span class="micro-label">Interface contracts</span><h2>One component makes each irreversible decision</h2><p>Clear authority eliminates “who deletes this?” and “which path is canonical?” ambiguity during crash recovery.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Component</th><th>Owns</th><th>Durable output</th><th>Must never do</th></tr></thead>
+              <tbody>
+                <tr><td>WorkspaceManager</td><td>Epoch-fenced mutation lease</td><td>Session lease and execution transcript</td><td>Delete an adopted payload allocation</td></tr>
+                <tr><td>PayloadStore</td><td>Physical allocations and payload coverage</td><td>Owner receipt, payload locators, packs</td><td>Expose a root or infer canonical identity</td></tr>
+                <tr><td>Scanner / reducer</td><td>Mutation evidence interpretation</td><td>Sorted normalized spool</td><td>Trust incomplete journal evidence</td></tr>
+                <tr><td>Merkle builder</td><td>Filesystem semantic encoding</td><td>Immutable root and attribution pages</td><td>Embed physical locations</td></tr>
+                <tr><td>Locator catalog</td><td>Selected placement generation</td><td>Checksummed forward/reverse supermanifest</td><td>Retire the last readable locator</td></tr>
+                <tr><td>Ref store</td><td>Branch/checkpoint visibility</td><td>Atomic paired head + idempotency terminal</td><td>Commit before locators are durable</td></tr>
+                <tr><td>ProjectionStore</td><td>Disposable native acceleration</td><td>Exact/compatible receipts</td><td>Become required canonical truth</td></tr>
+                <tr><td>Scheduler / recovery</td><td>Resource admission and operation replay</td><td>Typed outcomes and forward progress</td><td>Allocate state for a rejected job</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="arena">
+          <div class="section-head"><span class="micro-label">Stable allocation arena</span><h2>Allocation identity is established before execution</h2><p>The writable directory begins inside PayloadStore’s physical arena. Publication changes its owner state; it does not move the directory between host volumes.</p></div>
+          <div class="split-wide">
+            <div class="code-figure"><div class="code-label">Physical layout</div><pre><code>/eos/layer-stack/
+├── objects/
+│   ├── allocations/
+│   │   ├── _ownership/{JOURNAL,CURRENT}
+│   │   └── &lt;AllocationId A&gt;/
+│   │       ├── upper/     # path stays stationary
+│   │       ├── work/      # active-only, disposable
+│   │       └── OWNER      # cached witness
+│   ├── packs/
+│   └── locators/{runs,CURRENT}
+├── operations/&lt;operation-id&gt;/
+├── refs/
+└── materializations/</code></pre></div>
+            <figure class="diagram">
+              <div class="pipeline">
+                <div class="pipeline-item rose"><small>Before run</small><strong>PayloadStore allocates A</strong><span>stable backend-local identity</span></div>
+                <div class="pipeline-item gold"><small>During run</small><strong>Workspace leases A</strong><span>epoch-fenced exclusive writer</span></div>
+                <div class="pipeline-item green"><small>After seal</small><strong>PayloadStore adopts A</strong><span>same path, immutable payload source</span></div>
+              </div>
+              <figcaption>This is the universal replacement for relying on <code>rename()</code> success across filesystems. It works by changing metadata authority, not by moving paths.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="content-section" id="pipeline">
+          <div class="section-head"><span class="micro-label">Many-small-file path</span><h2>Disk-backed streaming replaces repository-sized maps</h2><p>One million paths are handled as bounded sorted runs, then merged with fixed fan-in. Memory holds cursors and buffers, not one task, descriptor, or heap object per path.</p></div>
+          <figure class="diagram">
+            <div class="pipeline cols-3">
+              <div class="pipeline-item blue"><small>Scan</small><strong>bounded dirfd walk</strong><span>normalize records; no unbounded recursion state</span></div>
+              <div class="pipeline-item gold"><small>Spill</small><strong>sorted runs on disk</strong><span>sequential writes with grouped durability</span></div>
+              <div class="pipeline-item green"><small>Merge</small><strong>fixed fan-in stream</strong><span>feed payload and Merkle builders in order</span></div>
+            </div>
+            <figcaption>This is not “Merkle compression.” The Merkle tree gives structural reuse; the external-sort pipeline is the separate mechanism that keeps small-file metadata work memory-bounded.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Naive per-file design</th><th>MPLA streaming design</th><th>Why it matters at 1M files</th></tr></thead>
+              <tbody>
+                <tr><td>One in-memory record/task per entry</td><td>Bounded run buffer + disk spool</td><td>Heap follows configured permit, not file count</td></tr>
+                <tr><td>Many simultaneously open files</td><td>Bounded descriptor window</td><td>Avoids FD exhaustion</td></tr>
+                <tr><td>Random metadata/object writes</td><td>Ordered grouped records</td><td>Better sequential I/O and fewer sync boundaries</td></tr>
+                <tr><td>Per-file durable object</td><td>Grouped Merkle pages / packs / indexes</td><td>Avoids inode and fsync amplification</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="supervision">
+          <div class="section-head"><span class="micro-label">Global limits</span><h2>Scheduling, recovery, and accounting surround every heavy job</h2><p>Memory safety comes from admission control and shared permits—not from hoping each component independently stays small.</p></div>
+          <div class="budget-line">
+            <div class="budget-band" style="--fill:25%"><strong><span>Data workers</span><span>exactly 4</span></strong><span>jobs borrow quantum-bounded worker time</span></div>
+            <div class="budget-band" style="--fill:50%"><strong><span>Heavy coordinators</span><span>≤ 16 active</span></strong><span>separate from data-worker count</span></div>
+            <div class="budget-band" style="--fill:75%"><strong><span>Descriptor-only queue</span><span>jobs 17–32</span></strong><span>aggregate actual capacity ≤ 64 KiB; no payload allocation</span></div>
+            <div class="budget-band" style="--fill:100%"><strong><span>Overload</span><span>job 33 rejected</span></strong><span>typed retry before upper, mount, lease, spool, or staging exists</span></div>
+          </div>
+          <div class="metric-strip cols-4">
+            <div class="metric"><span class="value">8 MiB</span><span class="label">resident permit pool</span></div>
+            <div class="metric"><span class="value">64 MiB</span><span class="label">nonresident I/O credits</span></div>
+            <div class="metric"><span class="value">96 MiB</span><span class="label">soft process response line</span></div>
+            <div class="metric"><span class="value">128 MiB</span><span class="label">aggregate hard ceiling</span></div>
+          </div>
+          <aside class="note warning"><strong>I/O credit is not promised resident memory.</strong> The PoC must measure anonymous RSS, file-backed RSS, kernel/slab, page-cache behavior, helper processes, FDs, and mounts separately.</aside>
+        </section>
+
+        <section class="content-section" id="adapters">
+          <div class="section-head"><span class="micro-label">Portability seam</span><h2>The adapter proves semantics before it accelerates anything</h2><p>Boot qualification rejects an environment before mutation if it cannot support stable allocation, durable sealing, writer revocation, required metadata, or the chosen mount semantics.</p></div>
+          <div class="flow-grid cols-3">
+            <article class="flow-node gold"><span>Probe</span><strong>Environment qualifier</strong><p>Kernel, filesystem, mount namespace, upper/work placement, xattrs, whiteouts, durability.</p></article>
+            <article class="flow-node blue"><span>Contract</span><strong>Projection adapter</strong><p>Select or build a root realization; return a verified immutable receipt and holds.</p></article>
+            <article class="flow-node green"><span>Execute</span><strong>Workspace adapter</strong><p>Create the private merged view, expose readiness, and prove teardown removed mounts and leases.</p></article>
+          </div>
+          <aside class="note success"><strong>Easy to replace does not mean trivial to replace.</strong> A microVM or WASI adapter still needs semantic equivalence tests. What becomes easy is that it need not rewrite the canonical or payload model.</aside>
+        </section>
+      </article>
+    </div></div>
+    <div class="container reading-path"><a class="reading-link" href="act-03-workspace-lifecycle.html"><span>Previous act</span><strong>← Act 03 · Lifecycle</strong></a><a class="reading-link" href="act-05-core-algorithms.html"><span>Next act</span><strong>Act 05 · Algorithms →</strong></a></div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>Explicit identity · explicit ownership · explicit budgets</span></div></footer>
+</body>
+</html>

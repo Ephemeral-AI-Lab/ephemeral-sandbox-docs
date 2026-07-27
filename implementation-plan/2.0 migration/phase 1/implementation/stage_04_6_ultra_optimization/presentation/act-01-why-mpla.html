@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Why multiagent publication needs MPLA instead of deep runtime stacking or full repository copies.">
+  <title>Act 01 · Why MPLA</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div>
+    <span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html" aria-current="page"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a><a href="act-04-system-components.html"><b>04</b>Components</a><a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div>
+        <div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Why</span></div>
+        <span class="kicker">Act 01 · Pressure</span>
+        <h1>Agents publish faster than human-sized histories</h1>
+        <p class="lede">When many agents fork, mutate, and publish in parallel, the checkpoint graph can grow much faster than a traditional container-image workflow expects.</p>
+      </div>
+      <p class="boundary-note">The problem is not “a 10 GiB repository.” It is multiplying that repository by history depth, active writers, or publication copies.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#pressure">The scaling pressure</a></li>
+        <li><a href="#alternatives">Why obvious designs fail</a></li>
+        <li><a href="#separation">What must be separated</a></li>
+        <li><a href="#limits">Limits MPLA does not erase</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="pressure">
+          <div class="section-head"><span class="micro-label">Multiagent geometry</span><h2>Three growth axes collide</h2><p>Logical ancestry, physical bytes, and active write ownership grow for different reasons. Treating them as one layer list makes the kernel, disk, and heap pay for the same history repeatedly.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">History</span><div class="lane-track"><span class="event">R₀</span><span class="event-arrow">→</span><span class="event">R₁</span><span class="event-arrow">→</span><span class="event">R₂</span><span class="event-arrow">→</span><span class="event">…</span><span class="event-arrow">→</span><span class="event">R₁₀₀₀</span></div></div>
+              <div class="lane"><span class="lane-label">Agents</span><div class="lane-track"><span class="event green">A · upper</span><span class="event green">B · upper</span><span class="event green">C · upper</span><span class="event green">… 16 admitted</span></div></div>
+              <div class="lane"><span class="lane-label">Bytes</span><div class="lane-track"><span class="event gold">shared base</span><span class="event gold">small ΔA</span><span class="event gold">small ΔB</span><span class="event gold">large ΔC</span></div></div>
+            </div>
+            <figcaption><strong>These are not the same dimension.</strong> A thousand logical roots need not imply a thousand runtime lowers, and sixteen writers need not imply sixteen base copies.</figcaption>
+          </figure>
+          <div class="metric-strip cols-3">
+            <div class="metric"><span class="value">R</span><span class="label">retained logical roots</span></div>
+            <div class="metric"><span class="value">A</span><span class="label">concurrently active agents</span></div>
+            <div class="metric"><span class="value">B</span><span class="label">bytes in a complete repository</span></div>
+          </div>
+        </section>
+
+        <section class="content-section" id="alternatives">
+          <div class="section-head"><span class="micro-label">Design comparison</span><h2>Neither deep stacking nor full copying survives</h2><p>The old choices optimize one boundary by externalizing cost to another.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Design</th><th>Activation</th><th>Publication</th><th>Steady-state space</th><th>Failure under fast history</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Raw layer stacking</strong></td><td>Mount growing lower list</td><td>Cheap delta layer</td><td>Mostly delta bytes</td><td>Runtime depth and mount-option constraints inherit logical ancestry.</td></tr>
+                <tr><td><strong>Full materialized copy</strong></td><td>Simple single tree</td><td>Rebuild/copy complete view</td><td>Can approach <code>R × B</code></td><td>Cold time and disk grow with total repository state, even for tiny edits.</td></tr>
+                <tr><td><strong>Copy-to-CAS on publish</strong></td><td>Reusable CAS state</td><td>Streams upper into another allocation</td><td>Deduplicated later</td><td>Peak approaches <code>2H + O(M)</code>; publication duplicates the active upper.</td></tr>
+                <tr><td><strong>MPLA</strong></td><td>Select shallow verified projection</td><td>Seal, adopt in place, update delta</td><td>Unique payload + bounded caches</td><td>Cold physical work remains, but history and runtime depth are decoupled.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="split">
+            <figure class="diagram">
+              <span class="micro-label">Deep raw stack</span>
+              <div class="stack">
+                <div class="stack-layer"><span>Δ₄₉₉</span><span>lower 499</span></div>
+                <div class="stack-layer"><span>Δ₄₉₈</span><span>lower 498</span></div>
+                <div class="stack-layer"><span>… logical ancestry …</span><span>kernel view</span></div>
+              </div>
+              <figcaption>Docker documents a native <code>overlay2</code> image-layer limit of 128. MPLA therefore treats even its own depth bound of eight as a design constraint—not a claim about every kernel maximum.</figcaption>
+            </figure>
+            <figure class="diagram">
+              <span class="micro-label">Shallow projection</span>
+              <div class="stack">
+                <div class="stack-layer"><span>Exact projection R₄₂</span><span>1–8 lowers</span></div>
+                <div class="stack-layer"><span>Fresh upper B</span><span>one writer</span></div>
+                <div class="stack-layer"><span>Merged workspace</span><span>runtime view</span></div>
+              </div>
+              <figcaption>The kernel sees only the chosen projection recipe plus one upper. The canonical graph may contain far more history.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="content-section" id="separation">
+          <div class="section-head"><span class="micro-label">The architectural answer</span><h2>History, bytes, and execution must scale separately</h2><p>MPLA uses distinct authorities so each dimension can be optimized without corrupting another.</p></div>
+          <div class="flow-grid cols-3">
+            <article class="flow-node blue"><span>Logical</span><strong>Merkle roots</strong><p>Immutable, backend-neutral history. A new small edit creates new pages only along affected paths.</p></article>
+            <article class="flow-node green"><span>Physical</span><strong>Locator generations</strong><p>A payload can be readable from an adopted allocation, a pack, or both during safe replacement.</p></article>
+            <article class="flow-node gold"><span>Runtime</span><strong>Projection recipes</strong><p>OCI, a future microVM adapter, or another executor can realize the same root through different mechanisms.</p></article>
+          </div>
+          <div class="note success"><strong>This is why OverlayFS stops being the core.</strong> It remains the best qualified OCI mount adapter for now, but it no longer defines checkpoint identity or durable storage layout.</div>
+        </section>
+
+        <section class="content-section" id="limits">
+          <div class="section-head"><span class="micro-label">Physical lower bounds</span><h2>The design removes amplification—not work that must happen</h2><p>A credible architecture states when repository size still matters.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Operation</th><th>Warm / stored path</th><th>Cold / physical path</th><th>What size affects</th></tr></thead>
+              <tbody>
+                <tr><td>Activate root</td><td>Receipt selection is independent of <code>B,F</code></td><td>Empty worker reconstructs/transfers <code>Θ(B+F)</code></td><td>Total bytes and file count on a miss</td></tr>
+                <tr><td>Publish small edit</td><td>Delta paths, bytes, and affected Merkle pages</td><td>Ambiguous evidence may broaden to a scan</td><td>Changed set normally; total tree in fallback</td></tr>
+                <tr><td>Edit lower-only 1 GiB file</td><td>CDC can reuse unchanged chunks after the write</td><td>OverlayFS may copy up the whole lower file first</td><td>First-write copy-up and required read/hash</td></tr>
+                <tr><td>Fork</td><td><code>O(M)</code> metadata and shared immutable projection</td><td>Later activation can miss its projection</td><td>No immediate base duplication</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note warning"><strong>Not “issue free.”</strong> OOM, inode pressure, mount failure, and ENOSPC remain possible in any real system. MPLA makes them much less likely by bounding resident work, descriptors, active allocations, and projection depth—and by rejecting before partial state.</aside>
+          <h3>Primary technical references</h3>
+          <ul class="source-list">
+            <li><a href="https://docs.kernel.org/filesystems/overlayfs.html"><strong>Linux kernel · OverlayFS</strong><span>Defines lower/upper/workdir behavior, whiteouts, copy-up, and same-filesystem requirements for upper/work.</span><code>docs.kernel.org</code></a></li>
+            <li><a href="https://docs.docker.com/engine/storage/drivers/overlayfs-driver/"><strong>Docker · OverlayFS storage driver</strong><span>Documents Docker’s overlay2 layer model and its 128-lower image-layer limit.</span><code>docs.docker.com</code></a></li>
+          </ul>
+        </section>
+      </article>
+    </div></div>
+
+    <div class="container reading-path">
+      <a class="reading-link" href="index.html"><span>Previous</span><strong>← 00 · Overview</strong></a>
+      <a class="reading-link" href="act-02-three-plane-architecture.html"><span>Next act</span><strong>Act 02 · Architecture →</strong></a>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>Pressure is multidimensional; the solution separates the dimensions.</span></div></footer>
+</body>
+</html>

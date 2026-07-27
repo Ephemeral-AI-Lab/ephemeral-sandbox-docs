@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The canonical, physical, and runtime planes of MPLA, and the identities connecting them.">
+  <title>Act 02 · Three-Plane MPLA Architecture</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div>
+    <span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html" aria-current="page"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a><a href="act-04-system-components.html"><b>04</b>Components</a><a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div>
+        <div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Three-plane model</span></div>
+        <span class="kicker">Act 02 · Boundaries</span>
+        <h1>Ask three different questions</h1>
+        <p class="lede">A canonical root identifies meaning. A locator generation finds durable bytes. A projection receipt proves that one runtime can expose those bytes efficiently.</p>
+      </div>
+      <p class="boundary-note">The root never embeds a pathname, <code>AllocationId</code>, locator generation, carrier identity, or OverlayFS mount structure.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#planes">Three planes</a></li>
+        <li><a href="#identity">Identity boundaries</a></li>
+        <li><a href="#locators">Multiple locators</a></li>
+        <li><a href="#projection">Runtime projection</a></li>
+        <li><a href="#portable">Replaceable adapters</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="planes">
+          <div class="section-head"><span class="micro-label">System boundary map</span><h2>One small canonical core feeds replaceable physical and runtime mechanisms</h2><p>Durable semantics flow downward into placement and execution, but runtime details never flow back into the root.</p></div>
+          <figure class="diagram">
+            <div class="flow-grid cols-3">
+              <article class="flow-node blue"><span>Canonical plane</span><strong>Root + attribution</strong><p>Normalized paths, type, content digests, metadata, hardlink groups, provenance.</p></article>
+              <article class="flow-node green"><span>Physical plane</span><strong>PayloadStore + locators</strong><p>Forward lookup to readable extents; reverse inventory for safe replacement and reconciliation.</p></article>
+              <article class="flow-node gold"><span>Runtime plane</span><strong>Projection + workspace</strong><p>Qualified recipe, read-only lowers, one fresh upper/work pair, and a merged execution view.</p></article>
+            </div>
+            <div class="arrow-line">canonical identity → durable byte coverage → qualified usable session</div>
+            <figcaption>Visibility moves in one direction: a ref is never made visible until every payload it names has a durable selected locator generation.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Plane</th><th>Primary identifier</th><th>Mutable?</th><th>Can be evicted?</th><th>Failure changes meaning?</th></tr></thead>
+              <tbody>
+                <tr><td>Canonical</td><td><code>RootId + AttributionRootId</code></td><td>No</td><td>No, while retained</td><td>Yes—therefore fail closed</td></tr>
+                <tr><td>Physical</td><td><code>PayloadId → locator generation</code></td><td>Generation replaced atomically</td><td>Only with another durable locator</td><td>No, if coverage remains complete</td></tr>
+                <tr><td>Runtime</td><td>Projection key + receipt</td><td>Mounted instance is disposable</td><td>Yes</td><td>No; miss changes activation work only</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="identity">
+          <div class="section-head"><span class="micro-label">Identity flow</span><h2>The Merkle root describes meaning—not placement</h2><p>Content identity and location identity are deliberately different types. That is what allows evacuation, repacking, cache eviction, and backend migration without rewriting history.</p></div>
+          <div class="split-wide">
+            <figure class="diagram">
+              <div class="tree-diagram" aria-label="Merkle root over files and payload identities">
+                <div class="tree-row"><span class="tree-node changed">RootId<br>91c…</span></div>
+                <div class="tree-branch">╱ ╲</div>
+                <div class="tree-row"><span class="tree-node reused">dir src<br>a12…</span><span class="tree-node changed">dir docs<br>f73…</span></div>
+                <div class="tree-branch">╱ ╲ &nbsp;&nbsp;&nbsp;&nbsp; ╱ ╲</div>
+                <div class="tree-row"><span class="tree-node reused">main.rs</span><span class="tree-node reused">lib.rs</span><span class="tree-node changed">plan.md</span><span class="tree-node reused">api.md</span></div>
+              </div>
+              <figcaption>The root commits to normalized filesystem meaning. The red path changes because <code>plan.md</code> changed; green subtrees are reused.</figcaption>
+            </figure>
+            <div>
+              <h3>Allowed in canonical records</h3>
+              <p>Names, object types, normalized metadata, file content payload digests, hardlink identity, and attribution digests.</p>
+              <h3>Forbidden in canonical records</h3>
+              <p>Absolute paths, allocation handles, backend device IDs, carrier names, mount order, locator generations, worker identity, and cache state.</p>
+              <aside class="note success"><strong>Result:</strong> moving payload <code>p7</code> from promoted allocation <code>A</code> into pack <code>P9</code> does not change any root.</aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-section" id="locators">
+          <div class="section-head"><span class="micro-label">Physical indirection</span><h2>One payload may have several valid locations</h2><p>A selected immutable supermanifest gives readers a stable snapshot while maintenance installs a replacement generation.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">Payload p7</span><div class="lane-track"><span class="event green">allocation A / upper / 0..64K</span><span class="event-arrow">+</span><span class="event gold">pack P9 / 8M..8.06M</span></div></div>
+              <div class="lane"><span class="lane-label">Gen 07</span><div class="lane-track"><span class="event">selected</span><span class="event-arrow">→</span><span class="event">reader hold #31</span><span class="event-arrow">→</span><span class="event">draining</span></div></div>
+              <div class="lane"><span class="lane-label">Gen 08</span><div class="lane-track"><span class="event gold">build reverse index</span><span class="event-arrow">→</span><span class="event green">verify complete</span><span class="event-arrow">→</span><span class="event green">select CURRENT</span></div></div>
+            </div>
+            <figcaption><strong>Replacement is generation-based.</strong> The old generation remains readable until its holders drain; the last valid locator cannot be retired.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Representation</th><th>Best at</th><th>Long-term role</th><th>Authority</th></tr></thead>
+              <tbody>
+                <tr><td>Promoted locator</td><td>Fast publication with no second payload allocation</td><td>Readable immediately; may later be evacuated</td><td>PayloadStore-owned immutable allocation</td></tr>
+                <tr><td>Immutable pack</td><td>Dense retention, sequential reads, shared payloads</td><td>Preferred durable compaction target</td><td>PayloadStore-owned pack</td></tr>
+                <tr><td>Exact carrier</td><td>Near-constant activation</td><td>Bounded disposable cache unless dual-role verified</td><td>ProjectionStore receipt</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="projection">
+          <div class="section-head"><span class="micro-label">Runtime realization</span><h2>OCI sees a shallow projection—not the full history</h2><p>The runtime recipe is a cacheable proof that a small set of native directories realizes one root under one qualified environment.</p></div>
+          <div class="split">
+            <figure class="diagram">
+              <span class="micro-label">Logical graph</span>
+              <div class="pipeline">
+                <div class="pipeline-item blue"><small>Root R₁₀₀₀</small><strong>1,000 checkpoints</strong><span>persistent Merkle history</span></div>
+                <div class="pipeline-item green"><small>Projection key</small><strong>root + profile + deps</strong><span>selection, not ancestry replay</span></div>
+                <div class="pipeline-item gold"><small>Native result</small><strong>D<sub>proj</sub> = 1–4 target</strong><span>hard bound ≤ 8 incremental lowers</span></div>
+              </div>
+            </figure>
+            <figure class="diagram">
+              <span class="micro-label">OCI mount</span>
+              <div class="stack">
+                <div class="stack-layer"><span>fresh upper B</span><span>rw lease</span></div>
+                <div class="stack-layer"><span>projection lower 1</span><span>read only</span></div>
+                <div class="stack-layer"><span>optional lowers 2…4</span><span>read only</span></div>
+              </div>
+              <figcaption>OverlayFS creates the merged execution view. It does not define the root, locator, or long-term payload format.</figcaption>
+            </figure>
+          </div>
+          <aside class="note warning"><strong>Do not confuse depths.</strong> <code>D_proj</code> is runtime projection depth. Merkle tree depth <code>d</code> is canonical path-tree depth. MPLA bounds the former; a delta update traverses the latter.</aside>
+        </section>
+
+        <section class="content-section" id="portable">
+          <div class="section-head"><span class="micro-label">Adapter boundary</span><h2>OverlayFS is the current OCI mechanism—not a permanent architectural dependency</h2><p>The same canonical and locator contracts can feed a different runtime when its projection adapter proves equivalent visibility and isolation.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Runtime adapter</th><th>Read-only projection</th><th>Private writes</th><th>Status in Stage 04.6</th></tr></thead>
+              <tbody>
+                <tr><td>OCI + OverlayFS</td><td>Native lower directories</td><td>Fresh same-filesystem upper/work pair</td><td><strong>Required and qualified now</strong></td></tr>
+                <tr><td>MicroVM</td><td>Block image, shared filesystem, or snapshot-backed tree</td><td>Guest overlay or writable volume</td><td>Future contract; root/locator remain reusable</td></tr>
+                <tr><td>WASI/component runtime</td><td>Preopened projected directories</td><td>Capability-scoped writable directory</td><td>Future contract; semantics must be probed</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Primary technical references</h3>
+          <ul class="source-list">
+            <li><a href="https://github.com/opencontainers/image-spec/blob/main/manifest.md"><strong>OCI Image Manifest Specification</strong><span>Defines an ordered list of content-addressed filesystem layers for one image manifest.</span><code>opencontainers/image-spec</code></a></li>
+            <li><a href="https://github.com/bazelbuild/remote-apis"><strong>Bazel Remote Execution API</strong><span>A production precedent for content-addressed directory trees and digest-selected reuse across distributed workers.</span><code>bazelbuild/remote-apis</code></a></li>
+            <li><a href="https://docs.kernel.org/filesystems/overlayfs.html"><strong>Linux kernel · OverlayFS</strong><span>The runtime facts MPLA must qualify: merge behavior, copy-up, whiteouts, and upper/work placement rules.</span><code>docs.kernel.org</code></a></li>
+          </ul>
+        </section>
+      </article>
+    </div></div>
+
+    <div class="container reading-path">
+      <a class="reading-link" href="act-01-why-mpla.html"><span>Previous act</span><strong>← Act 01 · Why</strong></a>
+      <a class="reading-link" href="act-03-workspace-lifecycle.html"><span>Next act</span><strong>Act 03 · Lifecycle →</strong></a>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>Canonical meaning · replaceable placement · disposable realization</span></div></footer>
+</body>
+</html>

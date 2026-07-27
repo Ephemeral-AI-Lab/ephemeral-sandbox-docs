@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The stationary adoption, external sort, persistent Merkle, CDC, and projection-selection algorithms in MPLA.">
+  <title>Act 05 · MPLA Core Algorithms</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div><span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a><a href="act-04-system-components.html"><b>04</b>Components</a><a href="act-05-core-algorithms.html" aria-current="page"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div><div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Algorithms</span></div><span class="kicker">Act 05 · Cost model</span><h1>Make work follow the delta</h1><p class="lede">MPLA combines established primitives—content addressing, persistent Merkle trees, content-defined chunking, external sorting, and OCC—with a novel stationary ownership protocol.</p></div>
+      <p class="boundary-note">No one algorithm removes all cost. The design works because each algorithm attacks a different amplification: copy, heap, hashing, transfer, or mount depth.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#adoption">Stationary adoption</a></li><li><a href="#sort">External sort</a></li><li><a href="#merkle">Persistent Merkle update</a></li><li><a href="#cdc">Large-file CDC</a></li><li><a href="#activation">Projection reuse</a></li><li><a href="#depths">Two depths</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="adoption">
+          <div class="section-head"><span class="micro-label">Algorithm 01 · Ownership</span><h2>Stationary adoption removes the second H</h2><p>The upper already contains every newly written byte. After sealing proves immutability, changing its owner is sufficient to make it a durable locator.</p></div>
+          <figure class="diagram">
+            <div class="bar-compare">
+              <div class="bar-row"><span class="bar-label">Before</span><div class="bar"><span class="bar-segment rose" style="width:47%">workspace H</span><span class="bar-segment gold" style="width:47%">copy H</span><span class="bar-segment" style="width:6%">metadata</span></div></div>
+              <div class="bar-row"><span class="bar-label">After</span><div class="bar"><span class="bar-segment green" style="width:94%">adopted H</span><span class="bar-segment" style="width:6%">metadata</span></div></div>
+            </div>
+            <div class="equation">copy publication ≈ 2H + O(M) &nbsp;&nbsp; → &nbsp;&nbsp; stationary adoption ≈ H + O(M)</div>
+            <figcaption>“Zero-copy” here means no second payload allocation during publication. It does not mean zero scanning, hashing, flushing, or metadata I/O.</figcaption>
+          </figure>
+          <div class="process">
+            <article class="process-step"><strong>Verify lease</strong><p>Match allocation, generation, owner, and epoch.</p></article>
+            <article class="process-step"><strong>Seal bytes</strong><p>Drain writers, unmount, sync, stability-check.</p></article>
+            <article class="process-step"><strong>CAS owner</strong><p><code>WorkspaceOwned → PayloadOwned</code>.</p></article>
+            <article class="process-step"><strong>Issue receipt</strong><p>Bind allocation, epoch, seal digest, reverse inventory.</p></article>
+            <article class="process-step"><strong>Install locator</strong><p>Select immutable supermanifest generation.</p></article>
+            <article class="process-step"><strong>Rotate</strong><p>Any continuation receives new Allocation B.</p></article>
+          </div>
+        </section>
+
+        <section class="content-section" id="sort">
+          <div class="section-head"><span class="micro-label">Algorithm 02 · Many-small</span><h2>A million paths become a bounded ordered stream</h2><p>Fixed-size buffers spill locally sorted runs. A fixed-fan-in merge produces one canonical order for hashing, hardlink grouping, attribution, and locator construction.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">Scan</span><div class="lane-track"><span class="event">run 00 · 8 MiB</span><span class="event">run 01 · 8 MiB</span><span class="event">run 02 · 8 MiB</span><span class="event">…</span></div></div>
+              <div class="lane"><span class="lane-label">Merge 1</span><div class="lane-track"><span class="event gold">fan-in k</span><span class="event-arrow">→</span><span class="event gold">larger ordered runs</span></div></div>
+              <div class="lane"><span class="lane-label">Final</span><div class="lane-track"><span class="event green">single ordered cursor</span><span class="event-arrow">→</span><span class="event">Merkle</span><span class="event">Payload</span><span class="event">Attribution</span></div></div>
+            </div>
+            <figcaption>Resident memory is controlled by buffer and fan-in permits. Total work still scales with entries, but the heap, FD set, and concurrent task count do not.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Resource</th><th>Bound follows</th><th>Does not follow</th></tr></thead>
+              <tbody>
+                <tr><td>Heap</td><td>run buffer + merge cursors</td><td>total file count</td></tr>
+                <tr><td>Open descriptors</td><td>scanner window + merge fan-in</td><td>one descriptor per path</td></tr>
+                <tr><td>Spool bytes</td><td>normalized metadata volume</td><td>complete repository payload bytes</td></tr>
+                <tr><td>CPU / I/O</td><td>entries actually scanned and sorted</td><td>not magically constant</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="merkle">
+          <div class="section-head"><span class="micro-label">Algorithm 03 · Canonical update</span><h2>Only paths to changed leaves are rebuilt</h2><p>A persistent Merkle tree reuses every unchanged subtree. Changing one file creates a new leaf and new ancestors to the root; siblings remain shared.</p></div>
+          <div class="split-wide">
+            <figure class="diagram">
+              <div class="tree-diagram">
+                <div class="tree-row"><span class="tree-node changed">new root<br>R₂</span></div>
+                <div class="tree-branch">╱ ╲</div>
+                <div class="tree-row"><span class="tree-node reused">src subtree<br>reuse</span><span class="tree-node changed">docs dir<br>new</span></div>
+                <div class="tree-branch">╱ ╲ &nbsp;&nbsp;&nbsp;&nbsp; ╱ ╲</div>
+                <div class="tree-row"><span class="tree-node reused">a</span><span class="tree-node reused">b</span><span class="tree-node changed">plan.md</span><span class="tree-node reused">api.md</span></div>
+              </div>
+              <figcaption>Red nodes are rebuilt. Green nodes are referenced by digest from the parent checkpoint.</figcaption>
+            </figure>
+            <div>
+              <div class="equation">work ≈ affected paths × Merkle depth d</div>
+              <p>The exact bound also depends on directory fan-out, metadata changes, renames, and the number of distinct affected ancestors.</p>
+              <aside class="note success"><strong>Why total existing size often stops mattering:</strong> when mutation evidence is complete and changed payloads are small, neither unchanged 10 GiB payload bytes nor unchanged subtrees are rewritten.</aside>
+              <aside class="note warning"><strong>Fallback caveat:</strong> incomplete evidence may require scanning a larger subtree or the full upper to prove what changed.</aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-section" id="cdc">
+          <div class="section-head"><span class="micro-label">Algorithm 04 · Large files</span><h2>Content-defined chunking reuses stable chunks around a tiny edit</h2><p>Chunk boundaries follow content rather than fixed byte offsets. An insertion shifts local boundaries, then the stream resynchronizes so later chunks can retain their payload IDs.</p></div>
+          <figure class="diagram">
+            <span class="micro-label">Before edit</span>
+            <div class="chunk-stream"><span class="chunk">c1</span><span class="chunk">c2</span><span class="chunk">c3</span><span class="chunk">c4</span><span class="chunk">c5</span></div>
+            <span class="micro-label">After small insertion</span>
+            <div class="chunk-stream"><span class="chunk">c1</span><span class="chunk changed">new</span><span class="chunk changed">c2′</span><span class="chunk">c3</span><span class="chunk">c4</span><span class="chunk">c5</span></div>
+            <figcaption>Stable content after resynchronization reuses existing chunks. The system still must read enough data to discover boundaries and verify hashes.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Question</th><th>CDC helps</th><th>CDC does not help</th></tr></thead>
+              <tbody>
+                <tr><td>How many new payload bytes?</td><td>Often close to the changed region plus boundary effects</td><td>Cannot reuse bytes that genuinely changed</td></tr>
+                <tr><td>How many bytes must be read?</td><td>Fast implementations increase scan throughput</td><td>A correctness-preserving pass may still read the whole file</td></tr>
+                <tr><td>OverlayFS first write?</td><td>Later CAS retention can reuse chunks</td><td>Portable copy-up may already have copied the whole lower file</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Primary research</h3>
+          <ul class="source-list"><li><a href="https://www.usenix.org/conference/atc16/technical-sessions/presentation/xia"><strong>FastCDC · USENIX ATC 2016</strong><span>Introduces a faster content-defined chunking approach with normalized chunk-size distribution and near-Rabin deduplication behavior.</span><code>usenix.org</code></a></li></ul>
+        </section>
+
+        <section class="content-section" id="activation">
+          <div class="section-head"><span class="micro-label">Algorithm 05 · Runtime selection</span><h2>Projection reuse turns activation into a decision tree</h2><p>A stored exact receipt removes repository-size work from the readiness path. A miss preserves the same semantic result but pays the physical floor.</p></div>
+          <div class="flow-grid cols-3">
+            <article class="flow-node green"><span>Exact</span><strong>hold + mount</strong><p>Fastest path. Validate generation, dependencies, qualification, and external readiness.</p></article>
+            <article class="flow-node gold"><span>Compatible</span><strong>adapt + verify</strong><p>Bounded transformation when a suitable carrier exists under a compatible profile.</p></article>
+            <article class="flow-node rose"><span>Cold</span><strong>reconstruct</strong><p>Read locators, build native state, verify, install receipt, then mount.</p></article>
+          </div>
+          <div class="metric-strip cols-3">
+            <div class="metric"><span class="value">≤ 10 ms</span><span class="label">forked exact-carrier activation p95 target</span></div>
+            <div class="metric"><span class="value">≤ 50 ms</span><span class="label">same-key usable session p95 gate</span></div>
+            <div class="metric"><span class="value">Θ(B+F)</span><span class="label">genuinely empty worker physical floor</span></div>
+          </div>
+        </section>
+
+        <section class="content-section" id="depths">
+          <div class="section-head"><span class="micro-label">Notation that prevents confusion</span><h2>Merkle depth and projection depth describe unrelated structures</h2><p>The old discussion often blended them because both can be drawn as trees or stacks.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Symbol</th><th>Structure</th><th>Affects</th><th>Bound / behavior</th></tr></thead>
+              <tbody>
+                <tr><td><code>d</code></td><td>Persistent Merkle path depth</td><td>Nodes rebuilt per affected path</td><td>Follows canonical tree shape; not a kernel layer count</td></tr>
+                <tr><td><code>D_proj</code></td><td>Incremental native lowers above mandatory base</td><td>Runtime mount recipe and lookup shape</td><td>Test 0/1/4/8; design hard bound 8</td></tr>
+                <tr><td><code>R</code></td><td>Retained logical roots</td><td>Metadata and referenced unique payload</td><td>May grow without becoming runtime lowers</td></tr>
+                <tr><td><code>H</code></td><td>Captured writable upper allocation</td><td>Publication peak and locator ownership</td><td>Adopted in place; no second H</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note"><strong>Is MPLA novel?</strong> The ingredients are established. The creative contribution is their boundary discipline and the seal–adopt–rotate protocol that turns an active OCI upper into backend-neutral durable payload state without coupling canonical identity to OverlayFS.</aside>
+        </section>
+      </article>
+    </div></div>
+    <div class="container reading-path"><a class="reading-link" href="act-04-system-components.html"><span>Previous act</span><strong>← Act 04 · Components</strong></a><a class="reading-link" href="act-06-correctness-and-recovery.html"><span>Next act</span><strong>Act 06 · Correctness →</strong></a></div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>Remove amplification one boundary at a time.</span></div></footer>
+</body>
+</html>

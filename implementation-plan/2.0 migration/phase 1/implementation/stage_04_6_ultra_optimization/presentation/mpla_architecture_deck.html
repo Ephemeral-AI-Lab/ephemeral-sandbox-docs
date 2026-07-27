@@ -1,0 +1,1756 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A visual introduction to the Merkle–Promoted Locator Architecture for EphemeralOS Stage 04.6.">
+  <title>MPLA Architecture — EphemeralOS Stage 04.6</title>
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    /* Hallmark · genre: modern-minimal · macrostructure: Narrative Workflow · theme: Cobalt · enrichment: none · nav: N9 · footer: Ft2 */
+    /* Hallmark · pre-emit critique: P5 H4 E5 S5 R5 V4 */
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      overflow-x: clip;
+      background: var(--color-paper-2);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--color-paper-2);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body.overview {
+      overflow-y: auto;
+      background: var(--color-paper-2);
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .deck {
+      width: 100%;
+      min-height: 100dvh;
+    }
+
+    body:not(.overview) .deck {
+      display: grid;
+      place-items: center;
+      padding: var(--space-lg) var(--space-xl) calc(var(--space-2xl) + var(--space-md));
+    }
+
+    .slide {
+      position: relative;
+      isolation: isolate;
+      container-type: inline-size;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--canvas);
+      border: 1px solid var(--color-rule);
+      box-shadow: none;
+    }
+
+    .slide::before {
+      content: attr(data-act);
+      position: absolute;
+      z-index: var(--z-base);
+      top: 3.9cqw;
+      right: 4.6cqw;
+      color: var(--color-subtle);
+      font-family: var(--font-mono);
+      font-size: .72cqw;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: .18cqw;
+      background: var(--color-rule-strong);
+    }
+
+    body:not(.overview) .slide {
+      display: none;
+      width: min(calc(100vw - 4rem), calc((100vh - 6rem) * 1.777777));
+      aspect-ratio: 16 / 9;
+    }
+
+    body:not(.overview) .slide.active {
+      display: flex;
+      flex-direction: column;
+      animation: enter var(--dur-short) var(--ease-out) both;
+    }
+
+    body.overview .deck {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(42rem, 100%), 1fr));
+      gap: var(--space-lg);
+      padding: calc(var(--space-2xl) + var(--space-md)) var(--space-lg) var(--space-xl);
+    }
+
+    body.overview .slide {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      cursor: pointer;
+      transition: transform var(--dur-short) var(--ease-out);
+    }
+
+    body.overview .slide:hover,
+    body.overview .slide:focus-within {
+      transform: translateY(-2px);
+    }
+
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(10px) scale(.995); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .slide-inner {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+      padding: 4.2cqw 5.4cqw 3.3cqw;
+    }
+
+    .eyebrow {
+      margin: 0 0 .7cqw;
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: .88cqw;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2, h3 {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: var(--font-display);
+      font-style: normal;
+    }
+
+    .deck-title {
+      max-width: 70cqw;
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 5.75cqw;
+      font-weight: 650;
+      line-height: .96;
+      letter-spacing: -.06em;
+    }
+
+    .slide-title {
+      margin: 0 0 1.6cqw;
+      max-width: 82cqw;
+      font-size: 3.1cqw;
+      font-weight: 620;
+      line-height: 1.02;
+      letter-spacing: -.045em;
+      white-space: nowrap;
+    }
+
+    .slide-title.long {
+      font-size: 2.75cqw;
+    }
+
+    .subtitle {
+      max-width: 61cqw;
+      margin: 1.6cqw 0 0;
+      color: var(--muted);
+      font-size: 1.48cqw;
+      line-height: 1.5;
+    }
+
+    .claim {
+      max-width: 73cqw;
+      color: var(--muted);
+      font-size: 1.42cqw;
+      line-height: 1.45;
+    }
+
+    .big-claim {
+      max-width: 76cqw;
+      margin: auto 0;
+      font-family: var(--font-display);
+      font-size: 3.15cqw;
+      font-weight: 600;
+      line-height: 1.16;
+      letter-spacing: -.032em;
+    }
+
+    .accent { color: var(--accent, var(--blue)); }
+    .canonical { color: var(--blue); }
+    .physical { color: var(--green); }
+    .runtime { color: var(--orange); }
+    .control { color: var(--purple); }
+    .danger { color: var(--red); }
+
+    .muted { color: var(--muted); }
+    .dim { color: var(--subtle); }
+    .mono { font-family: var(--font-mono); }
+
+    .content {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 3.6cqw;
+      align-items: center;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .two-col.wide-left { grid-template-columns: 1.28fr .72fr; }
+    .two-col.wide-right { grid-template-columns: .72fr 1.28fr; }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, .92fr) minmax(0, .96fr);
+      gap: 2cqw;
+      align-items: stretch;
+    }
+
+    .four-col {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr 1.08fr .92fr;
+      gap: 1.4cqw;
+      align-items: stretch;
+    }
+
+    .flat-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-size: 1.35cqw;
+      line-height: 1.35;
+    }
+
+    .flat-list li {
+      position: relative;
+      margin: 0 0 1.05cqw;
+      padding-left: 1.7cqw;
+    }
+
+    .flat-list li::before {
+      content: "";
+      position: absolute;
+      top: .48em;
+      left: 0;
+      width: .5cqw;
+      height: .5cqw;
+      border-radius: var(--radius-xs);
+      background: var(--accent, var(--blue));
+    }
+
+    .node {
+      position: relative;
+      padding: 1.1cqw 1.35cqw;
+      color: var(--ink);
+      background: var(--color-paper-2);
+      border: 1px solid color-mix(in oklch, var(--node-color, var(--blue)) 30%, var(--line));
+      border-radius: var(--radius-sm);
+      font-size: 1.2cqw;
+      line-height: 1.25;
+      text-align: center;
+    }
+
+    .node strong {
+      display: block;
+      margin-bottom: .3cqw;
+      font-size: 1.34cqw;
+      letter-spacing: -.01em;
+    }
+
+    .node small {
+      display: block;
+      color: var(--muted);
+      font-size: .95cqw;
+      line-height: 1.3;
+    }
+
+    .node.blue { --node-color: var(--blue); }
+    .node.green { --node-color: var(--green); }
+    .node.orange { --node-color: var(--orange); }
+    .node.purple { --node-color: var(--purple); }
+    .node.red { --node-color: var(--red); }
+    .node.gray { --node-color: var(--color-subtle); }
+
+    .node.dashed {
+      border-style: dashed;
+      opacity: .8;
+    }
+
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75cqw;
+    }
+
+    .flow.vertical {
+      flex-direction: column;
+      gap: .6cqw;
+    }
+
+    .flow .node { flex: 1 1 0; }
+
+    .arrow {
+      flex: 0 0 auto;
+      color: var(--subtle);
+      font-size: 1.9cqw;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .arrow.down { transform: rotate(90deg); }
+
+    .plane-stack {
+      display: grid;
+      gap: 1.2cqw;
+      width: 78cqw;
+      max-width: 100%;
+      margin: auto;
+    }
+
+    .plane {
+      display: grid;
+      grid-template-columns: 14cqw 1fr 22cqw;
+      align-items: center;
+      gap: 1.7cqw;
+      min-height: 7cqw;
+      padding: 1.1cqw 1.5cqw;
+      background: rgba(12, 26, 43, .68);
+      border-left: .42cqw solid var(--plane-color);
+      border-bottom: 1px solid rgba(159, 176, 197, .14);
+    }
+
+    .plane strong {
+      color: var(--plane-color);
+      font-size: 1.45cqw;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .plane-main {
+      font-size: 1.45cqw;
+      font-weight: 680;
+    }
+
+    .plane small {
+      color: var(--muted);
+      font-size: 1.02cqw;
+      line-height: 1.35;
+    }
+
+    .plane.blue { --plane-color: var(--blue); }
+    .plane.green { --plane-color: var(--green); }
+    .plane.orange { --plane-color: var(--orange); }
+
+    .layer-stack {
+      display: grid;
+      width: 42cqw;
+      max-width: 100%;
+      margin: auto;
+      perspective: 50cqw;
+    }
+
+    .layer {
+      position: relative;
+      margin-top: -1cqw;
+      padding: .95cqw 1.4cqw;
+      transform: rotateX(7deg) skewX(-8deg);
+      color: var(--ink);
+      background: color-mix(in srgb, var(--layer-color) 12%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--layer-color) 52%, var(--line));
+      box-shadow: 0 .85cqw 1.4cqw rgba(0,0,0,.24);
+      font-size: 1.12cqw;
+      text-align: center;
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.3cqw 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .metric .value {
+      font-size: 3.25cqw;
+      font-weight: 780;
+      letter-spacing: -.045em;
+    }
+
+    .metric .label {
+      max-width: 16cqw;
+      color: var(--muted);
+      font-size: 1.05cqw;
+      line-height: 1.35;
+    }
+
+    .formula {
+      padding: 1.3cqw 1.6cqw;
+      color: var(--ink);
+      background: rgba(16, 35, 58, .72);
+      border-left: .38cqw solid var(--accent, var(--blue));
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 1.48cqw;
+      line-height: 1.4;
+    }
+
+    .quote {
+      max-width: 72cqw;
+      margin: auto;
+      padding-left: 2cqw;
+      border-left: .45cqw solid var(--accent, var(--blue));
+      font-size: 2.65cqw;
+      font-weight: 650;
+      line-height: 1.24;
+      letter-spacing: -.025em;
+    }
+
+    .quote small {
+      display: block;
+      margin-top: 1.3cqw;
+      color: var(--muted);
+      font-size: 1.2cqw;
+      font-weight: 450;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+
+    .state-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: .7cqw;
+      margin: 1.1cqw 0;
+    }
+
+    .state {
+      display: grid;
+      min-width: 11cqw;
+      padding: 1.15cqw 1cqw;
+      place-items: center;
+      color: var(--ink);
+      background: rgba(16, 35, 58, .8);
+      border: 1px solid var(--line);
+      border-radius: .5cqw;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 1.05cqw;
+      text-align: center;
+    }
+
+    .state.current {
+      border-color: var(--accent, var(--blue));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, var(--blue)) 42%, transparent);
+    }
+
+    .branch-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2cqw;
+    }
+
+    .tree {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      gap: 1.5cqw;
+      place-items: center;
+    }
+
+    .tree-level {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2.7cqw;
+      width: 100%;
+    }
+
+    .tree .node {
+      min-width: 10cqw;
+    }
+
+    .code-tree {
+      padding: 1.3cqw 1.6cqw;
+      color: var(--muted);
+      background: rgba(3, 8, 19, .65);
+      border: 1px solid var(--line);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 1.28cqw;
+      line-height: 1.5;
+      white-space: pre;
+    }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1.08cqw;
+    }
+
+    .compare th,
+    .compare td {
+      padding: .82cqw 1cqw;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .compare th {
+      color: var(--muted);
+      font-size: .93cqw;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .compare tr:last-child td { border-bottom: 0; }
+
+    .bar {
+      position: relative;
+      height: 1.1cqw;
+      overflow: hidden;
+      background: var(--surface-2);
+      border-radius: 999px;
+    }
+
+    .bar > span {
+      display: block;
+      width: var(--w);
+      height: 100%;
+      background: var(--bar-color, var(--blue));
+      border-radius: inherit;
+    }
+
+    .callout {
+      padding: 1cqw 1.3cqw;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--callout-color, var(--blue)) 8%, var(--surface));
+      border-left: .32cqw solid var(--callout-color, var(--blue));
+      font-size: 1.12cqw;
+      line-height: 1.4;
+    }
+
+    .callout strong {
+      color: var(--ink);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6cqw 1.4cqw;
+      color: var(--muted);
+      font-size: .9cqw;
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: .75cqw;
+      height: .75cqw;
+      margin-right: .45cqw;
+      border-radius: 50%;
+      background: var(--legend-color);
+      vertical-align: -.08cqw;
+    }
+
+    .tiny {
+      color: var(--muted);
+      font-size: .9cqw;
+      line-height: 1.35;
+    }
+
+    .footer {
+      position: absolute;
+      right: 2cqw;
+      bottom: 1.3cqw;
+      left: 2cqw;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: rgba(159,176,197,.68);
+      font-size: .78cqw;
+      letter-spacing: .04em;
+    }
+
+    .footer .act-name {
+      color: color-mix(in srgb, var(--accent, var(--blue)) 75%, var(--muted));
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+    }
+
+    .act-1 { --accent: var(--red); }
+    .act-2 { --accent: var(--blue); }
+    .act-3 { --accent: var(--orange); }
+    .act-4 { --accent: var(--green); }
+    .act-5 { --accent: var(--purple); }
+    .act-6 { --accent: #66d2e8; }
+    .act-7 { --accent: #f6d365; }
+
+    .toolbar {
+      position: fixed;
+      z-index: 1000;
+      right: 1rem;
+      bottom: 1rem;
+      left: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      pointer-events: none;
+    }
+
+    .toolbar > * { pointer-events: auto; }
+
+    .toolbar button,
+    .slide-readout {
+      min-height: 2.5rem;
+      padding: .55rem .9rem;
+      color: var(--ink);
+      background: rgba(12, 26, 43, .92);
+      border: 1px solid var(--line);
+      border-radius: .55rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.28);
+    }
+
+    .toolbar button {
+      cursor: pointer;
+    }
+
+    .toolbar button:hover,
+    .toolbar button:focus-visible {
+      border-color: var(--blue);
+      outline: none;
+    }
+
+    .slide-readout {
+      min-width: 6rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .progress {
+      position: fixed;
+      z-index: 1001;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      transition: width .2s ease;
+    }
+
+    .shortcut {
+      position: fixed;
+      z-index: 999;
+      top: 1rem;
+      right: 1rem;
+      max-width: 23rem;
+      padding: .75rem 1rem;
+      color: var(--muted);
+      background: rgba(12,26,43,.94);
+      border: 1px solid var(--line);
+      border-radius: .6rem;
+      box-shadow: var(--shadow);
+      font-size: .85rem;
+      line-height: 1.5;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px);
+      transition: .18s ease;
+    }
+
+    .shortcut.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    body.overview .toolbar {
+      top: 1rem;
+      bottom: auto;
+    }
+
+    body.overview .progress { display: none; }
+
+    @media (max-width: 900px) {
+      body:not(.overview) .deck {
+        padding: .5rem .5rem 4.7rem;
+      }
+
+      body:not(.overview) .slide {
+        width: min(calc(100vw - 1rem), calc((100vh - 5.5rem) * 1.777777));
+      }
+
+      body.overview .deck {
+        grid-template-columns: 1fr;
+        padding: 5.5rem .75rem 2rem;
+        gap: 1rem;
+      }
+
+      .toolbar button {
+        padding: .5rem .7rem;
+      }
+    }
+
+    @media print {
+      @page {
+        size: 16in 9in;
+        margin: 0;
+      }
+
+      html, body {
+        overflow: visible !important;
+        background: #fff !important;
+      }
+
+      .toolbar,
+      .progress,
+      .shortcut {
+        display: none !important;
+      }
+
+      .deck {
+        display: block !important;
+        padding: 0 !important;
+      }
+
+      .slide {
+        display: flex !important;
+        width: 16in !important;
+        height: 9in !important;
+        break-after: page;
+        page-break-after: always;
+        border: 0;
+        box-shadow: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" id="deck" aria-live="polite">
+
+    <!-- ACT 1 · WHY -->
+    <section class="slide act-1 active" data-act="Act 1 · Why" id="slide-01">
+      <div class="slide-inner">
+        <p class="eyebrow">EphemeralOS · Stage 04.6</p>
+        <div class="content">
+          <h1 class="deck-title">Merkle–Promoted<br>Locator Architecture</h1>
+          <p class="subtitle">A filesystem architecture for fast multi-agent activation, publication, rollback, and reuse—without turning logical history into kernel mount depth.</p>
+        </div>
+        <div class="legend">
+          <span style="--legend-color:var(--blue)">canonical truth</span>
+          <span style="--legend-color:var(--green)">physical payload</span>
+          <span style="--legend-color:var(--orange)">runtime workspace</span>
+          <span style="--legend-color:var(--purple)">control and recovery</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-1" data-act="Act 1 · Why" id="slide-02">
+      <div class="slide-inner">
+        <p class="eyebrow">The workload</p>
+        <h2 class="slide-title">Agents publish faster than human-sized histories</h2>
+        <div class="content">
+          <div class="tree">
+            <div class="tree-level">
+              <div class="node blue"><strong>Root 0</strong><small>shared checkpoint</small></div>
+            </div>
+            <div class="tree-level">
+              <span class="arrow">↙</span><span class="arrow">↓</span><span class="arrow">↘</span>
+            </div>
+            <div class="tree-level">
+              <div class="node orange"><strong>Agent A</strong><small>Root 1 → Root 4</small></div>
+              <div class="node orange"><strong>Agent B</strong><small>Root 2</small></div>
+              <div class="node orange"><strong>Agent C</strong><small>Root 3 → Root 5</small></div>
+            </div>
+          </div>
+          <div class="four-col" style="margin-top:3cqw">
+            <div class="metric"><span class="value accent">A</span><span class="label">Concurrent active sessions</span></div>
+            <div class="metric"><span class="value accent">R</span><span class="label">Rapidly growing roots</span></div>
+            <div class="metric"><span class="value accent">ΔP</span><span class="label">Changed path operations</span></div>
+            <div class="metric"><span class="value accent">ΔB</span><span class="label">New durable bytes</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-1" data-act="Act 1 · Why" id="slide-03">
+      <div class="slide-inner">
+        <p class="eyebrow">The scaling trap</p>
+        <h2 class="slide-title">Neither deep stacking nor full copying survives</h2>
+        <div class="two-col">
+          <div>
+            <div class="layer-stack" style="width:32cqw">
+              <div class="layer" style="--layer-color:var(--red)">Layer 500</div>
+              <div class="layer" style="--layer-color:var(--orange)">Layer 499</div>
+              <div class="layer" style="--layer-color:var(--purple)">… historical layers …</div>
+              <div class="layer" style="--layer-color:var(--blue)">Layer 1</div>
+              <div class="layer" style="--layer-color:var(--green)">Base</div>
+            </div>
+            <p class="claim" style="margin:2cqw auto 0;max-width:30cqw;text-align:center">Logical history becomes kernel-visible lower depth.</p>
+          </div>
+          <div>
+            <div class="flow vertical">
+              <div class="node gray"><strong>1 GiB repository</strong><small>existing immutable state</small></div>
+              <span class="arrow down">→</span>
+              <div class="node red"><strong>Full checkout copy</strong><small>pay Θ(B + F) again</small></div>
+              <span class="arrow down">→</span>
+              <div class="node red"><strong>Another 1 GiB</strong><small>per root or workspace</small></div>
+            </div>
+            <p class="claim" style="margin:2cqw auto 0;max-width:30cqw;text-align:center">Fast activation is lost to repeated reconstruction and duplication.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-1" data-act="Act 1 · Why" id="slide-04">
+      <div class="slide-inner">
+        <p class="eyebrow">Design thesis</p>
+        <h2 class="slide-title">History, bytes, and execution must scale separately</h2>
+        <div class="content">
+          <div class="three-col">
+            <div class="node blue"><strong>Logical history</strong><small>Merkle identity stays backend-neutral and metadata-sized.</small></div>
+            <div class="node green"><strong>Physical bytes</strong><small>Locations may change without changing roots.</small></div>
+            <div class="node orange"><strong>Execution</strong><small>Native projections stay shallow and replaceable.</small></div>
+          </div>
+          <div class="quote" style="margin-top:4cqw">
+            Eliminate proportional work where reuse is physically possible.
+            <small>Cold reads, cold ingestion, full correctness scans, and portable whole-file copy-up remain honest lower bounds.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 2 · ARCHITECTURE -->
+    <section class="slide act-2" data-act="Act 2 · Architecture" id="slide-05">
+      <div class="slide-inner">
+        <p class="eyebrow">The core mental model</p>
+        <h2 class="slide-title">Ask three different questions</h2>
+        <div class="content">
+          <div class="plane-stack">
+            <div class="plane blue">
+              <strong>What?</strong>
+              <span class="plane-main">RootId + AttributionRootId</span>
+              <small>Canonical immutable Merkle truth</small>
+            </div>
+            <div class="plane green">
+              <strong>Where?</strong>
+              <span class="plane-main">PayloadId → locator generation → bytes</span>
+              <small>Packs or adopted allocations</small>
+            </div>
+            <div class="plane orange">
+              <strong>How?</strong>
+              <span class="plane-main">Projection + fresh upper → workspace</span>
+              <small>Runtime representation for an agent</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-2" data-act="Act 2 · Architecture" id="slide-06">
+      <div class="slide-inner">
+        <p class="eyebrow">Canonical plane</p>
+        <h2 class="slide-title">The Merkle root describes meaning—not placement</h2>
+        <div class="two-col">
+          <div class="code-tree">repo/
+├── src/
+│   ├── a.rs
+│   └── b.rs
+└── README.md</div>
+          <div class="tree">
+            <div class="tree-level">
+              <div class="node blue"><strong>RootId</strong><small>directory digest</small></div>
+            </div>
+            <div class="tree-level"><span class="arrow">↙</span><span class="arrow">↓</span><span class="arrow">↘</span></div>
+            <div class="tree-level">
+              <div class="node blue"><strong>src/</strong><small>subtree digest</small></div>
+              <div class="node blue"><strong>README</strong><small>file node</small></div>
+              <div class="node purple"><strong>Attribution</strong><small>paired root</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="--callout-color:var(--blue)">
+          <strong>Never embedded:</strong> physical paths, <span class="mono">AllocationId</span>, locator generation, carrier identity, or OverlayFS mount structure.
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-2" data-act="Act 2 · Architecture" id="slide-07">
+      <div class="slide-inner">
+        <p class="eyebrow">Physical plane</p>
+        <h2 class="slide-title">One payload may have several valid locations</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node green"><strong>PayloadId P17</strong><small>durable byte identity</small></div>
+            <span class="arrow">→</span>
+            <div class="node green"><strong>Locator generation 3</strong><small>current physical recipe</small></div>
+            <span class="arrow">→</span>
+            <div style="display:grid;gap:1cqw;flex:1.15">
+              <div class="node green"><strong>Pack A</strong><small>extents 10–14</small></div>
+              <div class="node green"><strong>Allocation H92</strong><small>adopted sealed upper</small></div>
+            </div>
+          </div>
+          <div class="flow" style="margin-top:2.5cqw;opacity:.6">
+            <div style="flex:1"></div>
+            <div class="node gray dashed"><strong>Generation 2</strong><small>retained until safe retirement</small></div>
+            <span class="arrow">→</span>
+            <div class="node gray dashed"><strong>Pack B</strong><small>old location</small></div>
+          </div>
+          <p class="big-claim" style="font-size:2cqw;margin:3cqw auto 0;text-align:center">Packing, relocation, and evacuation can change <span class="physical">where</span> bytes live without changing <span class="canonical">what</span> the filesystem is.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-2" data-act="Act 2 · Architecture" id="slide-08">
+      <div class="slide-inner">
+        <p class="eyebrow">Runtime plane</p>
+        <h2 class="slide-title">OCI sees a shallow projection—not the full history</h2>
+        <div class="content">
+          <div class="layer-stack">
+            <div class="layer" style="--layer-color:var(--orange)">merged workspace · visible to the agent</div>
+            <div class="layer" style="--layer-color:var(--orange)">fresh writable upper H + workdir</div>
+            <div class="layer" style="--layer-color:var(--blue)">exact immutable projection · lower 1…D_proj</div>
+          </div>
+          <div class="three-col" style="margin-top:3cqw">
+            <div class="metric"><span class="value runtime">≤ 4</span><span class="label">Target projection depth</span></div>
+            <div class="metric"><span class="value runtime">≤ 8</span><span class="label">Hard projection-depth limit</span></div>
+            <div class="metric"><span class="value runtime">∞</span><span class="label">Logical history may keep growing</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-2" data-act="Act 2 · Architecture" id="slide-09">
+      <div class="slide-inner">
+        <p class="eyebrow">Complete architecture</p>
+        <h2 class="slide-title">A small canonical core feeds replaceable adapters</h2>
+        <div class="content">
+          <div class="flow" style="align-items:stretch">
+            <div class="node orange"><strong>Workspace</strong><small>lease + writable upper</small></div>
+            <span class="arrow">seal →</span>
+            <div class="node green"><strong>PayloadStore</strong><small>durable bytes</small></div>
+            <span class="arrow">↔</span>
+            <div class="node green"><strong>Locator Catalog</strong><small>physical generations</small></div>
+          </div>
+          <div class="flow" style="margin:1.5cqw 0">
+            <span class="arrow down">→</span>
+            <span class="arrow down">→</span>
+            <span class="arrow down">→</span>
+          </div>
+          <div class="flow" style="align-items:stretch">
+            <div class="node purple"><strong>Mutation evidence</strong><small>journal or fallback scan</small></div>
+            <span class="arrow">→</span>
+            <div class="node blue"><strong>Merkle builder</strong><small>RootId + attribution</small></div>
+            <span class="arrow">→</span>
+            <div class="node blue"><strong>Ref Store</strong><small>atomic paired ref</small></div>
+          </div>
+          <div class="flow" style="margin:1.5cqw 0">
+            <span class="arrow down">→</span>
+            <span class="arrow down">→</span>
+            <span class="arrow down">→</span>
+          </div>
+          <div class="flow" style="align-items:stretch">
+            <div class="node purple"><strong>Scheduler + recovery</strong><small>bounded control plane</small></div>
+            <div class="node orange"><strong>Projection Store</strong><small>disposable acceleration</small></div>
+            <div class="node orange"><strong>Adapter plane</strong><small>OCI now · VM/WASI later</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 3 · LIFECYCLE -->
+    <section class="slide act-3" data-act="Act 3 · Lifecycle" id="slide-10">
+      <div class="slide-inner">
+        <p class="eyebrow">Step 1 · Activate</p>
+        <h2 class="slide-title">Activation selects the cheapest verified projection</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node orange"><strong>Activation request</strong><small>paired root + adapter</small></div>
+            <span class="arrow">→</span>
+            <div class="node blue"><strong>Resolve ref</strong><small>canonical target</small></div>
+            <span class="arrow">→</span>
+            <div class="node orange"><strong>Projection lookup</strong><small>exact · compatible · cold</small></div>
+            <span class="arrow">→</span>
+            <div class="node orange"><strong>Workspace ready</strong><small>mounted and executable</small></div>
+          </div>
+          <div class="three-col" style="margin-top:3.5cqw">
+            <div class="node green"><strong>Exact hit</strong><small>verified recipe; mount directly</small></div>
+            <div class="node orange"><strong>Compatible hit</strong><small>bounded conversion or extension</small></div>
+            <div class="node red"><strong>Cold miss</strong><small>reconstruct Θ(B + F)</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-3" data-act="Act 3 · Lifecycle" id="slide-11">
+      <div class="slide-inner">
+        <p class="eyebrow">Step 2 · Execute</p>
+        <h2 class="slide-title">Each agent receives one fresh ownership domain</h2>
+        <div class="two-col wide-left">
+          <div class="layer-stack" style="width:46cqw">
+            <div class="layer" style="--layer-color:var(--orange)">merged workspace · agent process</div>
+            <div class="layer" style="--layer-color:var(--orange)">upper AllocationId H92 · WorkspaceOwned</div>
+            <div class="layer" style="--layer-color:var(--blue)">immutable exact projection · shared lower</div>
+          </div>
+          <ul class="flat-list">
+            <li>Workspace lease</li>
+            <li>Epoch fencing</li>
+            <li>Private upper and workdir</li>
+            <li>Generic mutation evidence</li>
+            <li>No host workspace copy</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-3" data-act="Act 3 · Lifecycle" id="slide-12">
+      <div class="slide-inner">
+        <p class="eyebrow">Step 3 · Discover mutations</p>
+        <h2 class="slide-title">Fast evidence is a hint; scanning remains the fallback</h2>
+        <div class="content">
+          <div class="branch-row">
+            <div class="node purple"><strong>Mutation journal</strong><small>trusted receipt when complete</small></div>
+            <div class="node gray"><strong>Filesystem state</strong><small>authoritative observable result</small></div>
+            <div class="node purple"><strong>Bounded scan</strong><small>fd-relative, streaming fallback</small></div>
+          </div>
+          <div class="flow" style="margin:2cqw 0">
+            <span class="arrow">↘</span><span class="arrow">↓</span><span class="arrow">↙</span>
+          </div>
+          <div class="node green" style="max-width:38cqw;margin:0 auto"><strong>Normalized mutation stream</strong><small>No package-, command-, filename-, or language-specific correctness assumptions</small></div>
+          <div class="callout" style="margin-top:2.5cqw;--callout-color:var(--orange)">
+            Archive extraction, generated source, mass rename, fake pip/npm installs, and arbitrary writes all use the same pipeline.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-3" data-act="Act 3 · Lifecycle" id="slide-13">
+      <div class="slide-inner">
+        <p class="eyebrow">Step 4 · Publish</p>
+        <h2 class="slide-title">Publication is an explicit ownership state machine</h2>
+        <div class="content">
+          <div class="state-row">
+            <div class="state">WorkspaceOwned</div><span class="arrow">→</span>
+            <div class="state current">Sealing</div><span class="arrow">→</span>
+            <div class="state">PayloadOwned</div><span class="arrow">→</span>
+            <div class="state">LocatorReady</div><span class="arrow">→</span>
+            <div class="state">PublicationCommitted</div>
+          </div>
+          <div class="two-col" style="margin-top:3cqw">
+            <div class="node red"><strong>Before Sealing</strong><small>Reject safely: WorkspaceBusy / StorageBusy</small></div>
+            <div class="node purple"><strong>At or after Sealing</strong><small>Ambiguous failure becomes RecoveryRequired</small></div>
+          </div>
+          <p class="big-claim" style="font-size:2.05cqw;margin:3cqw auto 0;text-align:center">The transition into <span class="runtime mono">Sealing</span> changes the legal recovery behavior.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-3" data-act="Act 3 · Lifecycle" id="slide-14">
+      <div class="slide-inner">
+        <p class="eyebrow">Step 5 · Adopt</p>
+        <h2 class="slide-title">The bytes stay still while ownership changes</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node orange"><strong>Allocation H92</strong><small>owner = Workspace W7<br>path = stable</small></div>
+            <span class="arrow">seal + compare-and-adopt →</span>
+            <div class="node green"><strong>Allocation H92</strong><small>owner = Payload P17<br>path = unchanged</small></div>
+          </div>
+          <div class="three-col" style="margin-top:4cqw">
+            <div class="metric"><span class="value physical">0×H</span><span class="label">Additional full-payload copy</span></div>
+            <div class="metric"><span class="value physical">0</span><span class="label">Cross-device rename dependency</span></div>
+            <div class="metric"><span class="value physical">H+O(M)</span><span class="label">Publication peak payload</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-3" data-act="Act 3 · Lifecycle" id="slide-15">
+      <div class="slide-inner">
+        <p class="eyebrow">Step 6 · Commit and continue</p>
+        <h2 class="slide-title">Ref replacement is the publication linearization point</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node green"><strong>Payload durable</strong><small>ownership receipt</small></div>
+            <span class="arrow">→</span>
+            <div class="node green"><strong>Locator durable</strong><small>generation installed</small></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>GC admission</strong><small>pre-register + recheck</small></div>
+            <span class="arrow">→</span>
+            <div class="node blue"><strong>Paired ref OCC</strong><small>root becomes visible</small></div>
+          </div>
+          <div class="flow" style="margin-top:3.3cqw">
+            <div class="node blue"><strong>Publication committed</strong><small>durable canonical success</small></div>
+            <span class="arrow">→ optional →</span>
+            <div class="node orange"><strong>Successor activation</strong><small>fresh upper; separate outcome</small></div>
+          </div>
+          <div class="callout" style="margin-top:2.5cqw;--callout-color:var(--purple)">
+            <strong>CommittedActivationFailed</strong> means publication succeeded even though the requested successor workspace did not.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 4 · COMPONENTS -->
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-16">
+      <div class="slide-inner">
+        <p class="eyebrow">Adapter boundary</p>
+        <h2 class="slide-title">Canonical semantics do not depend on one runtime</h2>
+        <div class="content">
+          <div class="node blue" style="width:38cqw;margin:0 auto"><strong>MPLA canonical core</strong><small>Merkle identity · payload locators · publication semantics</small></div>
+          <div class="flow" style="margin:1.2cqw 0"><span class="arrow down">→</span></div>
+          <div class="node purple" style="width:38cqw;margin:0 auto"><strong>ProjectionAdapter contract</strong><small>qualification, activation, mount, unmount, verification</small></div>
+          <div class="flow" style="margin:1.2cqw 0"><span class="arrow">↙</span><span class="arrow">↓</span><span class="arrow">↘</span></div>
+          <div class="three-col">
+            <div class="node orange"><strong>OCI now</strong><small>OverlayFS; CAP_SYS_ADMIN</small></div>
+            <div class="node gray dashed"><strong>Firecracker later</strong><small>different native projection</small></div>
+            <div class="node gray dashed"><strong>WASI later</strong><small>virtual filesystem adapter</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-17">
+      <div class="slide-inner">
+        <p class="eyebrow">Stable allocation and ownership</p>
+        <h2 class="slide-title">Allocation identity is established before execution</h2>
+        <div class="two-col">
+          <div class="node green" style="padding:2.2cqw">
+            <strong style="font-size:2cqw">AllocationId H92</strong>
+            <small style="font-size:1.15cqw;margin-top:1.3cqw">physical location<br>current owner<br>owner epoch<br>adoption receipt<br>durability state</small>
+          </div>
+          <div>
+            <ul class="flat-list">
+              <li>Create once in the stable allocation arena</li>
+              <li>Fence every owner transition with an epoch</li>
+              <li>Compare expected owner before adoption</li>
+              <li>Record durable ownership receipt</li>
+              <li>Prevent stale retries and ABA reuse</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-18">
+      <div class="slide-inner">
+        <p class="eyebrow">Mutation construction pipeline</p>
+        <h2 class="slide-title">Disk-backed streaming replaces repository-sized maps</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node orange"><strong>Filesystem</strong><small>upper + metadata</small></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>Bounded scan</strong><small>fd-relative walk</small></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>Disk spool</strong><small>compact records</small></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>External sort</strong><small>fixed fan-in</small></div>
+            <span class="arrow">→</span>
+            <div class="node blue"><strong>Merkle builder</strong><small>ordered stream</small></div>
+          </div>
+          <div class="three-col" style="margin-top:4cqw">
+            <div class="metric"><span class="value physical">O(1)</span><span class="label">Application memory vs. file count</span></div>
+            <div class="metric"><span class="value physical">bounded</span><span class="label">Open file descriptors</span></div>
+            <div class="metric"><span class="value physical">0</span><span class="label">Resident record per path</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-19">
+      <div class="slide-inner">
+        <p class="eyebrow">PayloadStore</p>
+        <h2 class="slide-title">Durable bytes support two complementary forms</h2>
+        <div class="two-col">
+          <div class="node green" style="min-height:24cqw;display:grid;place-content:center">
+            <strong style="font-size:2cqw">Adopted allocation</strong>
+            <small style="font-size:1.15cqw;margin-top:1.2cqw">sealed native upper<br>immediately reusable<br>no second complete copy</small>
+          </div>
+          <div class="node green" style="min-height:24cqw;display:grid;place-content:center">
+            <strong style="font-size:2cqw">Packed / chunked payload</strong>
+            <small style="font-size:1.15cqw;margin-top:1.2cqw">CDC extents<br>deduplicated chunks<br>compact long-term storage</small>
+          </div>
+        </div>
+        <div class="callout" style="--callout-color:var(--green)">
+          Packing is a later locator construction—not a hidden second payload-sized copy inside the publication critical path.
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-20">
+      <div class="slide-inner">
+        <p class="eyebrow">Locator Catalog</p>
+        <h2 class="slide-title">Forward and reverse inventories make movement safe</h2>
+        <div class="content">
+          <div class="two-col">
+            <div>
+              <p class="eyebrow" style="color:var(--green)">Forward</p>
+              <div class="flow vertical">
+                <div class="node green"><strong>PayloadId</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node green"><strong>Locator generation</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node green"><strong>Allocation / pack extents</strong></div>
+              </div>
+            </div>
+            <div>
+              <p class="eyebrow" style="color:var(--purple)">Reverse</p>
+              <div class="flow vertical">
+                <div class="node purple"><strong>Allocation / pack extent</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node purple"><strong>Referencing locators</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node purple"><strong>Reachable PayloadIds</strong></div>
+              </div>
+            </div>
+          </div>
+          <p class="claim" style="margin:2.4cqw auto 0;text-align:center">Immutable generations + OCC prevent replacement from losing the last durable locator.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-21">
+      <div class="slide-inner">
+        <p class="eyebrow">Refs and projections</p>
+        <h2 class="slide-title">Canonical visibility and runtime speed stay independent</h2>
+        <div class="content">
+          <div class="two-col">
+            <div class="node blue" style="min-height:22cqw;display:grid;place-content:center">
+              <strong style="font-size:2cqw">Ref Store</strong>
+              <small style="font-size:1.15cqw;margin-top:1.1cqw">branch → paired roots<br>atomic OCC replacement<br>canonical publication visibility</small>
+            </div>
+            <div class="node orange dashed" style="min-height:22cqw;display:grid;place-content:center">
+              <strong style="font-size:2cqw">Projection Store</strong>
+              <small style="font-size:1.15cqw;margin-top:1.1cqw">recipe key → native lowers<br>verified acceleration<br>rebuildable and disposable</small>
+            </div>
+          </div>
+          <p class="big-claim" style="font-size:1.95cqw;margin:2.7cqw auto 0;text-align:center">Losing a projection may make activation slower. It must never lose a checkpoint.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-4" data-act="Act 4 · Components" id="slide-22">
+      <div class="slide-inner">
+        <p class="eyebrow">Bounded control plane</p>
+        <h2 class="slide-title">Scheduling, recovery, and accounting surround every job</h2>
+        <div class="content">
+          <div class="node purple" style="width:31cqw;margin:0 auto"><strong>Admission + DRR scheduler</strong><small>permits before allocation</small></div>
+          <div class="flow" style="margin:1.3cqw 0"><span class="arrow">↙</span><span class="arrow">↓</span><span class="arrow">↘</span></div>
+          <div class="three-col">
+            <div class="node purple"><strong>Operation journal</strong><small>durable phases and replay</small></div>
+            <div class="node green"><strong>Bounded storage job</strong><small>worker + memory + I/O permits</small></div>
+            <div class="node purple"><strong>Reconciler</strong><small>forward/reverse physical inventory</small></div>
+          </div>
+          <div class="formula" style="margin-top:3cqw;text-align:center">X_unexplained = observed physical − categorized physical union = 0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 5 · ALGORITHMS -->
+    <section class="slide act-5" data-act="Act 5 · Algorithms" id="slide-23">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimization 1 · Promotion</p>
+        <h2 class="slide-title">Stationary adoption removes the second H</h2>
+        <div class="content">
+          <div class="two-col">
+            <div>
+              <p class="eyebrow danger">Copy-based promotion</p>
+              <div class="flow vertical">
+                <div class="node orange"><strong>Source upper H</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node red"><strong>Copy H</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node green"><strong>Target payload H</strong></div>
+              </div>
+              <div class="formula" style="margin-top:1.6cqw;border-color:var(--red)">peak ≈ 2H</div>
+            </div>
+            <div>
+              <p class="eyebrow physical">Stationary adoption</p>
+              <div class="flow vertical">
+                <div class="node orange"><strong>Allocation H</strong><small>WorkspaceOwned</small></div>
+                <span class="arrow down">→</span>
+                <div class="node purple"><strong>Seal + owner receipt</strong></div>
+                <span class="arrow down">→</span>
+                <div class="node green"><strong>Same allocation H</strong><small>PayloadOwned</small></div>
+              </div>
+              <div class="formula" style="margin-top:1.6cqw;border-color:var(--green)">peak = H + O(M)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-5" data-act="Act 5 · Algorithms" id="slide-24">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimization 2 · Small files</p>
+        <h2 class="slide-title">A million paths become a bounded ordered stream</h2>
+        <div class="content">
+          <div class="node orange" style="width:30cqw;margin:0 auto"><strong>1,000,000 path records</strong><small>never one resident object each</small></div>
+          <div class="flow" style="margin:1.2cqw 0"><span class="arrow down">→</span></div>
+          <div class="four-col">
+            <div class="node purple"><strong>Run 1</strong><small>disk-backed</small></div>
+            <div class="node purple"><strong>Run 2</strong><small>disk-backed</small></div>
+            <div class="node purple"><strong>…</strong><small>bounded runs</small></div>
+            <div class="node purple"><strong>Run N</strong><small>disk-backed</small></div>
+          </div>
+          <div class="flow" style="margin:1.2cqw 0"><span class="arrow down">→</span></div>
+          <div class="node blue" style="width:38cqw;margin:0 auto"><strong>Fixed-fan-in merge</strong><small>ordered stream into Merkle pages and packs</small></div>
+          <p class="claim" style="margin:2cqw auto 0;text-align:center">The cost moves to sequential disk I/O instead of heap, tasks, descriptors, and per-file fsync.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-5" data-act="Act 5 · Algorithms" id="slide-25">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimization 3 · Merkle updates</p>
+        <h2 class="slide-title">Only paths to changed leaves are rebuilt</h2>
+        <div class="two-col">
+          <div class="tree">
+            <p class="eyebrow canonical">Parent root</p>
+            <div class="tree-level"><div class="node blue"><strong>R₀</strong></div></div>
+            <div class="tree-level"><span class="arrow">↙</span><span class="arrow">↘</span></div>
+            <div class="tree-level">
+              <div class="node blue"><strong>A</strong><small>unchanged</small></div>
+              <div class="node blue"><strong>B</strong><small>old branch</small></div>
+            </div>
+          </div>
+          <div class="tree">
+            <p class="eyebrow control">Child root</p>
+            <div class="tree-level"><div class="node purple"><strong>R₁</strong></div></div>
+            <div class="tree-level"><span class="arrow">↙</span><span class="arrow">↘</span></div>
+            <div class="tree-level">
+              <div class="node blue dashed"><strong>A</strong><small>digest reused</small></div>
+              <div class="node purple"><strong>B′</strong><small>rebuilt path</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="formula">incremental work ≈ affected paths × Merkle depth d &nbsp;·&nbsp; not projection depth D_proj</div>
+      </div>
+    </section>
+
+    <section class="slide act-5" data-act="Act 5 · Algorithms" id="slide-26">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimization 4 · Large files</p>
+        <h2 class="slide-title">CDC reuses stable chunks around a tiny edit</h2>
+        <div class="content">
+          <p class="eyebrow dim">Old file</p>
+          <div class="flow" style="gap:.4cqw">
+            <div class="node green">A</div><div class="node green">B</div><div class="node green">C</div><div class="node green">D</div><div class="node green">E</div>
+          </div>
+          <p class="eyebrow dim" style="margin-top:2.3cqw">New file</p>
+          <div class="flow" style="gap:.4cqw">
+            <div class="node green dashed">A</div><div class="node green dashed">B</div><div class="node purple">X</div><div class="node green dashed">C</div><div class="node green dashed">D</div><div class="node green dashed">E</div>
+          </div>
+          <div class="two-col" style="margin-top:3cqw">
+            <div class="callout" style="--callout-color:var(--green)"><strong>Eliminated:</strong> storing and transferring unchanged chunks again.</div>
+            <div class="callout" style="--callout-color:var(--red)"><strong>Not eliminated:</strong> required reads/hashing and portable OverlayFS whole-file copy-up.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-5" data-act="Act 5 · Algorithms" id="slide-27">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimization 5 · Activation</p>
+        <h2 class="slide-title">Projection reuse turns activation into a decision tree</h2>
+        <div class="content">
+          <div class="node blue" style="width:24cqw;margin:0 auto"><strong>Requested paired root</strong></div>
+          <div class="flow" style="margin:1.1cqw 0"><span class="arrow down">→</span></div>
+          <div class="three-col">
+            <div class="node green"><strong>Exact hit</strong><small>verify recipe → mount<br><span class="physical">O(1) in B, F</span></small></div>
+            <div class="node orange"><strong>Compatible hit</strong><small>bounded conversion<br><span class="runtime">depends on delta</span></small></div>
+            <div class="node red"><strong>Empty-worker miss</strong><small>full reconstruction<br><span class="danger">Θ(B + F)</span></small></div>
+          </div>
+          <div class="flow" style="margin:2cqw 0"><span class="arrow">↘</span><span class="arrow">↓</span><span class="arrow">↙</span></div>
+          <div class="node orange" style="width:32cqw;margin:0 auto"><strong>Fresh upper + mounted workspace</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-5" data-act="Act 5 · Algorithms" id="slide-28">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimization 6 · Projection depth</p>
+        <h2 class="slide-title">Five hundred roots do not become five hundred lowers</h2>
+        <div class="content">
+          <p class="eyebrow canonical">Logical history</p>
+          <div class="flow">
+            <div class="node blue">R₀</div><span class="arrow">→</span><div class="node blue">R₁</div><span class="arrow">→</span><div class="node blue">R₂</div><span class="arrow">→ … →</span><div class="node blue">R₅₀₀</div>
+          </div>
+          <p class="eyebrow runtime" style="margin-top:3cqw">Physical runtime projection</p>
+          <div class="layer-stack" style="width:47cqw">
+            <div class="layer" style="--layer-color:var(--orange)">fresh upper</div>
+            <div class="layer" style="--layer-color:var(--purple)">projection P3</div>
+            <div class="layer" style="--layer-color:var(--blue)">projection P2</div>
+            <div class="layer" style="--layer-color:var(--green)">base P1</div>
+          </div>
+          <p class="claim" style="margin:2cqw auto 0;text-align:center">Select or flatten before <span class="mono">D_proj</span> exceeds 8; target 4 or fewer.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 6 · MULTI-AGENT CORRECTNESS -->
+    <section class="slide act-6" data-act="Act 6 · Correctness" id="slide-29">
+      <div class="slide-inner">
+        <p class="eyebrow">Multi-agent forks</p>
+        <h2 class="slide-title">A clean fork creates metadata—not a repository copy</h2>
+        <div class="content">
+          <div class="tree">
+            <div class="tree-level"><div class="node blue"><strong>Root 0</strong><small>shared canonical state</small></div></div>
+            <div class="tree-level"><span class="arrow">↙</span><span class="arrow">↓</span><span class="arrow">↘</span></div>
+            <div class="tree-level">
+              <div class="node orange"><strong>Agent A lease</strong><small>fresh upper only</small></div>
+              <div class="node orange"><strong>Agent B lease</strong><small>fresh upper only</small></div>
+              <div class="node orange"><strong>Agent C lease</strong><small>fresh upper only</small></div>
+            </div>
+          </div>
+          <div class="three-col" style="margin-top:3.6cqw">
+            <div class="metric"><span class="value accent">O(M)</span><span class="label">Clean fork metadata</span></div>
+            <div class="metric"><span class="value accent">0×B</span><span class="label">Base repository duplication</span></div>
+            <div class="metric"><span class="value accent">shared</span><span class="label">Immutable projection</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-6" data-act="Act 6 · Correctness" id="slide-30">
+      <div class="slide-inner">
+        <p class="eyebrow">Optimistic concurrency</p>
+        <h2 class="slide-title">Build in parallel; serialize only the final ref decision</h2>
+        <div class="content">
+          <div class="two-col">
+            <div class="node orange"><strong>Agent A</strong><small>expects ref generation 7<br>builds publication A</small></div>
+            <div class="node orange"><strong>Agent B</strong><small>expects ref generation 7<br>builds publication B</small></div>
+          </div>
+          <div class="flow" style="margin:2cqw 0"><span class="arrow">↘</span><span class="arrow">↙</span></div>
+          <div class="node blue" style="width:34cqw;margin:0 auto"><strong>Short OCC commit section</strong><small>A installs generation 8</small></div>
+          <div class="flow" style="margin:2cqw 0"><span class="arrow">↙</span><span class="arrow">↘</span></div>
+          <div class="two-col">
+            <div class="node green"><strong>Disjoint proof</strong><small>rebase and retry safely</small></div>
+            <div class="node red"><strong>Overlap or uncertainty</strong><small>retain publication; typed conflict</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-6" data-act="Act 6 · Correctness" id="slide-31">
+      <div class="slide-inner">
+        <p class="eyebrow">Crash consistency</p>
+        <h2 class="slide-title">Durable phases turn retry into deterministic replay</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node purple"><strong>Intent persisted</strong><small>operation ID</small></div>
+            <span class="arrow">→</span>
+            <div class="node orange"><strong>Sealing</strong><small>old session fenced</small></div>
+            <span class="arrow">→</span>
+            <div class="node red"><strong>Crash</strong><small>at any boundary</small></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>Journal replay</strong><small>resume same operation</small></div>
+            <span class="arrow">→</span>
+            <div class="node green"><strong>Roll forward</strong><small>exactly one result</small></div>
+          </div>
+          <div class="three-col" style="margin-top:4cqw">
+            <div class="node purple"><strong>Idempotency</strong><small>same ID, same intent</small></div>
+            <div class="node purple"><strong>Typed ambiguity</strong><small>RecoveryRequired</small></div>
+            <div class="node purple"><strong>Reconciliation</strong><small>no unexplained allocation</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-6" data-act="Act 6 · Correctness" id="slide-32">
+      <div class="slide-inner">
+        <p class="eyebrow">Memory and fairness</p>
+        <h2 class="slide-title">Backpressure happens before memory exhaustion</h2>
+        <div class="content">
+          <div class="flow">
+            <div class="node orange"><strong>Agent jobs</strong></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>16 active</strong><small>heavy coordinators</small></div>
+            <span class="arrow">→</span>
+            <div class="node purple"><strong>16 queued</strong><small>descriptor-only</small></div>
+            <span class="arrow">→</span>
+            <div class="node red"><strong>Typed rejection</strong><small>retryable overload</small></div>
+          </div>
+          <div class="four-col" style="margin-top:4cqw">
+            <div class="metric"><span class="value control">4</span><span class="label">Storage workers</span></div>
+            <div class="metric"><span class="value control">8 MiB</span><span class="label">Resident permit domain</span></div>
+            <div class="metric"><span class="value control">64 MiB</span><span class="label">Nonresident I/O credits</span></div>
+            <div class="metric"><span class="value control">128 MiB</span><span class="label">Aggregate hard ceiling</span></div>
+          </div>
+          <p class="tiny" style="margin-top:2cqw;text-align:center">I/O credits authorize borrowed or streamed disk ranges—not equivalent resident allocation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 7 · EVIDENCE -->
+    <section class="slide act-7" data-act="Act 7 · Evidence" id="slide-33">
+      <div class="slide-inner">
+        <p class="eyebrow">Honest complexity</p>
+        <h2 class="slide-title">Warm reuse is fast; cold physical work remains visible</h2>
+        <div class="content">
+          <table class="compare">
+            <thead>
+              <tr><th>Operation</th><th>Warm or incremental path</th><th>Cold or lower bound</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Activation</td><td class="physical">Exact hit: independent of B, F</td><td class="danger">Empty worker: Θ(B + F)</td></tr>
+              <tr><td>Small publication</td><td class="physical">ΔP, ΔB, affected Merkle paths</td><td class="danger">Correctness fallback may scan</td></tr>
+              <tr><td>Tiny large-file edit</td><td class="physical">CDC reuses stable chunks</td><td class="danger">Read/hash; possible Θ(S_f) copy-up</td></tr>
+              <tr><td>Fork / rollback / squash</td><td class="physical">Metadata-only when state exists</td><td class="muted">Projection miss may reconstruct later</td></tr>
+              <tr><td>Evacuation</td><td class="physical">Background locator replacement</td><td class="danger">Source + target peak</td></tr>
+            </tbody>
+          </table>
+          <p class="tiny" style="margin-top:1.5cqw">These are architectural expectations and physical bounds, not measured benchmark results.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-7" data-act="Act 7 · Evidence" id="slide-34">
+      <div class="slide-inner">
+        <p class="eyebrow">Space accounting</p>
+        <h2 class="slide-title">Every durable byte must belong to one category</h2>
+        <div class="content">
+          <div class="formula">T = P_unique + C_cache_only + ΣH_active_private + P_bounded_staging + M_metadata</div>
+          <div class="four-col" style="margin-top:3cqw">
+            <div class="node green"><strong>Unique payload</strong><small>packs + adopted bytes</small></div>
+            <div class="node gray dashed"><strong>Cache only</strong><small>disposable projections</small></div>
+            <div class="node orange"><strong>Active uppers</strong><small>private workspace state</small></div>
+            <div class="node purple"><strong>Staging + metadata</strong><small>bounded and attributable</small></div>
+          </div>
+          <div class="formula" style="margin-top:3cqw;border-color:var(--red);text-align:center">X_unexplained = observed − categorized union = 0</div>
+          <p class="claim" style="margin:2cqw auto 0;text-align:center">No steady-state term may be proportional to roots × complete carrier size.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide act-7" data-act="Act 7 · Evidence" id="slide-35">
+      <div class="slide-inner">
+        <p class="eyebrow">Proof of concept</p>
+        <h2 class="slide-title">Two test layers keep iteration fast and falsifiable</h2>
+        <div class="two-col">
+          <div class="node green" style="min-height:25cqw;text-align:left">
+            <strong style="font-size:2cqw">Smoke · under 3 minutes</strong>
+            <small style="font-size:1.12cqw;margin-top:1.2cqw">
+              Exact and cold activation<br>
+              Small-delta publication<br>
+              Fork, rollback, squash<br>
+              Basic crash recovery<br>
+              Memory and storage sanity
+            </small>
+          </div>
+          <div class="node purple" style="min-height:25cqw;text-align:left">
+            <strong style="font-size:2cqw">Heavy · under 10 minutes</strong>
+            <small style="font-size:1.12cqw;margin-top:1.2cqw">
+              Up to 10 GiB<br>
+              100k / 1M small files<br>
+              100 MiB / 1 GiB file edits<br>
+              16 agents + overload<br>
+              Fault and cancellation sweeps
+            </small>
+          </div>
+        </div>
+        <p class="claim" style="margin:2cqw auto 0;text-align:center">Record p50/p95/p99, CPU, I/O, memory-domain peak, amplification, and unexplained bytes.</p>
+      </div>
+    </section>
+
+    <section class="slide act-7" data-act="Act 7 · Evidence" id="slide-36">
+      <div class="slide-inner">
+        <p class="eyebrow">Architecture recap</p>
+        <h2 class="slide-title">One truth, movable bytes, disposable execution</h2>
+        <div class="content">
+          <div class="plane-stack">
+            <div class="plane blue">
+              <strong>What</strong>
+              <span class="plane-main">Immutable Merkle roots</span>
+              <small>Backend-neutral canonical truth</small>
+            </div>
+            <div class="plane green">
+              <strong>Where</strong>
+              <span class="plane-main">Replaceable payload locators</span>
+              <small>Adopted allocations, chunks, and packs</small>
+            </div>
+            <div class="plane orange">
+              <strong>How</strong>
+              <span class="plane-main">Bounded projections + fresh upper</span>
+              <small>OCI now; other adapters later</small>
+            </div>
+          </div>
+          <div class="quote" style="margin-top:2.5cqw;font-size:1.75cqw">
+            Existing history is not paid again when verified reusable state already exists.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toolbar" role="toolbar" aria-label="Slide controls">
+    <button type="button" id="prev" aria-label="Previous slide">← Previous</button>
+    <span class="slide-readout" id="readout" aria-live="polite">1 / 36</span>
+    <button type="button" id="next" aria-label="Next slide">Next →</button>
+    <button type="button" id="overview" aria-label="Toggle all slides overview">Overview</button>
+    <button type="button" id="fullscreen" aria-label="Toggle fullscreen">Fullscreen</button>
+    <button type="button" id="help" aria-label="Show keyboard shortcuts">?</button>
+  </div>
+  <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+  <div class="shortcut" id="shortcuts">
+    <strong style="color:var(--ink)">Keyboard</strong><br>
+    ←/→ or Space: navigate · Home/End: jump · O: overview · F: fullscreen · ?: help
+  </div>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll(".slide")];
+      const readout = document.getElementById("readout");
+      const progress = document.getElementById("progress");
+      const overviewButton = document.getElementById("overview");
+      const shortcuts = document.getElementById("shortcuts");
+      let current = 0;
+      let helpTimer;
+
+      slides.forEach((slide, index) => {
+        const footer = document.createElement("div");
+        footer.className = "footer";
+        footer.innerHTML = `<span class="act-name">${slide.dataset.act}</span><span>EphemeralOS Stage 04.6&nbsp;&nbsp;·&nbsp;&nbsp;${String(index + 1).padStart(2, "0")}</span>`;
+        slide.appendChild(footer);
+        slide.setAttribute("role", "group");
+        slide.setAttribute("aria-label", `Slide ${index + 1} of ${slides.length}`);
+      });
+
+      function indexFromHash() {
+        const match = location.hash.match(/slide-(\d+)/);
+        if (!match) return 0;
+        return Math.max(0, Math.min(slides.length - 1, Number(match[1]) - 1));
+      }
+
+      function show(index, updateHash = true) {
+        current = Math.max(0, Math.min(slides.length - 1, index));
+        slides.forEach((slide, i) => slide.classList.toggle("active", i === current));
+        readout.textContent = `${current + 1} / ${slides.length}`;
+        progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+        if (updateHash && !document.body.classList.contains("overview")) {
+          history.replaceState(null, "", `#slide-${String(current + 1).padStart(2, "0")}`);
+        }
+      }
+
+      function step(delta) {
+        if (document.body.classList.contains("overview")) return;
+        show(current + delta);
+      }
+
+      function toggleOverview(force) {
+        const next = typeof force === "boolean" ? force : !document.body.classList.contains("overview");
+        document.body.classList.toggle("overview", next);
+        overviewButton.textContent = next ? "Present" : "Overview";
+        if (!next) {
+          show(current);
+          slides[current].scrollIntoView({ block: "center" });
+        } else {
+          slides[current].scrollIntoView({ block: "center" });
+        }
+      }
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+      }
+
+      function toggleHelp() {
+        clearTimeout(helpTimer);
+        shortcuts.classList.toggle("visible");
+        if (shortcuts.classList.contains("visible")) {
+          helpTimer = setTimeout(() => shortcuts.classList.remove("visible"), 5000);
+        }
+      }
+
+      document.getElementById("prev").addEventListener("click", () => step(-1));
+      document.getElementById("next").addEventListener("click", () => step(1));
+      overviewButton.addEventListener("click", () => toggleOverview());
+      document.getElementById("fullscreen").addEventListener("click", toggleFullscreen);
+      document.getElementById("help").addEventListener("click", toggleHelp);
+
+      slides.forEach((slide, index) => {
+        slide.addEventListener("click", () => {
+          if (!document.body.classList.contains("overview")) return;
+          current = index;
+          toggleOverview(false);
+        });
+      });
+
+      document.addEventListener("keydown", event => {
+        if (event.target.matches("input, textarea, select")) return;
+        if (["ArrowRight", "PageDown", " "].includes(event.key)) {
+          event.preventDefault();
+          step(1);
+        } else if (["ArrowLeft", "PageUp"].includes(event.key)) {
+          event.preventDefault();
+          step(-1);
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          show(0);
+        } else if (event.key === "End") {
+          event.preventDefault();
+          show(slides.length - 1);
+        } else if (event.key.toLowerCase() === "o") {
+          event.preventDefault();
+          toggleOverview();
+        } else if (event.key.toLowerCase() === "f") {
+          event.preventDefault();
+          toggleFullscreen();
+        } else if (event.key === "?") {
+          event.preventDefault();
+          toggleHelp();
+        } else if (event.key === "Escape" && document.body.classList.contains("overview")) {
+          toggleOverview(false);
+        }
+      });
+
+      window.addEventListener("hashchange", () => show(indexFromHash(), false));
+      show(indexFromHash(), false);
+    })();
+  </script>
+</body>
+</html>

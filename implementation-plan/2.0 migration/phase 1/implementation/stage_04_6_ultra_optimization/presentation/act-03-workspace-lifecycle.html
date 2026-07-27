@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The complete MPLA workspace lifecycle from activation through stationary adoption and publication.">
+  <title>Act 03 · Workspace Lifecycle</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div><span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html" aria-current="page"><b>03</b>Lifecycle</a><a href="act-04-system-components.html"><b>04</b>Components</a><a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div><div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Lifecycle</span></div><span class="kicker">Act 03 · State changes</span><h1>Activate, execute, seal, adopt, commit</h1><p class="lede">A session begins with selection, owns exactly one writable allocation, and ends by converting that allocation into immutable payload state before the ref moves.</p></div>
+      <p class="boundary-note"><strong>Closing checkpoint:</strong> filesystem state survives. Process memory, open-FD position, sockets, timers, locks, and the old process tree do not.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#activate">Activate</a></li><li><a href="#execute">Execute</a></li><li><a href="#discover">Discover mutations</a></li><li><a href="#publish">Publish</a></li><li><a href="#adopt">Adopt in place</a></li><li><a href="#commit">Commit and continue</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="activate">
+          <div class="section-head"><span class="micro-label">Phase 01 · Activate</span><h2>Activation selects the cheapest verified projection</h2><p>The fast path is a decision tree. A miss never weakens correctness; it only exposes more physical work.</p></div>
+          <figure class="diagram">
+            <div class="pipeline">
+              <div class="pipeline-item blue"><small>Input</small><strong>Root + qualified environment</strong><span>backend, kernel, filesystem, mount, OCI profile</span></div>
+              <div class="pipeline-item green"><small>Decision 1</small><strong>Exact receipt usable?</strong><span>yes → hold generation and mount</span></div>
+              <div class="pipeline-item gold"><small>Decision 2</small><strong>Compatible projection?</strong><span>yes → bounded adaptation and verify</span></div>
+              <div class="pipeline-item rose"><small>Cold path</small><strong>Build from payload locators</strong><span>transfer/reconstruct honestly timed as Θ(B+F)</span></div>
+            </div>
+            <figcaption>Sub-20 ms expectations belong to the exact stored path. The cold path is not relabeled as “activation overhead.”</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Path</th><th>Required evidence</th><th>Cost dependency</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td>Exact hit</td><td>Receipt, dependencies, locator holds, qualification match</td><td>Independent of repository bytes/files</td><td>Mount-ready projection</td></tr>
+                <tr><td>Compatible hit</td><td>Compatible receipt plus bounded conversion proof</td><td>Conversion-specific</td><td>New exact receipt or direct mount</td></tr>
+                <tr><td>Cold build</td><td>Complete durable locator coverage</td><td><code>Θ(B+F)</code></td><td>Verified projection and receipt</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="execute">
+          <div class="section-head"><span class="micro-label">Phase 02 · Execute</span><h2>Each agent receives one fresh ownership domain</h2><p>PayloadStore allocates the upper and workdir together inside its qualified arena. WorkspaceManager receives an epoch-fenced lease—not ownership of a host workspace copy.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">Canonical</span><div class="lane-track"><span class="event">Root R₄₂</span><span class="event-arrow">selects</span><span class="event green">projection receipt</span></div></div>
+              <div class="lane"><span class="lane-label">Read only</span><div class="lane-track"><span class="event gold">lower 0</span><span class="event gold">lower 1</span><span class="event gold">… ≤ D_proj</span></div></div>
+              <div class="lane"><span class="lane-label">Writable</span><div class="lane-track"><span class="event rose">Allocation A / upper</span><span class="event-arrow">+</span><span class="event rose">A / work</span></div></div>
+              <div class="lane"><span class="lane-label">Runtime</span><div class="lane-track"><span class="event green">private mount namespace</span><span class="event-arrow">→</span><span class="event green">merged workspace</span></div></div>
+            </div>
+            <figcaption><strong>Why a mount still exists:</strong> the OCI process needs one coherent POSIX directory view. MPLA removes host workspace copying; it does not remove the runtime’s need for a filesystem view.</figcaption>
+          </figure>
+          <div class="note success"><strong>Upper is writable only while leased.</strong> After sealing, the same directory becomes immutable PayloadStore-owned state. “Sealed upper” describes its origin; it is no longer an active OverlayFS upper.</div>
+        </section>
+
+        <section class="content-section" id="discover">
+          <div class="section-head"><span class="micro-label">Phase 03 · Discover</span><h2>Fast evidence is a hint; scanning remains the fallback</h2><p>A mutation journal can narrow work only when its epoch and coverage are complete. Any gap, overflow, bypass, or ambiguous rename broadens the scan.</p></div>
+          <div class="split">
+            <figure class="diagram">
+              <span class="micro-label">Fast evidence</span>
+              <div class="pipeline">
+                <div class="pipeline-item green"><small>Journal</small><strong>complete epoch</strong><span>ordered normalized candidates</span></div>
+                <div class="pipeline-item blue"><small>Reducer</small><strong>coalesce safely</strong><span>preserve type, rename, metadata semantics</span></div>
+                <div class="pipeline-item gold"><small>Builder</small><strong>stream delta</strong><span>bounded resident cursor</span></div>
+              </div>
+            </figure>
+            <figure class="diagram">
+              <span class="micro-label">Correctness fallback</span>
+              <div class="pipeline">
+                <div class="pipeline-item rose"><small>Evidence</small><strong>gap or ambiguity</strong><span>never guess a smaller set</span></div>
+                <div class="pipeline-item gold"><small>Scanner</small><strong>broaden subtree/full upper</strong><span>bounded descriptors and spool</span></div>
+                <div class="pipeline-item green"><small>Oracle</small><strong>same canonical result</strong><span>fast path must equal full scan</span></div>
+              </div>
+            </figure>
+          </div>
+        </section>
+
+        <section class="content-section" id="publish">
+          <div class="section-head"><span class="micro-label">Phase 04 · Publish</span><h2>Publication is an explicit ownership state machine</h2><p>Durable <code>Sealing</code> is the no-return boundary. Before it, an exact rejection can preserve or clean private workspace state. At or after it, recovery rolls forward under the same operation ID.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">Workspace</span><div class="lane-track"><span class="event">WorkspaceOwned</span><span class="event-arrow">→</span><span class="event rose">Sealing</span><span class="event-arrow">→</span><span class="event gold">writer revoked</span></div></div>
+              <div class="lane"><span class="lane-label">Payload</span><div class="lane-track"><span class="event gold">compare owner+epoch</span><span class="event-arrow">→</span><span class="event green">PayloadOwned</span><span class="event-arrow">→</span><span class="event green">LocatorReady</span></div></div>
+              <div class="lane"><span class="lane-label">Canonical</span><div class="lane-track"><span class="event">MerkleReady</span><span class="event-arrow">→</span><span class="event">ref compare</span><span class="event-arrow">→</span><span class="event green">PublicationCommitted</span></div></div>
+            </div>
+            <figcaption>Every phase is journaled and idempotent. After a lost response, retrying the same scoped publication ID returns or completes the same operation—it does not start another publication.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Observed phase</th><th>Allowed external outcome</th><th>Recovery action</th></tr></thead>
+              <tbody>
+                <tr><td>Before durable <code>Sealing</code></td><td><code>RejectedBeforeAdoption</code></td><td>Restore exact lease state or clean exact private allocation</td></tr>
+                <tr><td><code>Sealing</code> or later, not terminal</td><td><code>RecoveryRequired</code></td><td>Roll forward under same operation identity</td></tr>
+                <tr><td>Proven path conflict after adoption</td><td><code>PublicationConflictRetained</code></td><td>Keep payload owned via handoff; never orphan bytes</td></tr>
+                <tr><td>Matching ref visible</td><td><code>PublicationCommitted</code></td><td>Return exact terminal; never report uncommitted error</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="adopt">
+          <div class="section-head"><span class="micro-label">Phase 05 · Adopt</span><h2>The bytes stay still while ownership changes</h2><p>This replaces a host-dependent rename optimization with a backend-local compare-and-adopt protocol over a stable allocation.</p></div>
+          <figure class="diagram">
+            <div class="bar-compare">
+              <div class="bar-row"><span class="bar-label">Copy publication</span><div class="bar"><span class="bar-segment rose" style="width:48%">active upper H</span><span class="bar-segment gold" style="width:48%">new payload H</span><span class="bar-segment" style="width:4%">M</span></div></div>
+              <div class="bar-row"><span class="bar-label">Stationary adoption</span><div class="bar"><span class="bar-segment green" style="width:96%">same allocation H</span><span class="bar-segment" style="width:4%">M</span></div></div>
+            </div>
+            <figcaption>Portable publication peak changes from approximately <code>2H + O(M)</code> to <code>H + O(M)</code>. No cross-device rename and no copy fallback are required.</figcaption>
+          </figure>
+          <div class="process">
+            <article class="process-step"><strong>Quiesce</strong><p>Admit no new command or mutation.</p></article>
+            <article class="process-step"><strong>Drain</strong><p>Stop holder tree; close writable FDs/maps.</p></article>
+            <article class="process-step"><strong>Unmount</strong><p>Destroy merged view and retire workdir.</p></article>
+            <article class="process-step"><strong>Flush</strong><p>Sync and stability-check upper bytes.</p></article>
+            <article class="process-step"><strong>Revoke</strong><p>Fence the workspace lease epoch.</p></article>
+            <article class="process-step"><strong>Adopt</strong><p>CAS owner state to PayloadStore and issue receipt.</p></article>
+          </div>
+        </section>
+
+        <section class="content-section" id="commit">
+          <div class="section-head"><span class="micro-label">Phase 06 · Commit</span><h2>Ref replacement is the publication linearization point</h2><p>Large scanning, hashing, and locator construction occur outside the short ref writer section. The final compare-and-swap either exposes the complete paired root or exposes nothing.</p></div>
+          <figure class="diagram">
+            <div class="pipeline cols-3">
+              <div class="pipeline-item green"><small>Prerequisite</small><strong>LocatorReady</strong><span>all named payloads durable</span></div>
+              <div class="pipeline-item blue"><small>Prerequisite</small><strong>MerkleReady</strong><span>root + attribution immutable</span></div>
+              <div class="pipeline-item gold"><small>Linearization</small><strong>Ref CAS</strong><span>expected base → paired root</span></div>
+            </div>
+            <div class="arrow-line">optional continuation uses a separate ActivationOperationId</div>
+            <figcaption>Publication success does not promise that a new session was activated. The two exact operation results remain separately durable and queryable.</figcaption>
+          </figure>
+          <aside class="note"><strong>MCTS interpretation.</strong> Each search node can point to an immutable root, fork cheaply, and publish independently. The “sealed upper” is useful to any multiagent tree search, but MPLA is not specific to MCTS.</aside>
+        </section>
+      </article>
+    </div></div>
+    <div class="container reading-path"><a class="reading-link" href="act-02-three-plane-architecture.html"><span>Previous act</span><strong>← Act 02 · Architecture</strong></a><a class="reading-link" href="act-04-system-components.html"><span>Next act</span><strong>Act 04 · Components →</strong></a></div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>A session owns one upper; a publication consumes it.</span></div></footer>
+</body>
+</html>

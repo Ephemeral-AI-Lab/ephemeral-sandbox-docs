@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A visual, long-form guide to the Merkle–Promoted Locator Architecture for EphemeralOS Stage 04.6.">
+  <title>MPLA Architecture · EphemeralOS</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <nav class="primary-nav" aria-label="Primary">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+      <div class="primary-links">
+        <a href="index.html" aria-current="page">Architecture</a>
+        <a href="../new_plan.md">Design plan</a>
+        <a href="../requirements_and_prohibitions.md">Requirements</a>
+      </div>
+      <span class="version">Stage 04.6 · v2.0</span>
+    </nav>
+  </header>
+  <nav class="chapter-rail" aria-label="Architecture acts">
+    <div class="chapter-nav">
+      <a href="index.html" aria-current="page"><b>00</b>Overview</a>
+      <a href="act-01-why-mpla.html"><b>01</b>Why</a>
+      <a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a>
+      <a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a>
+      <a href="act-04-system-components.html"><b>04</b>Components</a>
+      <a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a>
+      <a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a>
+      <a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+    </div>
+  </nav>
+
+  <main id="content">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="kicker">EphemeralOS · Stage 04.6</span>
+          <h1>One filesystem truth. Movable bytes. Disposable execution.</h1>
+          <p class="lede">The Merkle–Promoted Locator Architecture lets hundreds of agents publish quickly without turning history into hundreds of kernel layers—or copying an entire repository at every checkpoint.</p>
+          <p class="boundary-note"><strong>The central move:</strong> separate what a checkpoint <em>means</em>, where its bytes <em>live</em>, and how one runtime <em>mounts</em> it.</p>
+        </div>
+        <figure class="hero-figure" aria-labelledby="hero-figure-title">
+          <div class="figure-head">
+            <strong id="hero-figure-title">A usable workspace</strong>
+            <span class="status">verified · leased</span>
+          </div>
+          <div class="stack" aria-label="Three architecture layers">
+            <div class="stack-layer"><span>Root R₄₂ + attribution</span><span>meaning</span></div>
+            <div class="stack-layer"><span>Locator generation 07</span><span>bytes</span></div>
+            <div class="stack-layer"><span>Exact projection + upper B</span><span>runtime</span></div>
+          </div>
+          <div class="hero-facts">
+            <div class="hero-fact"><span>target projection depth</span><strong>≤ 4 lowers</strong></div>
+            <div class="hero-fact"><span>hard design bound</span><strong>≤ 8 lowers</strong></div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <aside class="thesis" aria-label="Architecture thesis">
+      <div class="thesis-line"><span class="thesis-mark" aria-hidden="true"></span><span>Logical history may grow without bound. Runtime projection depth, active writable state, and resident-memory work stay explicitly bounded.</span></div>
+    </aside>
+
+    <section class="content-section">
+      <div class="container">
+        <div class="section-head">
+          <span class="micro-label">The architecture in one view</span>
+          <h2>Three planes answer three different questions</h2>
+          <p>Most scaling failures came from asking one data structure—the layer stack—to carry history, storage, and execution at the same time.</p>
+        </div>
+        <div class="split-wide">
+          <div class="plane-list">
+            <article class="plane">
+              <b>01 · Canonical plane</b>
+              <strong>What filesystem state is this?</strong>
+              <p><code>RootId + AttributionRootId</code> identify an immutable Merkle checkpoint. They contain no path, allocation, or mount identity.</p>
+            </article>
+            <article class="plane">
+              <b>02 · Physical plane</b>
+              <strong>Where can its bytes be read?</strong>
+              <p>Immutable locator generations map payload digests to packs or adopted stationary allocations.</p>
+            </article>
+            <article class="plane">
+              <b>03 · Runtime plane</b>
+              <strong>How can a worker execute it now?</strong>
+              <p>A qualified adapter selects a shallow read-only projection and gives the session one fresh writable upper.</p>
+            </article>
+          </div>
+          <figure class="diagram">
+            <span class="micro-label">Authority flow</span>
+            <div class="pipeline">
+              <div class="pipeline-item blue"><small>Canonical</small><strong>Merkle root</strong><span>stable meaning across backends</span></div>
+              <div class="pipeline-item green"><small>Physical</small><strong>Locator generation</strong><span>replaceable byte placement</span></div>
+              <div class="pipeline-item gold"><small>Runtime</small><strong>Projection receipt</strong><span>evictable acceleration</span></div>
+            </div>
+            <figcaption><strong>Only the root is semantic truth.</strong> A locator may be replaced and a projection may be evicted without changing the checkpoint.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="container">
+        <div class="section-head">
+          <span class="micro-label">The operating loop</span>
+          <h2>Execution produces one sealed delta—not another permanent runtime layer</h2>
+          <p>Publication converts a private writable allocation into an immutable payload source, updates only affected Merkle paths, and commits the ref last.</p>
+        </div>
+        <figure class="diagram">
+          <div class="pipeline cols-3">
+            <div class="pipeline-item gold"><small>Activate</small><strong>Select projection</strong><span>exact → compatible → cold build</span></div>
+            <div class="pipeline-item blue"><small>Execute</small><strong>Fresh upper</strong><span>one leased allocation per session</span></div>
+            <div class="pipeline-item rose"><small>Seal</small><strong>Stop mutation</strong><span>drain writers, unmount, flush</span></div>
+          </div>
+          <div class="arrow-line">↓</div>
+          <div class="pipeline cols-3">
+            <div class="pipeline-item green"><small>Adopt</small><strong>Bytes stay still</strong><span>ownership changes in place</span></div>
+            <div class="pipeline-item blue"><small>Build</small><strong>Stream delta</strong><span>payload locators + Merkle pages</span></div>
+            <div class="pipeline-item gold"><small>Commit</small><strong>Replace ref</strong><span>the publication linearization point</span></div>
+          </div>
+          <figcaption>The old session is terminal after durable <code>Sealing</code>. Continuation, if requested, activates a new session with a new upper.</figcaption>
+        </figure>
+        <div class="metric-strip cols-4">
+          <div class="metric"><span class="value">O(M)</span><span class="label">clean fork metadata; no base-tree copy</span></div>
+          <div class="metric"><span class="value">H + O(M)</span><span class="label">portable publication peak</span></div>
+          <div class="metric"><span class="value">8 MiB</span><span class="label">global resident-work permit pool</span></div>
+          <div class="metric"><span class="value">0</span><span class="label">allowed unexplained persistent bytes</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="container">
+        <div class="section-head">
+          <span class="micro-label">Reading path</span>
+          <h2>Seven acts, from pressure to proof</h2>
+          <p>Each act is a self-contained explanation with a representation selected for its subject: pressure maps, authority diagrams, state machines, system maps, algorithm visualizers, failure lanes, or benchmark matrices.</p>
+        </div>
+        <div class="chapter-grid">
+          <a class="chapter-card" href="act-01-why-mpla.html"><span class="number">ACT 01 · WHY</span><div><h3>Why another architecture?</h3><p>See why deep lower stacks, full copies, and repository-sized in-memory indexes fail under fast multiagent publication.</p></div><span class="open">Open act →</span></a>
+          <a class="chapter-card" href="act-02-three-plane-architecture.html"><span class="number">ACT 02 · ARCHITECTURE</span><div><h3>The three-plane model</h3><p>Separate Merkle truth, byte placement, and runtime projection. Understand which identities may—and may not—cross those boundaries.</p></div><span class="open">Open act →</span></a>
+          <a class="chapter-card" href="act-03-workspace-lifecycle.html"><span class="number">ACT 03 · LIFECYCLE</span><div><h3>Activate, execute, seal, adopt</h3><p>Walk one session through projection selection, writer fencing, stationary adoption, Merkle publication, and optional continuation.</p></div><span class="open">Open act →</span></a>
+          <a class="chapter-card" href="act-04-system-components.html"><span class="number">ACT 04 · COMPONENTS</span><div><h3>Who owns what?</h3><p>Map the interfaces and authorities of WorkspaceManager, PayloadStore, locator catalog, Merkle builder, ref store, scheduler, and adapters.</p></div><span class="open">Open act →</span></a>
+          <a class="chapter-card" href="act-05-core-algorithms.html"><span class="number">ACT 05 · ALGORITHMS</span><div><h3>Make cost follow the delta</h3><p>Visualize stationary promotion, external sorting, persistent Merkle updates, content-defined chunking, and projection reuse.</p></div><span class="open">Open act →</span></a>
+          <a class="chapter-card" href="act-06-correctness-and-recovery.html"><span class="number">ACT 06 · CORRECTNESS</span><div><h3>Fast without ambiguity</h3><p>See the OCC commit window, exact retry semantics, crash replay, conflict retention, and pre-allocation overload control.</p></div><span class="open">Open act →</span></a>
+          <a class="chapter-card" href="act-07-poc-evidence.html"><span class="number">ACT 07 · EVIDENCE</span><div><h3>How the PoC can falsify it</h3><p>Define clocks, datasets, memory/space accounting, smoke and heavy suites, and the difference between a cache hit and cold work.</p></div><span class="open">Open act →</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="container split">
+        <div>
+          <span class="micro-label">The non-claim</span>
+          <h2>MPLA does not make physics disappear</h2>
+          <p class="lede">A cold worker must still obtain bytes. A lower-only write may still copy up a whole file. A 1 GiB file may still require a 1 GiB read/hash pass. MPLA’s win is that these costs are explicit, bounded, reusable, and no longer multiplied by repository history.</p>
+        </div>
+        <aside class="note warning"><strong>Honest fast path.</strong> Sub-20 ms or sub-100 ms targets apply to verified stored-state selection and small deltas. They do not describe cold reconstruction of a missing 1 GiB repository.</aside>
+      </div>
+    </section>
+
+    <div class="container reading-path">
+      <span class="reading-link"><span>You are here</span><strong>00 · Overview</strong></span>
+      <a class="reading-link" href="act-01-why-mpla.html"><span>Begin the acts</span><strong>Act 01 · Why MPLA →</strong></a>
+    </div>
+  </main>
+
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>One canonical truth · movable bytes · disposable execution</span></div></footer>
+</body>
+</html>

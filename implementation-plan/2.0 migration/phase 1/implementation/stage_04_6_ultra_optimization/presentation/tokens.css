@@ -1,0 +1,66 @@
+/* Hallmark · site study: ephemeral-sandbox.com/architecture · warm technical editorial */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@500;600;700;800&display=swap");
+
+:root {
+  color-scheme: light;
+
+  --paper: oklch(97.2% 0.018 78);
+  --paper-raised: oklch(98.8% 0.010 78);
+  --paper-soft: oklch(94.8% 0.020 78);
+  --paper-blue: oklch(95.2% 0.022 238);
+  --paper-green: oklch(94.8% 0.027 153);
+  --paper-rose: oklch(95.2% 0.024 22);
+  --paper-gold: oklch(94.4% 0.037 82);
+
+  --ink: oklch(25% 0.028 53);
+  --ink-soft: oklch(38% 0.025 55);
+  --muted: oklch(51% 0.025 58);
+  --subtle: oklch(62% 0.025 60);
+  --rule: oklch(87% 0.032 75);
+  --rule-strong: oklch(77% 0.045 72);
+
+  --blue: oklch(56% 0.105 238);
+  --blue-dark: oklch(43% 0.090 238);
+  --green: oklch(59% 0.105 153);
+  --green-dark: oklch(43% 0.075 153);
+  --rose: oklch(60% 0.115 22);
+  --rose-dark: oklch(46% 0.095 22);
+  --gold: oklch(64% 0.100 75);
+
+  --focus: oklch(55% 0.135 238);
+  --inverse: oklch(98.8% 0.010 78);
+  --shadow: oklch(25% 0.028 53 / 0.06);
+
+  --font-heading: "Manrope", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Inter", "Avenir Next", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-pill: 999rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --dur-micro: 120ms;
+  --dur-short: 180ms;
+  --dur-long: 420ms;
+
+  --content: 72rem;
+  --reading: 52.75rem;
+  --z-base: 1;
+  --z-sticky: 200;
+  --z-tooltip: 600;
+}

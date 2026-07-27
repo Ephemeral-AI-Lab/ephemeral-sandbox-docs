@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The MPLA PoC benchmark strategy, test matrices, timed boundaries, and memory/storage evidence.">
+  <title>Act 07 · MPLA PoC Evidence</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div><span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a><a href="act-04-system-components.html"><b>04</b>Components</a><a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html" aria-current="page"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div><div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Evidence</span></div><span class="kicker">Act 07 · Falsification</span><h1>Measure the boundary the user actually waits for</h1><p class="lede">The PoC separates warm selection from cold construction, application heap from kernel memory, and response time from final settlement. It is designed to disprove the architecture quickly.</p></div>
+      <p class="boundary-note"><strong>Two suites:</strong> smoke stays below three minutes for iteration; heavy stays below ten minutes and never uses more than a 10 GiB fixture envelope.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#claims">Claims to test</a></li><li><a href="#clocks">Timed boundaries</a></li><li><a href="#suites">Smoke and heavy</a></li><li><a href="#fixtures">Fixture matrix</a></li><li><a href="#memory">Memory evidence</a></li><li><a href="#storage">Storage evidence</a></li><li><a href="#cli">CLI operations</a></li><li><a href="#verdict">Verdict model</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="claims">
+          <div class="section-head"><span class="micro-label">Evidence hierarchy</span><h2>Warm reuse is fast; cold physical work remains visible</h2><p>Every latency claim names its starting state and readiness boundary. Cache-hit and forced-miss samples are never pooled.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Claim</th><th>Required experiment</th><th>Expected evidence</th><th>Falsifier</th></tr></thead>
+              <tbody>
+                <tr><td>Exact activation ignores repo size</td><td>Same receipt across small and ~870 MiB stored states</td><td>p95 within gate; no payload read/build</td><td>Activation scales with <code>B</code> on an exact hit</td></tr>
+                <tr><td>Small publication follows delta</td><td>≤1 MiB across ≤10 files, hit and forced miss</td><td>Changed bytes/paths/Merkle nodes proportional to delta</td><td>Base-tree copy or unreported scan/hydration</td></tr>
+                <tr><td>Adoption removes second H</td><td>1 GiB changed upper with physical storage snapshots</td><td>Same allocation/inode identity; peak <code>H+O(M)</code></td><td>Move, copy, rename, or second payload allocation</td></tr>
+                <tr><td>Many-small is memory bounded</td><td>20k smoke and 250k heavy file shapes</td><td>Stable application pool, bounded FDs/tasks; exact oracle</td><td>Cardinality-sized heap, OOM, missing entry</td></tr>
+                <tr><td>Crash replay is exact</td><td>Kill at every durability edge</td><td>Old or complete new root; one owner; exact retry result</td><td>Partial ref or ambiguous ownership</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="clocks">
+          <div class="section-head"><span class="micro-label">Time semantics</span><h2>The clock starts before the public operation and stops at the promised outcome</h2><p>Internal spans explain the total; they never replace it.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">Outer</span><div class="lane-track"><span class="event rose">CLI spawn / ProductAccess call</span><span class="event-arrow">→</span><span class="event">IPC + auth + serialization</span><span class="event-arrow">→</span><span class="event green">promised usable result</span></div></div>
+              <div class="lane"><span class="lane-label">Publish</span><div class="lane-track"><span class="event">close begins</span><span class="event">seal</span><span class="event">adopt</span><span class="event">locator</span><span class="event">Merkle</span><span class="event green">durable ref + closed session</span></div></div>
+              <div class="lane"><span class="lane-label">Settle</span><div class="lane-track"><span class="event gold">response</span><span class="event-arrow">→</span><span class="event">evacuation / retirement debt</span><span class="event-arrow">→</span><span class="event green">MaintenanceSettled</span></div></div>
+            </div>
+            <figcaption>Response and settlement are separate measurements. Stage 04.6 must not redefine “settled” when Stage 05 retirement authority is unavailable.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Boundary</th><th>Stops when</th><th>Includes</th></tr></thead>
+              <tbody>
+                <tr><td><code>create_workspace_session</code></td><td>Usable session and direct workspace probe succeed</td><td>Projection selection/build, mount, upper lease, readiness probe</td></tr>
+                <tr><td><code>exec_command</code></td><td>Terminal result and output are complete</td><td>Not merely “running”; implicit mode also includes promised auto-publication</td></tr>
+                <tr><td><code>publish_workspace_session</code></td><td>Durable root visible, session closed, upper adopted</td><td>Scan/sort/hash/flush/locators/ref; continuation only if API promises it</td></tr>
+                <tr><td>Cold construction</td><td>Verified native projection ready</td><td>All payload read/transfer/build/verification; fixture generation reported separately</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="suites">
+          <div class="section-head"><span class="micro-label">Two-loop PoC</span><h2>One suite protects iteration; one carries load</h2><p>The smoke suite catches semantic and ownership regressions before the heavy suite spends its fixed ten-minute budget.</p></div>
+          <div class="split">
+            <article class="flow-node blue"><span>Smoke · hard stop &lt;180 s</span><strong>Fast implementation loop</strong><p>Qualification, adoption, exact/cold activation, small publication, fork/rollback/squash, 20k files, four publishers, memory/storage sanity, and targeted crash points.</p></article>
+            <article class="flow-node rose"><span>Heavy · hard stop &lt;600 s</span><strong>Load-bearing proof</strong><p>1 GiB stream and copy-up, 250k files, retained history, overload, fault sweeps, depth 1/4/8, concurrent publishers, and final reconciliation.</p></article>
+          </div>
+          <div class="metric-strip cols-4">
+            <div class="metric"><span class="value">≤150 s</span><span class="label">smoke design target</span></div>
+            <div class="metric"><span class="value">≤480 s</span><span class="label">heavy warning target</span></div>
+            <div class="metric"><span class="value">&lt;10 GiB</span><span class="label">maximum fixture envelope</span></div>
+            <div class="metric"><span class="value">4</span><span class="label">active data-worker cap</span></div>
+          </div>
+          <aside class="note"><strong>Full details:</strong> the canonical PoC rows, exact commands, artifacts, and pass/fail rules live in <a class="blue-text" href="../poc/test_matrix.md">poc/test_matrix.md</a> and <a class="blue-text" href="../poc/implementation_plan.md">poc/implementation_plan.md</a>.</aside>
+        </section>
+
+        <section class="content-section" id="fixtures">
+          <div class="section-head"><span class="micro-label">Dataset design</span><h2>Different shapes expose different failure modes</h2><p>Total bytes alone cannot test inode pressure, copy-up amplification, locator cardinality, or retained-root behavior.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Fixture</th><th>Smoke</th><th>Heavy</th><th>Primary risk exposed</th><th>Expected shape</th></tr></thead>
+              <tbody>
+                <tr><td><code>S0-empty</code></td><td>Tiny sentinel</td><td>Same</td><td>Qualification and mount semantics</td><td>Minimal bytes, explicit metadata/whiteout probes</td></tr>
+                <tr><td><code>S1-mixed</code></td><td>Small realistic tree</td><td>Broader semantic corpus</td><td>Files, dirs, links, metadata, rename/delete correctness</td><td>Fast independent oracle</td></tr>
+                <tr><td><code>S2-large</code></td><td>100 MiB-class files</td><td>1 GiB changed/lower-only files</td><td>Streaming, CDC, copy-up, no-second-H proof</td><td>Payload-dominant</td></tr>
+                <tr><td><code>S3-small</code></td><td>20k paths / ≤64 MiB</td><td>250k paths / ≤1 GiB</td><td>Heap, FD, inode/slab, external sort</td><td>Metadata may exceed payload; report separately</td></tr>
+                <tr><td><code>S4-history</code></td><td>Short retained chain</td><td>64 deterministic mutations</td><td>Anti-<code>R×B</code> and locator retention</td><td>Unique/no-dedup cases included</td></tr>
+                <tr><td><code>R0-870</code></td><td>Targeted derivative</td><td>~870 MiB preserved corpus</td><td>Matched current controls and exact projection gates</td><td>Stored, cold, forced-miss states separated</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note warning"><strong>Fixture time is not hidden.</strong> Pre-generation may stay outside a hot-operation timer only when reported separately and when the operation begins from the declared durable state.</div>
+        </section>
+
+        <section class="content-section" id="memory">
+          <div class="section-head"><span class="micro-label">Memory evidence</span><h2>A small heap is not proof of a small memory footprint</h2><p>The test observes the whole storage domain: application RSS, file-backed mappings, page cache, dentries, inodes, slab, helpers, queues, descriptors, and OOM events.</p></div>
+          <div class="budget-line">
+            <div class="budget-band" style="--fill:8%"><strong><span>Managed resident work</span><span>8 MiB</span></strong><span>one shared permit pool across scanners/builders</span></div>
+            <div class="budget-band" style="--fill:50%"><strong><span>Nonresident I/O credit</span><span>64 MiB</span></strong><span>throughput accounting; not permission for resident growth</span></div>
+            <div class="budget-band" style="--fill:75%"><strong><span>Storage-domain soft response</span><span>96 MiB</span></strong><span>stop prefetch, evict optional cache/mappings, throttle</span></div>
+            <div class="budget-band" style="--fill:100%"><strong><span>Storage-domain hard ceiling</span><span>128 MiB</span></strong><span>predictive rejection; zero OOM/oom_kill events</span></div>
+          </div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Test</th><th>Observation</th><th>Pass condition</th></tr></thead>
+              <tbody>
+                <tr><td>1 / 4 / 16 heavy jobs</td><td>Workers, coordinators, permits, fairness</td><td>Exactly four data workers; ≤16 coordinators; no starvation</td></tr>
+                <tr><td>Jobs 17–32</td><td>Queue bytes, mounts, uppers, leases</td><td>Descriptor-only ≤64 KiB aggregate; zero physical state</td></tr>
+                <tr><td>Job 33</td><td>Admission result and physical inventory</td><td>Typed retry before allocation</td></tr>
+                <tr><td>250k entries</td><td>anon/file/kernel/slab, RSS, FDs, mounts</td><td>No OOM; app pool 8 MiB; RSS ≤ min(96 MiB, idle+32 MiB)</td></tr>
+                <tr><td>Soft/hard pressure</td><td><code>memory.current</code>, <code>memory.events</code>, reactions</td><td>Correctness unchanged; hard line never crossed</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="storage">
+          <div class="section-head"><span class="micro-label">Physical accounting</span><h2>Every durable byte must belong to one category</h2><p>MPLA does not claim zero duplication. It claims bounded, named duplication with owners, quotas, and retirement rules.</p></div>
+          <div class="equation">T = P_unique + C_cache_only + ΣH_active_private + P_bounded_staging + M_metadata</div>
+          <figure class="diagram">
+            <div class="bar-compare">
+              <div class="bar-row"><span class="bar-label">Observed disk</span><div class="bar"><span class="bar-segment green" style="width:49%">unique payload</span><span class="bar-segment gold" style="width:18%">cache</span><span class="bar-segment rose" style="width:18%">active uppers</span><span class="bar-segment" style="width:9%">staging</span><span class="bar-segment blue" style="width:6%">M</span></div></div>
+              <div class="bar-row"><span class="bar-label">Unexplained</span><div class="bar"><span class="bar-segment green" style="width:100%">X_unexplained = 0</span></div></div>
+            </div>
+            <figcaption>During locator evacuation, source and target may both exist and must both be counted. “Cache” cannot hide a payload required for root validity.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Category</th><th>Examples</th><th>Bound</th><th>Cleanup authority</th></tr></thead>
+              <tbody>
+                <tr><td><code>P_unique</code></td><td>Packs and selected promoted locators</td><td>Retained unique payload</td><td>Stage 05/retention policy; never delete last locator</td></tr>
+                <tr><td><code>C_cache_only</code></td><td>Exact carriers, compatible projections</td><td>Byte/inode/generation/depth quota</td><td>ProjectionStore after leases drain</td></tr>
+                <tr><td><code>ΣH_active_private</code></td><td>Admitted live uppers</td><td>Active session admission</td><td>Workspace before seal; PayloadStore after adoption</td></tr>
+                <tr><td><code>P_bounded_staging</code></td><td>Sort runs, operation temp objects</td><td>Per-operation reservation and global quota</td><td>Operation recovery/reconciliation</td></tr>
+                <tr><td><code>M_metadata</code></td><td>Merkle pages, refs, journals, indexes</td><td>Explicit per-operation/application budgets</td><td>Owning catalog/store</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="cli">
+          <div class="section-head"><span class="micro-label">Public surface</span><h2>CLI operations are tested at their real lifecycle boundary</h2><p>The test catalog is generated so new routes cannot silently escape classification.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Surface</th><th>Operations</th><th>What must be ready / absent</th></tr></thead>
+              <tbody>
+                <tr><td>Manager lifecycle</td><td><code>create_sandbox</code>, <code>inspect_sandbox</code>, <code>destroy_sandbox</code></td><td>Ready probe on create; complete schema on query; record/container/mount/storage absence on destroy</td></tr>
+                <tr><td>Runtime session</td><td><code>create_workspace_session</code>, <code>publish_workspace_session</code>, <code>destroy_workspace_session</code></td><td>Usable merged view; durable ref + adoption; exact lease/mount teardown</td></tr>
+                <tr><td>Runtime command</td><td><code>exec_command</code>, stdin/line streaming</td><td>Terminal output, stable offsets, EOF/error/cancel semantics</td></tr>
+                <tr><td>Runtime files</td><td><code>file_read</code>, <code>file_write</code>, <code>file_edit</code>, <code>file_blame</code></td><td>Live visibility for session writes; durable read-back for no-session automatic publication</td></tr>
+                <tr><td>Representation</td><td><code>squash_layerstacks</code>, <code>export_changes</code></td><td>Logical selection distinct from physical build; destination complete and checksummed</td></tr>
+                <tr><td>Observability</td><td><code>snapshot</code>, <code>trace</code>, <code>events</code>, <code>resources</code>, <code>layerstack</code></td><td>Bounded complete response and proof of zero lifecycle mutation</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="note warning"><strong>Do not invent public commands.</strong> Fork, standalone checkpoint/materialize/reactivate, and committed rollback are tested at real component APIs until catalog exposure exists.</aside>
+        </section>
+
+        <section class="content-section" id="verdict">
+          <div class="section-head"><span class="micro-label">Decision rule</span><h2>Performance is considered only after correctness passes</h2><p>The PoC emits a verdict ledger instead of averaging incompatible successes and failures into one score.</p></div>
+          <div class="process">
+            <article class="process-step"><strong>Qualify</strong><p>Host, backend, OverlayFS, cgroup, durability, metadata semantics.</p></article>
+            <article class="process-step"><strong>Prove semantics</strong><p>Independent root oracle, exact owner, old-or-complete-new recovery.</p></article>
+            <article class="process-step"><strong>Prove bounds</strong><p>Memory, FDs, mounts, queue, storage categories, unexplained bytes.</p></article>
+            <article class="process-step"><strong>Measure</strong><p>Raw samples, p50/p95/p99, CPU, I/O, amplification, hit status.</p></article>
+            <article class="process-step"><strong>Compare</strong><p>Matched current controls and identical timed boundaries.</p></article>
+            <article class="process-step"><strong>Decide</strong><p>Adopt, optimize, or reject the architecture with the failing gate named.</p></article>
+          </div>
+          <aside class="note success"><strong>Experiment-ready, not implementation-ready.</strong> The design is detailed enough for a focused PoC. The PoC’s job is to settle stationary adoption, memory/metadata scaling, cold-path honesty, and crash correctness before production migration begins.</aside>
+        </section>
+      </article>
+    </div></div>
+    <div class="container reading-path"><a class="reading-link" href="act-06-correctness-and-recovery.html"><span>Previous act</span><strong>← Act 06 · Correctness</strong></a><a class="reading-link" href="index.html"><span>Return</span><strong>Architecture overview →</strong></a></div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>Measure the whole boundary. Keep every physical cost visible.</span></div></footer>
+</body>
+</html>

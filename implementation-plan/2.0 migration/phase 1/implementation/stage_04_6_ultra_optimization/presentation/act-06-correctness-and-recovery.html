@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="MPLA correctness under forks, concurrent publication, crashes, cancellation, and overload.">
+  <title>Act 06 · MPLA Correctness and Recovery</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><nav class="primary-nav" aria-label="Primary">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><i></i></span><span>MPLA Architecture</span></a>
+    <div class="primary-links"><a href="index.html" aria-current="page">Architecture</a><a href="../new_plan.md">Design plan</a><a href="../requirements_and_prohibitions.md">Requirements</a></div><span class="version">Stage 04.6 · v2.0</span>
+  </nav></header>
+  <nav class="chapter-rail" aria-label="Architecture acts"><div class="chapter-nav">
+    <a href="index.html"><b>00</b>Overview</a><a href="act-01-why-mpla.html"><b>01</b>Why</a><a href="act-02-three-plane-architecture.html"><b>02</b>Architecture</a><a href="act-03-workspace-lifecycle.html"><b>03</b>Lifecycle</a><a href="act-04-system-components.html"><b>04</b>Components</a><a href="act-05-core-algorithms.html"><b>05</b>Algorithms</a><a href="act-06-correctness-and-recovery.html" aria-current="page"><b>06</b>Correctness</a><a href="act-07-poc-evidence.html"><b>07</b>Evidence</a>
+  </div></nav>
+
+  <main id="content">
+    <header class="chapter-intro"><div class="container chapter-intro-grid">
+      <div><div class="breadcrumbs"><a href="index.html">Architecture</a><span>/</span><span>Correctness</span></div><span class="kicker">Act 06 · Invariants</span><h1>Fast without ambiguous ownership</h1><p class="lede">Every optimization is subordinate to four proofs: immutable meaning, complete payload coverage, exactly one owner, and old-or-complete-new visibility across failure.</p></div>
+      <p class="boundary-note">A fast sample is invalid if it loses metadata, hides deferred work, resumes a post-seal session, leaks an allocation, or needs more memory than the declared envelope.</p>
+    </div></header>
+
+    <div class="article-band"><div class="article-shell">
+      <aside class="toc" aria-label="On this page"><span class="micro-label">On this page</span><ol>
+        <li><a href="#fork">Clean fork</a></li><li><a href="#occ">Concurrent publication</a></li><li><a href="#recovery">Crash recovery</a></li><li><a href="#retry">Exact retry</a></li><li><a href="#backpressure">Backpressure</a></li><li><a href="#invariants">Invariant ledger</a></li>
+      </ol></aside>
+      <article class="article">
+        <section class="content-section" id="fork">
+          <div class="section-head"><span class="micro-label">Isolation</span><h2>A clean fork creates metadata—not a repository copy</h2><p>Inactive forks share the immutable root and, when available, its projection. Physical writable state appears only after activation admits a session.</p></div>
+          <figure class="diagram">
+            <div class="tree-diagram">
+              <div class="tree-row"><span class="tree-node reused">Root R₄₂<br>shared</span></div>
+              <div class="tree-branch">╱ &nbsp;│&nbsp; ╲</div>
+              <div class="tree-row"><span class="tree-node">fork A<br>metadata</span><span class="tree-node">fork B<br>metadata</span><span class="tree-node">fork C<br>metadata</span></div>
+              <div class="tree-branch">↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↓</div>
+              <div class="tree-row"><span class="tree-node changed">upper A</span><span class="tree-node changed">upper B</span><span class="tree-node changed">upper C</span></div>
+            </div>
+            <figcaption>Only activated forks receive private uppers. No agent can observe another agent’s unpublished writes because their writer leases and mount namespaces are distinct.</figcaption>
+          </figure>
+          <div class="metric-strip cols-3">
+            <div class="metric"><span class="value">O(log R)</span><span class="label">fork metadata lookup/update target</span></div>
+            <div class="metric"><span class="value">0 × B</span><span class="label">base payload duplicated at fork time</span></div>
+            <div class="metric"><span class="value">1 × Hᵢ</span><span class="label">private upper per active admitted agent</span></div>
+          </div>
+        </section>
+
+        <section class="content-section" id="occ">
+          <div class="section-head"><span class="micro-label">Concurrency</span><h2>Build in parallel; serialize only the final ref decision</h2><p>Each publisher seals, adopts, constructs locators, and builds its candidate root outside the short ref writer section. A head advance does not automatically mean conflict.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">Agent A</span><div class="lane-track"><span class="event">seal Δsrc</span><span class="event green">build Rₐ</span><span class="event-arrow">→</span><span class="event green">ref CAS ✓</span></div></div>
+              <div class="lane"><span class="lane-label">Agent B</span><div class="lane-track"><span class="event">seal Δdocs</span><span class="event green">build Rᵦ</span><span class="event-arrow">head moved</span><span class="event gold">rebase outside lock</span><span class="event green">CAS ✓</span></div></div>
+              <div class="lane"><span class="lane-label">Agent C</span><div class="lane-track"><span class="event">seal Δsrc/auth</span><span class="event green">build R𝚌</span><span class="event-arrow">overlap</span><span class="event rose">retained conflict</span></div></div>
+            </div>
+            <figcaption>Disjoint paths are rebased and retried. Identical or ancestor/descendant overlap returns a typed retained-conflict result; the already-adopted payload is not orphaned.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Head change</th><th>Proof</th><th>Outcome</th></tr></thead>
+              <tbody>
+                <tr><td>Disjoint path set</td><td>No identical or ancestor/descendant overlap</td><td>Stream rebase outside lock, repeat admission, retry CAS</td></tr>
+                <tr><td>Same file/path</td><td>Stable overlapping key digest</td><td><code>PublicationConflictRetained</code></td></tr>
+                <tr><td>Ancestor/descendant</td><td>Directory/file structural overlap</td><td><code>PublicationConflictRetained</code></td></tr>
+                <tr><td>Uncertain proof</td><td>Evidence insufficient</td><td>Fail closed or retain resumable operation; never guess clean</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="recovery">
+          <div class="section-head"><span class="micro-label">Failure model</span><h2>Durable phases turn retry into deterministic replay</h2><p>Recovery begins from persisted operation state and selected generations, not from in-memory control flow or a convenient pathname.</p></div>
+          <figure class="diagram">
+            <div class="pipeline">
+              <div class="pipeline-item blue"><small>Intent</small><strong>operation + deterministic resource keys</strong><span>scope, request digest, expected base, continuation seed</span></div>
+              <div class="pipeline-item rose"><small>No-return point</small><strong>durable Sealing</strong><span>old session terminal; all later failure rolls forward</span></div>
+              <div class="pipeline-item gold"><small>Recovery reads</small><strong>ref → locator → owner → operation</strong><span>selected durable facts before local residue</span></div>
+              <div class="pipeline-item green"><small>Terminal</small><strong>old root or complete new root</strong><span>exact owner; exact result; no partial ref</span></div>
+            </div>
+            <figcaption>Forward-only mapping failures fail closed. Reverse-only residue may leak temporarily, but reconciliation can identify and account for it without guessing that a visible root is valid.</figcaption>
+          </figure>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Crash edge</th><th>Durable witness</th><th>Legal recovery</th></tr></thead>
+              <tbody>
+                <tr><td>Before Sealing record</td><td>No no-return marker</td><td>Restore exact workspace lease or delete exact private allocation</td></tr>
+                <tr><td>After Sealing, before adoption</td><td>Operation is closing; allocation may remain WorkspaceOwned</td><td>Continue quiescence and adopt; never resume execution</td></tr>
+                <tr><td>After owner CAS</td><td>Owner receipt + reverse inventory</td><td>Install/repair locator, build root, finish publication</td></tr>
+                <tr><td>After locator selection</td><td>Complete selected generation</td><td>Finish root/ref; preserve old selected generation until safe</td></tr>
+                <tr><td>After ref replacement</td><td>Matching publication ID in ref terminal</td><td>Return committed result even if response was lost</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="content-section" id="retry">
+          <div class="section-head"><span class="micro-label">Idempotency</span><h2>The same request ID means the same operation</h2><p>Request identity is scoped by operation kind and branch/ref. Reusing an ID with different bytes is an error, not a second chance to execute different work.</p></div>
+          <div class="flow-grid cols-3">
+            <article class="flow-node green"><span>Same ID · same digest</span><strong>resume or replay exact result</strong><p>Skip completed phases and return the durable terminal.</p></article>
+            <article class="flow-node rose"><span>Same ID · different digest</span><strong>IdempotencyMismatch</strong><p>Reject before another publication can mutate state.</p></article>
+            <article class="flow-node gold"><span>Expired ID fence</span><strong>OutcomeExpired</strong><p>The retired operation ID is never executed again.</p></article>
+          </div>
+          <aside class="note"><strong>Publication and continuation are separate identities.</strong> A publication can commit even when optional activation fails. The activation result cannot rewrite the publication terminal.</aside>
+        </section>
+
+        <section class="content-section" id="backpressure">
+          <div class="section-head"><span class="micro-label">Memory safety</span><h2>Backpressure happens before memory exhaustion</h2><p>Admission is itself part of correctness because a half-allocated rejected job creates ownership and cleanup ambiguity.</p></div>
+          <figure class="diagram">
+            <div class="lane-diagram">
+              <div class="lane"><span class="lane-label">1–4</span><div class="lane-track"><span class="event green">data workers active</span><span class="event">real uppers + permits</span></div></div>
+              <div class="lane"><span class="lane-label">5–16</span><div class="lane-track"><span class="event gold">coordinators admitted</span><span class="event">fair scheduling</span></div></div>
+              <div class="lane"><span class="lane-label">17–32</span><div class="lane-track"><span class="event">descriptor only</span><span class="event">≤64 KiB aggregate</span><span class="event">zero mounts/uppers</span></div></div>
+              <div class="lane"><span class="lane-label">33</span><div class="lane-track"><span class="event rose">typed retryable rejection</span><span class="event">zero partial state</span></div></div>
+            </div>
+            <figcaption>Soft memory pressure first stops prefetch and evicts optional cache/mappings. Predictive admission rejects before the 128 MiB hard ceiling or an OOM event.</figcaption>
+          </figure>
+        </section>
+
+        <section class="content-section" id="invariants">
+          <div class="section-head"><span class="micro-label">Proof ledger</span><h2>Correctness is a conjunction, not one checksum</h2><p>Every benchmark row must preserve the whole invariant set.</p></div>
+          <div class="comparison table-wrap">
+            <table>
+              <thead><tr><th>Invariant</th><th>Observable proof</th><th>Immediate falsifier</th></tr></thead>
+              <tbody>
+                <tr><td>Canonical exactness</td><td>Independent normalized oracle equals candidate root + attribution</td><td>Missing metadata, wrong hardlink/sparse/whiteout semantics</td></tr>
+                <tr><td>Locator completeness</td><td>Every visible payload resolves through selected generation</td><td>Ref names a payload with no durable source</td></tr>
+                <tr><td>Owner exactness</td><td>One owner epoch and one legal deleter per allocation</td><td>Workspace can delete PayloadOwned bytes</td></tr>
+                <tr><td>Crash atomicity</td><td>Old or complete new root only</td><td>Partial ref, ambiguous adoption, resumable post-seal session</td></tr>
+                <tr><td>Bounded resources</td><td>Memory/FD/mount/queue samples within fixed envelope</td><td>OOM, hidden helper growth, limit raised to pass</td></tr>
+                <tr><td>Complete accounting</td><td><code>X_unexplained = 0</code></td><td>Persistent bytes with no category, owner, reservation, or cleanup rule</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </article>
+    </div></div>
+    <div class="container reading-path"><a class="reading-link" href="act-05-core-algorithms.html"><span>Previous act</span><strong>← Act 05 · Algorithms</strong></a><a class="reading-link" href="act-07-poc-evidence.html"><span>Next act</span><strong>Act 07 · Evidence →</strong></a></div>
+  </main>
+  <footer class="site-footer"><div class="container footer-line"><strong>MPLA · Stage 04.6</strong><span>Old or complete new · exactly one owner · exact retry</span></div></footer>
+</body>
+</html>
