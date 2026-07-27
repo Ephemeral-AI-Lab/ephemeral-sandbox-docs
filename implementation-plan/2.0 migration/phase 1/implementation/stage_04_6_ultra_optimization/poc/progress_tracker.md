@@ -66,7 +66,7 @@ The lead remains in one Codex task from Q0 through the final recommendation. Eac
 
 Every initial worker request must begin with the literal characters `/goal `. Each prompt file under `prompts/` is formatted that way. The lead must not prepend greetings, metadata, or commentary before `/goal`.
 
-| Rotation | Prompt A | Prompt B | Task A thread/host | Task A cursor | Task B thread/host | Task B cursor | Phase checkpoint SHA | Status |
+| Rotation | Prompt A | Prompt B | Task A thread/host | Task A cursor | Task B thread/host | Task B cursor | Checkpoint SHA/ref | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | M0 | `prompts/m0_worker_a_qualification.md` | `prompts/m0_worker_b_durability.md` | — | — | — | — | — | `NOT_STARTED` |
 | M1 | `prompts/m1_worker_a_semantics.md` | `prompts/m1_worker_b_recovery.md` | — | — | — | — | — | `NOT_STARTED` |
@@ -79,10 +79,10 @@ Before creating a phase’s worker tasks, the lead must:
 1. Receive and integrate both prior task handoffs, if any.
 2. Inspect and verify the integrated diff.
 3. Update this tracker’s gate, ownership, interfaces, blockers, and handoff capsule.
-4. Create a local phase-checkpoint commit containing only PoC-owned changes; never include unrelated user changes and never push.
+4. Create a local phase-checkpoint commit containing only PoC-owned changes and a named local branch/ref pointing to it; never include unrelated user changes and never push.
 5. Resolve the saved `ephemeral-sandbox` project with `list_projects`.
-6. Call `create_thread` twice, using isolated `worktree` environments based on the recorded phase checkpoint.
-7. Send the exact phase prompt as the initial request, beginning with `/goal `.
+6. Call `create_thread` twice, using isolated `worktree` environments based on that branch/ref. Record the commit SHA for verification; do not assume the API accepts a raw SHA as its starting state.
+7. Build each initial request from the complete phase prompt, beginning with `/goal `, followed by a clearly delimited lead assignment capsule. The capsule records checkpoint SHA/ref, interface version, exclusive paths, run ID, evidence root, current blockers, prior phase capsule, and physical execution-lease status. Never prepend text before `/goal `.
 8. Record each returned `threadId`, `hostId`, and initial cursor immediately. A `clientThreadId` is setup-in-progress and must not be used as a ready thread ID.
 
 Each worker commits only its assigned files in its isolated worktree and reports the commit SHA. The lead reviews and cherry-picks one worker commit at a time, runs focused verification after each, and records the integration SHA. Workers never edit the lead’s tracker.
@@ -94,13 +94,14 @@ The lead must actively monitor both worker tasks while continuing lead-owned wor
 1. Take an immediate `wait_threads` snapshot after both tasks are ready.
 2. Wait on both tasks together with their last cursors and a bounded timeout, normally 120 seconds.
 3. Persist every new cursor in the rotation table so completed output is not delivered twice.
-4. Record meaningful checkpoints in §11: `STARTED`, `DISCOVERY_COMPLETE`, `FIRST_BUILD`, `FOCUSED_TESTS`, `NEEDS_ATTENTION`, and `HANDOFF_READY`.
+4. Record meaningful task checkpoints in §4.3: `STARTED`, `DISCOVERY_COMPLETE`, `FIRST_BUILD`, `FOCUSED_TESTS`, `NEEDS_ATTENTION`, and `HANDOFF_READY`. Record actual commands and test runs separately in §11.
 5. Prefer `wait_threads` snapshots over repeated full reads. Use `read_thread` only when a blocker or handoff needs detail.
 6. If a task reports `NEEDS_ATTENTION`, answer with `send_message_to_thread` promptly and record the decision in §12.
 7. If a task shows no concrete progress across three consecutive snapshots, inspect its latest turn, narrow the assignment, or stop and replace the task. Do not let it silently consume the phase budget.
 8. Do not send status probes more frequently than necessary and do not interrupt a known long build/test merely because a wait timed out.
 9. A task is not complete until its final handoff includes a scoped commit SHA, commands/results, artifacts, failures, and requested lead changes.
 10. After cherry-pick and lead verification, archive the completed worker task. Do not reuse it in the next phase.
+11. If a task is waiting for user input or an approval the lead cannot provide, mark it `NEEDS_ATTENTION` and surface the exact request to the user; do not manufacture authorization.
 
 The lead reports a concise user-facing status at Q0, M0, M1, and M2 and whenever a hard invariant fails.
 

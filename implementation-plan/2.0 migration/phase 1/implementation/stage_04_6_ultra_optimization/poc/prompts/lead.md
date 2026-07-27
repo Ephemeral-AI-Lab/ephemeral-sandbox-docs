@@ -53,9 +53,9 @@ The user explicitly authorizes you to create six new Codex worker tasks: two fre
 - Do not use subagents, `spawn_agent`, or an in-process delegation mechanism.
 - Use `list_projects` to resolve the saved `ephemeral-sandbox` project.
 - Use `create_thread` with an isolated git `worktree` for each worker task.
-- Base both phase tasks on the same lead-created phase-checkpoint commit.
+- Create a named local phase-checkpoint branch/ref whose HEAD is the recorded phase-checkpoint commit. Base both phase tasks on that same branch/ref; do not claim that `create_thread` accepts a raw commit SHA when it does not.
 - Do not specify a model unless the user explicitly requests one; inherit the configured default.
-- The initial `prompt` passed to every `create_thread` call must begin exactly with `/goal `. Read and send the corresponding prompt file without prepending any text.
+- The initial `prompt` passed to every `create_thread` call must begin exactly with `/goal `. Use the complete corresponding prompt file unchanged, then append a clearly delimited `Lead assignment capsule`; never prepend text.
 - If task creation returns only a `clientThreadId`, treat it as setup-in-progress. Do not pass it to tools requiring a ready `threadId`.
 - Immediately record ready `threadId`, `hostId`, and cursor values in the tracker.
 
@@ -68,9 +68,9 @@ Before creating each phase’s tasks, create a local phase-checkpoint commit con
 For each phase:
 
 1. Update the tracker’s phase, gate, interface version, file ownership, and current known failures.
-2. Create the phase-checkpoint commit and record its SHA.
+2. Create the phase-checkpoint commit and named branch/ref; record both the SHA and ref.
 3. Create exactly two new Codex tasks using the corresponding `/goal` prompt files.
-4. Include frozen interface version, assigned paths, run ID, and evidence root in the request body after its `/goal` first line.
+4. Append a `Lead assignment capsule` to each complete prompt containing the phase-checkpoint SHA/ref, frozen interface version, exclusive assigned paths, run ID, evidence root, current blockers, prior phase capsule, and physical execution-lease status.
 5. Take an immediate `wait_threads` snapshot after both tasks are ready.
 6. Monitor both tasks together with cursor-based `wait_threads` calls, normally using a 120-second bounded timeout while you continue lead-owned work.
 7. Persist updated cursors and meaningful checkpoints in the tracker.
@@ -82,8 +82,10 @@ For each phase:
 13. Require a final structured handoff with commit SHA, changed files, commands/results, artifact paths, failures, and requested lead changes.
 14. Review the actual commit diff, cherry-pick it, and run focused verification.
 15. Record worker and integration SHAs and results in the tracker.
-16. Reject an incomplete handoff using the canonical envelope in progress tracker §13; a final message without a commit and evidence is not completion.
+16. Reject an incomplete handoff using the canonical handoff envelope in progress tracker §13; a final message without a commit and evidence is not completion.
 17. Archive both worker tasks with `set_thread_archived` only after their changes are integrated or explicitly rejected.
+
+If a worker task pauses for user input or an approval that the lead cannot legally provide, surface that request to the user immediately and mark it `NEEDS_ATTENTION`; never invent authorization.
 
 Do not continue an old worker task into a new phase. Create fresh tasks from the next phase prompts.
 
