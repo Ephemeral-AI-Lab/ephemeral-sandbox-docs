@@ -1,6 +1,6 @@
 # MPLA PoC Codex task prompt index
 
-Use one persistent lead Codex task and newly created worker Codex tasks at each phase boundary. Do not use subagents.
+Use one persistent lead Codex task and newly created, top-level worker Codex tasks/sessions at each phase boundary. These tasks are visible in the Codex task list and use isolated worktrees. Do not use subagents.
 
 | Role and phase | Prompt |
 | --- | --- |

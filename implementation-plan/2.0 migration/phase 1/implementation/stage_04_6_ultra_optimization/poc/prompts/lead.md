@@ -48,7 +48,7 @@ Workers must never edit the tracker, workspace manifest, crate manifest, `src/li
 
 ## Mandatory Codex-task orchestration
 
-The user explicitly authorizes you to create six new Codex worker tasks: two fresh tasks for M0, two for M1, and two for M2.
+The user explicitly authorizes you to create six new, top-level Codex worker tasks/sessions visible in the Codex task list: two fresh tasks for M0, two for M1, and two for M2.
 
 - Do not use subagents, `spawn_agent`, or an in-process delegation mechanism.
 - Use `list_projects` to resolve the saved `ephemeral-sandbox` project.
@@ -56,7 +56,7 @@ The user explicitly authorizes you to create six new Codex worker tasks: two fre
 - Create a named local phase-checkpoint branch/ref whose HEAD is the recorded phase-checkpoint commit. Base both phase tasks on that same branch/ref; do not claim that `create_thread` accepts a raw commit SHA when it does not.
 - Do not specify a model unless the user explicitly requests one; inherit the configured default.
 - The initial `prompt` passed to every `create_thread` call must begin exactly with `/goal `. Use the complete corresponding prompt file unchanged, then append a clearly delimited `Lead assignment capsule`; never prepend text.
-- If task creation returns only a `clientThreadId`, treat it as setup-in-progress. Do not pass it to tools requiring a ready `threadId`.
+- If task creation returns only a `clientThreadId`, treat it as setup-in-progress. Use task listing/waiting to resolve the ready task; do not pass a client ID to tools requiring a `threadId`.
 - Immediately record ready `threadId`, `hostId`, and cursor values in the tracker.
 
 Workers operate in isolated worktrees. Require each worker to create a scoped local commit containing only its assigned files and to report the commit SHA. Never ask a worker to push. Review and cherry-pick worker commits into the lead branch one at a time.
@@ -86,6 +86,8 @@ For each phase:
 17. Archive both worker tasks with `set_thread_archived` only after their changes are integrated or explicitly rejected.
 
 If a worker task pauses for user input or an approval that the lead cannot legally provide, surface that request to the user immediately and mark it `NEEDS_ATTENTION`; never invent authorization.
+
+Workers do not coordinate interfaces or resolve overlapping edits directly. You are the hub: freeze shared contracts before launch, relay any contract clarification to both tasks, own merge-conflict resolution, and do not start the next phase until both current handoffs are accepted or explicitly rejected. If replacement is necessary, create another fresh top-level Codex task from the same checkpoint ref plus an amended assignment capsule; do not revive a polluted or stalled task.
 
 Do not continue an old worker task into a new phase. Create fresh tasks from the next phase prompts.
 

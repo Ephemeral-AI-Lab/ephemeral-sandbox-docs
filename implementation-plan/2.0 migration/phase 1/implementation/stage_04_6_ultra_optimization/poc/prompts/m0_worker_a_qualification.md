@@ -114,4 +114,4 @@ Send concise progress checkpoints in your task at:
 - `NEEDS_ATTENTION`: immediately when blocked, with one precise lead action;
 - `HANDOFF_READY`: scoped commit SHA ready for lead review.
 
-Commit only assigned files in your isolated worktree. Do not push. The canonical handoff must contain the commit SHA and base phase-checkpoint SHA.
+Commit only assigned files in your isolated worktree. Do not push. The canonical handoff must contain the commit SHA and base phase-checkpoint SHA/ref.
