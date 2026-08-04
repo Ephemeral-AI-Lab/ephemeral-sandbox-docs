@@ -1,0 +1,61 @@
+# Draft content manifest
+
+Status: **ROOT CANDIDATE SEAL — ACCEPT ONLY WITH AN EXTERNAL NO-P0/P1 VERDICT BOUND TO THIS EXACT SEAL**
+
+This generated manifest is excluded from its own identity. It hashes every
+other regular file in the package, including Markdown, JSON, Python, and the
+review record. Verify its fenced payload and the separate substantive digest
+with the exact commands in
+[the hostile-review prompt](../review-prompts/whole-plan-hostile-review.md).
+The substantive digest excludes both this manifest and the review record; its
+current value is
+`6a76df66c219e570fa253b4c2ba38c4838276c14d2d7da971944fac55cd7badc`.
+
+<!-- manifest:begin -->
+```text
+b04c2c410a6d2820ffe7e3cd9211cbbc31ffcb996fcd367bc20dc7d7fcae59e8  HANDOFF.md
+a3a4ab8da18916c33aabd54ff01ecf90b6a11e171e43f6efeb47097fc85ec5f3  README.md
+1190901271e6213b63beaac40da9b29300d03a8a577800f370ec43f9487058d1  algorithms/registry.md
+ec44abd27e20483187e15b150f2e1032d1a421805f8d6e54f4eb24dcb3b644f6  algorithms/selection-protocol.md
+889783e11e57a7c734bcf40b8b951e61ce10c0929930a01603125c851d052ddc  decisions/README.md
+1fa239e470c98e9cd13dde07f5eed4a7c727e79907d066206c2b068aea092cc5  design/application-coordination.md
+d3aeb4f93ca3a8b929a5c3f8e6003252ac0f580aef5166dbea1f7fbb9a79721f  design/architecture-selection.md
+a53ca41964ad4678ede962a9adbd519a76b306c9f9a098d8b5ffe6473154a4e0  design/architecture.md
+49b9bb0db72ffc28dbaf43fac164fb8f945d9220b7e23099d0acf7a85fa7f46b  design/canonical-format.md
+6ba0f854aea59563b2ed17a9f76bc67c2eae265b231cdf635fe54b5a3119eebb  design/migration-cutover.md
+d49e3a2d27d8dc327927cbce8b84bff2b520963f56076f1d2cf6b35ae5a86c2f  design/public-api.md
+caa3e8fd4d824c9dab6a3bd57b7fa118f19ec440cf128a8100d438e375de3618  design/requirements.md
+7ac88de19964ddb66774496932ac610e66c7461481f88cbc36498f22d54d11e7  design/runtime-effects.md
+93fbc1420435f8aacba4d2563164eda54323bdad678bf44af92129c95195b0dd  design/source-layout.md
+52c4cb757fb619e64e698c2e5217168ffaae4cf92763016cf37e0bec01573137  design/state-store.md
+45a7057e1a5029e308543433a94eabab00bd054499136b225547173bfda59432  design/storage-model.md
+376e8404ce3ce9471bdcef42b2351a57a01ad913eeadd0933d287d661d09356d  evidence/review-record.md
+6ee3ccd0ba932ed4849693d1c0c88de7b0b71e0beba8ce164ab6a9149d7a559a  evidence/source-manifest.md
+ed67ae17716ae83bdac340cbdab6bd346f3dc5fbb961f973ff46d99c0c71711e  evidence/stage-04-6-baseline.md
+59ec1ee9810ef596dd2252e34cf9d1e3d93cb6a382db64ee1b7a38cf2a84c173  execution/README.md
+670a790098816267d0fcfae5fb3e856ba84e2eccc0143395eb1234e105f2af2c  execution/gates.json
+371ca4d4b69c2a476079e6b297b201908387598ce8f7bea4b43bb6ad9aade9f1  execution/packet-template/acceptance.json
+0d2ecbd77ecd15587663a2f7d5a9ebcebffe560e0dd0f81601a610b5453899f4  execution/packet-template/manifest.json
+3cee390b631c31e8670c8f603f824af58756882edeb559754fe247aca17f106f  execution/packet-template/packet.md
+f79e2cae23b6ae7a5b25bf47ffcb9fba6f24bcdf76f40c4aa54f23adb0627ee4  execution/phase-00/00-evidence-seal/acceptance.json
+2127921763ea0a7161f2ae039156f703a0ab91abc3f602b922b66f8a9eee7620  execution/phase-00/00-evidence-seal/manifest.json
+e536ba205e56b2ed17b70f466399f77b9eebf3d4e622ad532a8192def62d5702  execution/phase-00/00-evidence-seal/packet.md
+43f52831b6e3e1c77b82f16c447c4b3e2195f284cf89defa36a4393291b237bd  execution/schemas/acceptance.schema.json
+81168975ffe9e29ce15710f242f56930135b8dd625282eeb645cf9ec47282149  execution/schemas/execution-state.schema.json
+ba29e581f8162a88fa26821aac21b062639cc21899b8c2cddd102fca5208d790  execution/schemas/gate-catalog.schema.json
+e3c0c67646e7d19893e18e92cba1e7f4cbc3d6cdadc592cc6853ba0a676970d0  execution/schemas/input-lock.schema.json
+8866a0b6e9432d2c3991f5e19f0d6dff3b77b3b1d2bd3aa736f8a7938b2e6960  execution/schemas/manifest.schema.json
+29c3c6eb2a154a59c99bb7c95f9d99958093388526fcbdaa9ea8ed1fdd27435b  execution/schemas/phase-entry-attestation.schema.json
+4501a86b03bd730fc3e94f91c61e9d43768600de9b7ba3dff4f73af69b021678  execution/state.json
+f049c6d2440c3901be28a09d831737396f6bcb53763b66a043d976fcc290c720  execution/validate.py
+85ee3b70be030003cf75de6b295714ea87859dd832c2b6f33e0cf3b35e121287  phases/00-independent-judge-and-evidence-seal.md
+d16c2329c11b70a7529f463b8d9ac935ebd2693358c0820738cf78a8a3f2bc6f  phases/01-non-live-selection-implementation-and-qualification.md
+85c3d742b4fa2938a7ad6ac00f5f7eaad231b86fb6ac68f9972550a1f8cddbfa  phases/02-irreversible-cutover-observation-retirement-and-release.md
+95d2c4b4be670b41ca2d7728992e37c642e165e2fbb3d064f746efb2ae5e21aa  phases/README.md
+3b2d4982fd15708f30a13de3853dd015108d0eddbb52987915d41eeff0d441e1  phases/phase-isolation-and-ordering.md
+156e4d8dbe4f084c99be6fff756e071ebc0124a35d70bacac3baeed405169246  qualification/gates.md
+f3d74f25717d94b3612edec72bfee4a6c79b5393e2d37f4d4ab02f5703d7e48b  review-prompts/whole-plan-hostile-review.md
+ff8c21e92e1e85d99a71cd5d22e0434c68b65a778e0dbe1ed55234b1cdba497a  traceability.md
+0bae8d274d25dab9f9c894749353d36ebc817a14da1ad0c38b3259892950bb34  traceability/source-disposition.md
+```
+<!-- manifest:end -->

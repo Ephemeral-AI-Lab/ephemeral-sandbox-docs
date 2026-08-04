@@ -5,7 +5,8 @@ Scope: materialization, workspace activation, mutation capture, checkpoint
 publication, rollback, squash, and their storage-service resource model<br>
 Out of scope: Stage 5–7 implementation<br>
 Ratified specification decisions: `SD-04.6-001` (closing portable canonical
-checkpoint, 2026-07-27)
+checkpoint, 2026-07-27) and `SD-04.6-002` (scoped OCI storage/projection
+`CAP_SYS_ADMIN`, 2026-07-28)
 
 This document defines what an acceptable Stage 04.6 implementation must
 achieve and what it must not do. It is intentionally independent of any single
@@ -53,6 +54,12 @@ libraries inside the user image.
 
 `PORT-003` `CAP_SYS_ADMIN` is the maximum additional container privilege the
 required path may assume.
+
+Under ratified `SD-04.6-002`, the required OCI implementation MAY retain
+`CAP_SYS_ADMIN` and permit the necessary `mount(2)`, `umount2(2)`, and
+namespace syscalls in a dedicated storage/projection lifecycle process. This
+is an explicit use of the `PORT-003` allowance, not a prohibited escalation.
+The capability MUST NOT be inherited by an arbitrary workload command.
 
 `PORT-004` The required path MUST NOT depend on:
 
@@ -183,6 +190,48 @@ This decision preserves `SEM-003`, `SPACE-006`, and `SPACE-007`: keeping the
 only durable allocation writable would violate root immutability, while
 creating an isolated copy or snapshot would introduce a forbidden dependency
 or a second payload-sized publication term.
+
+### 3.2 Ratified specification decision SD-04.6-002
+
+**Status: RATIFIED — 2026-07-28.** The Stage 04.6 OCI path explicitly permits
+`CAP_SYS_ADMIN` at the trusted storage/projection lifecycle boundary needed to
+create, inspect, quiesce, and strictly unmount qualified OverlayFS
+projections.
+
+The qualifying execution profile is `mpla-storage-admin-v1`:
+
+1. it is selected only by an authenticated runtime lifecycle operation or by
+   the exact lease-bound MPLA qualification/campaign entrypoint;
+2. it retains `CAP_SYS_ADMIN` only in the dedicated storage/projection process
+   and permits only the namespace and mount syscalls required by the qualified
+   adapter, including `mount(2)`, `umount2(2)`, and `setns(2)` when namespace
+   entry is required;
+3. `NoNewPrivs=1` MAY remain set because the process uses an already granted
+   capability rather than acquiring privilege during execution;
+4. it MUST NOT be a caller-controlled flag on general `exec_command`, a
+   generic privileged shell, or a profile inherited by the workload image;
+5. before arbitrary workload code runs, the storage/projection process MUST
+   either remain a separate non-workload helper or irreversibly drop
+   `CAP_SYS_ADMIN` and enter the ordinary workload seccomp/capability profile;
+6. ordinary workload commands retain the existing hardened policy, including
+   denial of `mount(2)` and `umount2(2)`;
+7. profile selection, executable identity, run ID, operation ID, execution
+   lease, namespace target, allocation paths, effective capabilities, seccomp
+   mode, mount receipt, strict-unmount receipt, and cleanup outcome MUST be
+   recorded; and
+8. the implementation MUST fail closed on a missing, mismatched, expired, or
+   replayed authorization and MUST prove both the positive storage-admin path
+   and negative arbitrary-workload path.
+
+The supported public CLI remains the transport and authorization boundary.
+The mount itself may execute in a lifecycle-owned helper beneath that public
+operation; it need not and MUST NOT execute in an untrusted workload command.
+Direct Docker execution is not qualifying public-path evidence.
+
+This decision resolves the policy question exposed by the M2 capability probe.
+It does not constitute implementation or physical evidence. All affected M2
+rows remain pending until the scoped profile is implemented, independently
+verified, and used by the serialized public-CLI campaign.
 
 ## 4. Multiagent, rollout, and workspace requirements
 

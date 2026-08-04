@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/acceptance.schema.json",
+  "schema_version": 2,
+  "phase_id": "TEMPLATE",
+  "gate_id": "TEMPLATE",
+  "lineage_id": "TEMPLATE",
+  "disposition": "NOT_RUN",
+  "disposition_detail": null,
+  "manifest_sha256": null,
+  "accepted_outputs": [],
+  "accepted_by": null,
+  "accepted_at": null
+}

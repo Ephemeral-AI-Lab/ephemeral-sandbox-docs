@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schemas/manifest.schema.json",
+  "schema_version": 3,
+  "phase_id": "00",
+  "gate_id": "00-evidence-seal",
+  "lineage_id": "00-evidence-seal-r0001",
+  "packet_maturity": "DRAFT",
+  "reported_status": "NOT_RUN",
+  "report_detail": "Artifact-system preparation only; no Phase 0 evidence/judge run or acceptance has occurred.",
+  "catalog_sha256": "670a790098816267d0fcfae5fb3e856ba84e2eccc0143395eb1234e105f2af2c",
+  "generated_at": "2026-08-03T23:37:49Z",
+  "source_context": [
+    {
+      "role": "documentation repository",
+      "path": "/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-docs",
+      "branch": "layerstack_2_0",
+      "head": "dc9ae450107ec40087ac086950e7b38b2436c9cc",
+      "dirty": true,
+      "notes": "The complete plan package is untracked amid unrelated owner changes; preserve all unrelated state."
+    },
+    {
+      "role": "reserved product implementation base",
+      "path": "/Users/yifanxu/Ephemeral-AI-Lab/ephemeral-sandbox-new-2.0",
+      "branch": "codex/new-2.0-storage-core",
+      "head": "e4974d1f9aac702b35e052629cb070c897989352",
+      "dirty": false,
+      "notes": "Clean worktree; HEAD, local origin/main, and remote main were all e4974d1f9aac702b35e052629cb070c897989352 at the 2026-08-04 preparation audit; evidence/reference only during this documentation task."
+    }
+  ],
+  "predecessors": [],
+  "input_lock_sha256": null,
+  "producer": null,
+  "artifacts": [
+    {
+      "path": "packet.md",
+      "role": "marker-separated Phase 0 plan, algorithms, evaluation, verification, and handoff contract",
+      "sha256": "e536ba205e56b2ed17b70f466399f77b9eebf3d4e622ad532a8192def62d5702"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "candidate-independent-judge-evidence-seal",
+      "state": "EXPECTED",
+      "sha256": null
+    }
+  ]
+}

@@ -64,14 +64,14 @@
         </section>
 
         <section class="content-section" id="suites">
-          <div class="section-head"><span class="micro-label">Two-loop PoC</span><h2>One suite protects iteration; one carries load</h2><p>The smoke suite catches semantic and ownership regressions before the heavy suite spends its fixed ten-minute budget.</p></div>
+          <div class="section-head"><span class="micro-label">Two-loop PoC</span><h2>One suite protects iteration; one carries load</h2><p>The smoke suite catches semantic and ownership regressions before the heavy phases run under their own independent limits.</p></div>
           <div class="split">
-            <article class="flow-node blue"><span>Smoke · hard stop &lt;180 s</span><strong>Fast implementation loop</strong><p>Qualification, adoption, exact/cold activation, small publication, fork/rollback/squash, 20k files, four publishers, memory/storage sanity, and targeted crash points.</p></article>
-            <article class="flow-node rose"><span>Heavy · hard stop &lt;600 s</span><strong>Load-bearing proof</strong><p>1 GiB stream and copy-up, 250k files, retained history, overload, fault sweeps, depth 1/4/8, concurrent publishers, and final reconciliation.</p></article>
+            <article class="flow-node blue"><span>Smoke · phase-local caps</span><strong>Fast implementation loop</strong><p>Qualification, adoption, exact/cold activation, small publication, fork/rollback/squash, 20k files, four publishers, memory/storage sanity, and targeted crash points.</p></article>
+            <article class="flow-node rose"><span>Heavy · phase-local caps</span><strong>Load-bearing proof</strong><p>1 GiB stream and copy-up, 250k files, retained history, overload, fault sweeps, depth 1/4/8, concurrent publishers, and final reconciliation.</p></article>
           </div>
           <div class="metric-strip cols-4">
-            <div class="metric"><span class="value">≤150 s</span><span class="label">smoke design target</span></div>
-            <div class="metric"><span class="value">≤480 s</span><span class="label">heavy warning target</span></div>
+            <div class="metric"><span class="value">&lt;5 s</span><span class="label">cold fixture build target</span></div>
+            <div class="metric"><span class="value">&lt;50 ms</span><span class="label">warm attach service target</span></div>
             <div class="metric"><span class="value">&lt;10 GiB</span><span class="label">maximum fixture envelope</span></div>
             <div class="metric"><span class="value">4</span><span class="label">active data-worker cap</span></div>
           </div>

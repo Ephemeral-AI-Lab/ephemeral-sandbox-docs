@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/manifest.schema.json",
+  "schema_version": 3,
+  "phase_id": "TEMPLATE",
+  "gate_id": "TEMPLATE",
+  "lineage_id": "TEMPLATE",
+  "packet_maturity": "TEMPLATE",
+  "reported_status": "NOT_RUN",
+  "report_detail": "Copy only after gate eligibility; replace every template value before sealing.",
+  "catalog_sha256": null,
+  "generated_at": null,
+  "source_context": [],
+  "predecessors": [],
+  "input_lock_sha256": null,
+  "producer": null,
+  "artifacts": [
+    {"path": "packet.md", "role": "marker-separated plan, algorithms, evaluation, verification, and handoff contract", "sha256": null}
+  ],
+  "outputs": []
+}

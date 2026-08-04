@@ -1,12 +1,17 @@
 # MPLA proof-of-concept test matrix
 
-**Status:** design for performance and correctness falsification; not release qualification  
-**Architecture under test:** stationary allocation adoption MPLA  
-**Design authority:** `../new_plan.md` and `../requirements_and_prohibitions.md`  
+**Status:** terminal focused PoC sealed on `2026-08-01`; correctness, squash,
+and stream passed; the formal `100×` and `500×` aggregate claims are not
+supported because `BG-PUBLISH-SMALL` failed its matched-ratio gate<br>
+**Architecture under test:** stationary allocation adoption MPLA<br>
+**Design authority:** `../new_plan.md` and `../requirements_and_prohibitions.md`<br>
 **Performance objective:** demonstrate at least `100×` matched improvement on
-eligible post-setup paths; prefer and report `500×` or greater  
-**Host envelope:** current Docker Desktop allocation, 4 vCPU and 4 GiB; do not increase it for this PoC  
-**Suite envelope:** smoke hard limit 3 minutes; heavy hard limit 10 minutes  
+eligible post-setup paths; prefer and report `500×` or greater<br>
+**Host envelope:** current Docker Desktop allocation, 4 vCPU and 4 GiB; do not increase it for this PoC<br>
+**Suite envelope:** smoke hard limit 3 minutes; formal heavy qualification is
+phase-local, with no aggregate campaign deadline. `HV-08` has a fixed `120 s`
+phase cap; every other heavy row declares and uses a `1.0×–2.0×` cap derived
+from its listed suggested budget.
 **Fixture envelope:** no heavy fixture or combined layer chain exceeds 10 GiB  
 **Bound real-corpus experiment:** [`experiments/ubuntu24_console_release_870mib.md`](experiments/ubuntu24_console_release_870mib.md)
 
@@ -14,7 +19,7 @@ eligible post-setup paths; prefer and report `500×` or greater
 
 ## 1. Purpose
 
-The PoC answers six questions:
+The PoC answers seven questions:
 
 1. Can a mutable allocation be sealed and adopted without copying or moving its
    path?
@@ -29,6 +34,9 @@ The PoC answers six questions:
 6. On operations that eliminate complete-repository work, does the candidate
    demonstrate at least `100×` matched improvement, preferably `500×` or more,
    without moving work outside the declared boundary?
+7. Can the public runtime grant `CAP_SYS_ADMIN` and the required OverlayFS
+   syscalls only to a lease-bound storage/projection lifecycle process while
+   keeping arbitrary workload commands unable to select that profile or mount?
 
 This is a falsification suite. A failed invariant rejects or changes the design;
 the suite must not raise the memory limit, hide fixture time, use a copy
@@ -41,7 +49,7 @@ fallback, or weaken correctness to obtain a faster number.
 | Tier | Use | Runtime | Repetition | Concurrency |
 |---|---|---:|---|---|
 | Smoke | Fast implementation loop and obvious-regression detection | Design target `≤150 s`; hard stop `<180 s` | One warm-up; cheap cases 3 measured runs; expensive cases once | Up to four active data workers |
-| Heavy | Load-bearing proof on large/cardinality/concurrent fixtures | Design target `≤480 s`; hard stop `<600 s` | Cheap cases 3 measured runs; ≥1 GiB, ≥100k-file, crash, and long-chain cases once | Four active workers plus queued logical agents |
+| Heavy | Load-bearing proof on large/cardinality/concurrent fixtures | Per-row suggested budgets below; `HV-08` fixed at `120 s`, every other row `1.0×–2.0×` its suggested budget; no aggregate campaign cap | Cheap cases 3 measured runs; ≥1 GiB, ≥100k-file, crash, and long-chain cases once | Four active workers plus queued logical agents |
 
 Three repetitions do not support a statistically meaningful p95. Report every
 sample, median for the cheap cases, and max. Any p95 in a later qualification
@@ -63,7 +71,79 @@ still includes its real scan, hash, flush, owner transition, locator selection,
 Merkle update, ref durability, mount, and readiness work. Report fixture build
 time and bytes separately.
 
-### 2.1 Booster evidence and claim rules
+For P1–P3, `prepare-lifecycle-control` may collect/hash R0 and create exactly
+one immutable current-I2 closing publication before the phase clock. Its
+phase/run/build/catalog/fixture-bound receipt has an independent `120 s`
+setup-liveness cap and reports raw collection, closing-publication, and total
+timings. It must prove zero pre-materialized carriers. All cold carrier builds,
+warm lookups, readiness probes, candidate operations, and cache reclamations
+remain inside the applicable phase-local timer; the preparation cap cannot
+extend or offset a phase cap.
+
+### 2.1 Fixture-cache construction and attachment gates
+
+Fixture preparation is split into two independent setup performance gates. They
+have separate processes, evidence files, timers, and liveness caps; neither
+shares or borrows a budget from any smoke, heavy, or Booster row.
+
+| Gate | Focused runner and evidence file | Acceptance | Required proof |
+|---|---|---|---|
+| `F0-COLD` | `build-mpla-publication-fixture-cache --evidence-file fixture-cache-construction.json` | genuine first-time/recovery outer `<5.0 s`; stretch `1–3 s`; phase cap `30 s` | cache absent or known unsealed recovery at start; exact sealed `8,589,934,592`-byte logical profile; eight content-addressed allocations; zero payload bytes copied; exact recovery roots; sealed manifest and independent layout validation |
+| `P0-WARM` | `mpla_qualification_scorecard` → root `fixture-cache-attachment.json` | attachment service `<50 ms`; complete in-service fixture preparation `<1.0 s`; phase cap `5 s` | consumer read-only mount; exact operation; exact eight cached allocations and depth-1/5/8 branches; zero copied payload bytes; manifest revalidation; repeat attachment leaves the sealed cache unchanged |
+
+The F0-COLD target applies only to a genuine construction or allowed unsealed
+recovery. An existing sealed cache cannot satisfy it. The P0-WARM `<50 ms`
+target applies only to service attachment, not cold construction, Docker
+sandbox setup, artifact staging, or asynchronous CLI polling. Corrupt sealed,
+symlinked, partial, or unknown state is rejected before attachment; normal
+consumers have no cache-builder authority.
+
+Current physical reference results for profile `s4-chain-sparse-v1`, on Docker
+Desktop with the fixed macOS-hosted `4 vCPU / 4 GiB` envelope and pinned
+Ubuntu 24.04 Linux/arm64 image, are:
+
+- prior V13 cold baseline: `129.932 s` service, `133.683 s` wall;
+- accepted Final43-v3 recovery build: `1.102406542 s` service and
+  `1.228642917 s` cache-command outer (`108.81×` wall improvement), with `0` payload bytes
+  copied and `0` allocated payload bytes;
+- cache-command orchestration: `0.126236375 s`; separate Docker setup:
+  `2.198345375 s`; separate artifact staging: `0.043895500 s`; launcher start
+  through pre-cleanup: `3.471067 s`; whole launcher process: `3.99 s`;
+- final P0-WARM attachment: `24.825208 ms` service and `374.467417 ms`
+  complete in-service preparation; earlier repeat services were `23.010084 ms`
+  and `19.368500 ms`; copied payload bytes: `0` in every run.
+
+The accepted cold receipt is
+`mpla-final43-f0-v3-20260731t072650z@9490df6403472941b81d00bdd21dc00ebf4df88e42bfb6f58235d0b320f91a5c`.
+The `1.102406542 s` value is seconds, not milliseconds. The `<5.0 s` target is
+for genuine absent/recovery construction; the `<50 ms` target remains solely
+the normal sealed-cache attachment service gate.
+
+### 2.2 Terminal focused phase matrix
+
+Every row below was executed sequentially with its own process, root, receipt,
+and cap. There was no `480 s` or `600 s` campaign limit and no time borrowing.
+Outer harness/setup values do not contribute to another phase's cap.
+
+| Phase | Selected phase-local cap | Raw phase result | Formal result |
+|---|---:|---:|---|
+| P0 qualification | `60 s` | `2.120485208 s`; P0-WARM service `24.825208 ms`, preparation `374.467417 ms`, copied bytes `0` | `PASS` |
+| P1 activation | fixed `120 s` | `85.129972292 s` | `BG-ACTIVATE-EXACT=PASS`, `BG-ACTIVATE-SAME=PASS` |
+| P2 fork | `60 s` | `52.723843000 s` | `BG-FORK=PASS` |
+| P3 rollback | `60 s` | `51.757623833 s` | `BG-ROLLBACK=PASS` |
+| P4 publication | `70 s` | `22.881794000 s`; matched candidate/control medians `58.136209/36.444000 ms`, ratio `0.626872660×` | `BG-PUBLISH-SMALL=FAIL` |
+| P5 squash | `60 s` | `29.591311167 s` | `AG-SQUASH=PASS` |
+| P6 stream | `40 s` | `8.363238417 s`; changed 1 GiB in `994.910 ms` at `1.079 GB/s` | `AG-STREAM=PASS` |
+| P7 recovery | `120 s` | `21.349401583 s`; `46/46` fault points | `PASS` |
+| P8 sealing | fixed `30 s` | `396,731,209 ns` receipt; `0.57 s` process wall | `PASS` |
+
+Final73 rehashed all 14 sealed manifest entries and emitted
+`POC_CORRECTNESS=PASS`, `AG_SQUASH=PASS`, `AG_STREAM=PASS`,
+`POC_100X=NOT_SUPPORTED`, and `POC_500X=NOT_SUPPORTED`. The P4 failure is a
+performance-ratio result, not a correctness, cleanup, or candidate-absolute-
+latency failure.
+
+### 2.3 Booster evidence and claim rules
 
 Every candidate performance row has one of these evidence classes:
 
@@ -73,7 +153,7 @@ Every candidate performance row has one of these evidence classes:
 | `HISTORICAL_EQUIVALENT` | Arithmetic comparison with a preserved historical sample only; useful context, never a matched speedup claim. |
 | `ABSOLUTE_GATE_ONLY` | Candidate meets an absolute latency target but no valid matched control completed. |
 | `PHYSICAL_FLOOR` | The operation necessarily reads, writes, creates or copies work proportional to bytes or entries; no universal `100×`/`500×` claim applies. |
-| `UNKNOWN` | The control, boundary, cache proof or sample data is missing, incompatible or stopped by the suite budget. |
+| `UNKNOWN` | The control, boundary, cache proof or sample data is missing, incompatible or stopped by its declared phase-local budget. |
 
 For a matched PoC pair:
 
@@ -98,7 +178,7 @@ stored `870 MiB` activation must be at most `99.87675338 ms` for the historical
 `100×`-equivalent ceiling and at most `19.975350676 ms` for the
 `500×`-equivalent ceiling. The matched-current divisor must also pass.
 
-### 2.2 Booster scorecard gates
+### 2.3 Booster scorecard gates
 
 | Gate ID | Eligible operation and qualifying row | Required PoC objective | Preferred result | Work that must be absent from the optimized boundary |
 |---|---|---:|---:|---|
@@ -119,6 +199,25 @@ Cold first ingestion, true empty-worker hydration, genuine creation of many
 files and the first ordinary OverlayFS copy-up of a large lower-only file remain
 `PHYSICAL_FLOOR` rows. They must be optimized against matched one-pass controls
 but never relabeled as `100×` or `500×`.
+
+### 2.4 Required scoped-privilege qualification
+
+No physical smoke or heavy fixture preparation begins until all rows below
+pass through the supported public manager/runtime/observability CLI boundary:
+
+| Probe | Required result |
+|---|---|
+| Storage-admin identity | Exact `mpla-storage-admin-v1` profile, executable digest, run ID, operation ID, execution lease, namespace, allocation roots, and cgroup bindings are durable and match the request. |
+| Positive OverlayFS lifecycle | The storage/projection process has effective `CAP_SYS_ADMIN`; the qualified seccomp profile permits required mount/namespace calls; real OverlayFS mount, sentinel access, strict unmount, and mount-absence verification pass. |
+| General workload isolation | An arbitrary workload command cannot request/select `mpla-storage-admin-v1`, lacks effective `CAP_SYS_ADMIN`, and its real `mount(2)`/`umount2(2)` probes fail with the expected typed denial. |
+| Privilege non-inheritance | Any workload launched after projection either has a separate process boundary or proves irreversible capability drop plus the ordinary seccomp policy before user code. |
+| Authorization failure | Wrong executable, operation, lease, namespace, roots, replay, or expired token fails closed before mount and leaves no mount/allocation residue. |
+| Cleanup | Public CLI stop/destroy completes; observability reports zero exact run-owned workspace, lease, mount, process, and sandbox residue. |
+
+`NoNewPrivs=1` is compatible with the positive row because the capability is
+already granted to the trusted process. A direct Docker command, generic
+privileged shell, or `CAP_SYS_ADMIN` on general `exec_command` is a test
+failure, not an alternative qualification path.
 
 ---
 
@@ -200,6 +299,10 @@ Each case emits one machine-readable record containing:
 - application RSS, whole storage cgroup RSS, `memory.current`,
   `memory.events`, kernel slab where available, open FDs, mounts, worker count,
   queue bytes, and OOM events;
+- selected security profile, executable digest, public operation ID,
+  authorization/lease binding, effective/permitted/bounding capabilities,
+  seccomp mode, `NoNewPrivs`, mount/strict-unmount result, and general-workload
+  negative probe;
 - root/attribution ids, oracle result, locator coverage, stale-token result,
   crash-recovery terminal state, and `X_unexplained`;
 - raw control and candidate samples, medians, maxima,
@@ -224,7 +327,7 @@ amortized without excluding operation work.
 
 | ID | Section | Operation / public boundary | Fixture and mutation | What is checked | Projected time | Expected storage/memory |
 |---|---|---|---|---|---:|---|
-| `SM-01` | Qualification | backend qualify → workspace create | `S0-empty` | Stable allocation handle, adjacent upper/work, OverlayFS semantics, no host workspace payload copy | `1–5 s` once | control-only workspace metadata; no OOM |
+| `SM-01` | Qualification | public backend qualify → scoped storage-admin projection → workspace create | `S0-empty` | Stable allocation handle, adjacent upper/work, OverlayFS semantics, no host workspace payload copy; positive `mpla-storage-admin-v1` mount/strict-unmount; negative arbitrary-workload profile-selection/mount probe; exact cleanup | `1–5 s` once after public-path startup | control-only workspace metadata; no OOM; workload has no `CAP_SYS_ADMIN` |
 | `SM-02` | Lease | create → `exec_command` → close without publish | `S0-empty`, create 10 files | Only current lease can mutate/delete; exact private cleanup | `<1 s` | allocation removed only while workspace-owned |
 | `SM-03` | Adoption + publication booster | receipt-hit `seal_publish`, then forced immediate receipt miss as a separate sample | `S1-code`, edit 10 files / ≈1 MiB | Same `AllocationId` and physical path before/after; `WorkspaceOwned→Sealing→PayloadOwned`; matched closing control when it fits the smoke budget | receipt hit absolute `≤100 ms`, prefer `≤20 ms`; support `100×`/prefer `500×` only with matched control; forced miss `≤1.070 s` | no second payload allocation; app pool ≤8 MiB |
 | `SM-04` | Stale authority | old workspace write/delete after `SM-03` | adopted allocation | Old lease and teardown token are rejected | `<100 ms` | zero byte/inode change |
@@ -241,11 +344,15 @@ amortized without excluding operation work.
 
 Smoke execution stops immediately on a correctness, ownership, OOM, or hidden
 copy failure. Performance misses continue only long enough to retain diagnostic
-spans, provided the 3-minute hard stop is still enforced.
+spans, provided the 3-minute smoke hard stop is still enforced.
 
 ---
 
 ## 6. Heavy matrix
+
+Every heavy row has the §2.4 qualification receipt as a mandatory immutable
+precondition. A missing or mismatched receipt yields
+`NOT_RUN_SECURITY_PROFILE`, never a direct-Docker fallback or PASS.
 
 | ID | Section | Operation / public boundary | Fixture and mutation | What is checked | Projected time | Expected storage/memory |
 |---|---|---|---|---|---:|---|
@@ -260,23 +367,28 @@ spans, provided the 3-minute hard stop is still enforced.
 | `HV-09` | Evacuation + debt | pack one adopted 1 GiB allocation, hold a reader, then approach configured PoC debt quota | published `S2-large` variants | Honest old+new peak, locator replacement, reader safety, typed backpressure, no silent delete | budget `60 s` | fixture chain stays `<10 GiB`; every source/target counted |
 | `HV-10` | Full lifecycle + metadata boosters + reconcile | concurrent create/exec/publish/activate/fork/rollback/squash/close plus response loss and cancellation; create 1/64/1,000 inactive forks and activate only selected samples | mixed prepared fixtures | Fork metadata and payload slopes; matched fork/rollback controls; public outcomes, epochs, mount/FD cleanup, last locator, final physical equation | budget `30 s`; fork activation `≤10 ms` and `≥100×`, prefer `≤2 ms` and `≥500×`; rollback outer `≤20 ms` and `≥100×`, prefer `≤10 ms` and `≥500×`; squash outer `≤10 ms` | inactive forks own zero payload/upper/projection/mount; no leaked active lease; `X_unexplained=0` |
 
-The declared heavy case budgets total 445 seconds. Setup/teardown and report
-serialization have a 35-second reserve inside the 480-second design target and
-a further 120-second diagnostic margin before the 600-second hard stop.
+Every heavy row is a separately timed focused case. Before it starts, its
+receipt records the listed suggested budget, selected multiplier, calculated
+phase cap, and the work covered by that cap. `HV-08` is the exception: its
+`60 s` target and `120 s` diagnostic cap are fixed. Each other heavy row may
+select an inclusive `1.0×–2.0×` cap from its listed suggested budget, with
+`1.0×` as the default. The selected cap is a liveness guard only; it never
+relaxes any measured-operation ceiling, throughput floor, correctness check,
+or cleanup requirement. No row can borrow time from another row and no sum of
+row budgets is a campaign deadline.
 
-Matched controls are co-scheduled inside `HV-01`, `HV-08` and `HV-10`; they do
-not authorize an additional unbounded campaign. The old 107-second historical
+Matched controls are co-scheduled inside `HV-01`, `HV-08` and `HV-10` and
+must complete within that row's phase-local cap. The old 107-second historical
 publisher is not rerun merely to create an impressive ratio. If a matched
-control cannot complete inside its declared case budget, retain its raw partial
+control cannot complete inside its declared phase cap, retain its raw partial
 evidence, set the corresponding ratio to `UNKNOWN`, and report
-`POC_100X_NOT_SUPPORTED`. The suite may continue for correctness within the
-hard limit.
+`POC_100X_NOT_SUPPORTED`.
 
-The scheduler may omit a later performance-only cell when the hard 10-minute
-budget would be exceeded, but it may not omit the ownership, semantic,
-memory/OOM, hidden-copy, or final-reconciliation cells and still report the
-heavy suite as passed. A time-budget omission is a visible `NOT_RUN_BUDGET`
-result, not a pass.
+A phase may omit a later performance-only cell only when its own declared cap
+would be exceeded; it may not omit the ownership, semantic, memory/OOM,
+hidden-copy, or final-reconciliation cells and still report that phase as
+passed. A phase-budget omission is a visible `NOT_RUN_BUDGET` result, not a
+pass.
 
 ### 6.1 Required top-level verdicts
 
@@ -318,6 +430,7 @@ commands:
 
 | Operation boundary | Required CLI/API observation |
 |---|---|
+| Storage/projection lifecycle | Typed public operation selects `mpla-storage-admin-v1` only for the exact authorized helper/entrypoint; records positive mount/strict-unmount and workload-negative receipts; rejects caller-controlled general privileged execution |
 | Workspace/session create | Returns session epoch plus opaque workspace handle; `AllocationId` remains diagnostic/private |
 | `exec_command` | First command works in the mounted merged workspace; command dispatch/execution is timed separately from activation; long commands hold no storage worker while idle |
 | Closing checkpoint / `seal_publish` | Clearly states that the old session is consumed and process state is not preserved |

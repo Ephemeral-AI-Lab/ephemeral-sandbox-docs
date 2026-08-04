@@ -1,6 +1,15 @@
 # LayerStack 2.0: reflink-backed OverlayFS
 
-Status: **DESIGN PROPOSED — IMPLEMENTATION BLOCKED**
+Status: **HISTORICAL ALTERNATIVE — NOT THE LAYERSTACK-0 V2 DESIGN**
+
+> This reflink-backed LayerStack 2.0 proposal is retained for comparator and
+> feasibility evidence only. Current V2 selected LayerStack-0 with
+> filesystem-native complete-Version payload closures and EphCoW reference
+> operations; reflink is neither its identity nor a correctness requirement.
+> Use the V2 [selected architecture](../../ephemeral-sandbox-v2/architecture_design.md)
+> and [archive compatibility map](../README.md).
+
+Original status: **DESIGN PROPOSED — IMPLEMENTATION BLOCKED**
 
 Experiment verdict: **INCONCLUSIVE — GATE A UNSATISFIED**
 

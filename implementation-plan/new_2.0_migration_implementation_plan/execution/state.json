@@ -1,0 +1,8 @@
+{
+  "$schema": "schemas/execution-state.schema.json",
+  "schema_version": 2,
+  "catalog_sha256": "670a790098816267d0fcfae5fb3e856ba84e2eccc0143395eb1234e105f2af2c",
+  "instantiated_gate_count": 1,
+  "invalidations": [],
+  "transition": null
+}

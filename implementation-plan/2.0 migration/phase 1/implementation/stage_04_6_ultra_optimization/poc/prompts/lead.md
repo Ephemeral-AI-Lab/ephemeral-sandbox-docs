@@ -161,7 +161,10 @@ You own:
 - artifact schema verification;
 - final storage reconciliation and recommendation.
 
-M2 requires every HV-01 through HV-10 row to execute. Preserve exact fixture sizes and cardinalities. The target is at most 480 seconds and hard stop is under 600 seconds.
+M2 requires every HV-01 through HV-10 row to execute. Preserve exact fixture
+sizes and cardinalities. Execute every row under the independent phase-local
+target and liveness cap frozen in `test_matrix.md`; there is no aggregate
+heavy-suite target, campaign hard stop, deadline carry-over, or time borrowing.
 
 ## Fixed envelope
 

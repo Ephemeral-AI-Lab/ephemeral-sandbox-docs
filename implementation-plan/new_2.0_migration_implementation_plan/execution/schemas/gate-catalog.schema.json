@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gate-catalog.schema.json",
+  "title": "State Storage V2 execution gate catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "phases", "gates"],
+  "properties": {
+    "$schema": {"const": "schemas/gate-catalog.schema.json"},
+    "schema_version": {"const": 1},
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/phase"}
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/gate"}
+    }
+  },
+  "$defs": {
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "capability_ceiling", "entry_condition"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[0-9]{2}$"},
+        "capability_ceiling": {"type": "string", "minLength": 1},
+        "entry_condition": {"type": "string", "minLength": 1}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "phase_id", "pass_output_sets"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[0-9]{2}[a-z]?-[a-z0-9-]+$"},
+        "phase_id": {"type": "string", "pattern": "^[0-9]{2}$"},
+        "pass_output_sets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    }
+  }
+}

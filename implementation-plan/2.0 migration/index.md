@@ -1,5 +1,12 @@
 # Ephemeral Sandbox 2.0 migration
 
+> **Historical plan — not the Phase 01+ execution contract.** This package's
+> selected CDC/CAS history, object/ref layout, phase sequence, API model, and
+> `/eos` tree predate and conflict with the current LayerStack-0 R0 selection.
+> Use the V2 [selected architecture](../../ephemeral-sandbox-v2/architecture_design.md)
+> and [compatibility map](../README.md). Preserve this package as evidence; do
+> not implement from it or translate its “Phase 1” into current V2 Phase 01.
+>
 > Abstract and dependency order for the public Ephemeral Sandbox **0.2.x**
 > roadmap. In this directory, “2.0” is an internal migration name; it does not
 > change the public release numbering.

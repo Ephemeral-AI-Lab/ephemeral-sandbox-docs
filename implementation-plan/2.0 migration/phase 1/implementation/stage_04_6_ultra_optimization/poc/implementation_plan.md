@@ -1,7 +1,13 @@
 # Stage 04.6 MPLA proof-of-concept implementation plan
 
-Status: implementation-ready  
-Decision: build a focused Rust PoC crate in the existing `ephemeral-sandbox` workspace, with a thin Docker Desktop Linux runner and real OverlayFS/durability/storage behavior. Do not integrate the candidate path into the production `WorkspaceManager` or production operation catalog during the PoC.
+Status: M2 revision-ready; M0 and M1 passed, while M2 physical evidence remains
+blocked pending `SD-04.6-002` implementation and complete HV-07 operation
+wiring
+Decision: keep the focused Rust PoC crate and real
+OverlayFS/durability/storage behavior. Add only the narrow public-runtime
+storage/projection lifecycle seam required to invoke
+`mpla-storage-admin-v1`; do not broaden the PoC into a production MPLA API or
+replace the existing workload security profile.
 
 This plan is optimized to falsify stationary allocation adoption quickly. The PoC is successful only if it produces the complete, replayable evidence package defined here; passing unit tests alone is insufficient.
 
@@ -36,9 +42,24 @@ The following production mechanisms encode useful policy but cannot be used dire
 - current `WorkspaceManager` core handles are deliberately private and its destroy ledger deletes scratch. A partial reuse would require architectural changes before evidence exists.
 - the production hidden publisher is a valid, real I2 control, but not stationary adoption.
 
-### 1.3 Bypass during the PoC
+### 1.3 Scoped bypass and required public lifecycle seam
 
-Bypass the gateway, manager router, production workspace publication orchestration, autosquash policy, production recovery copier, MCP, and host-workspace bind model for the candidate path. This avoids confusing protocol integration success with MPLA correctness. The PoC must still use a real executable boundary, real Linux processes, real OverlayFS mounts, real Docker volumes, and real on-disk state.
+The candidate storage, semantic, publication, and recovery implementation may
+remain independent of production workspace publication orchestration,
+autosquash policy, production recovery copier, MCP, and the host-workspace bind
+model. This avoids confusing broad protocol integration with MPLA correctness.
+
+The authoritative public-path campaign MUST NOT bypass the runtime lifecycle
+boundary. It uses the supported manager/runtime/observability CLIs and a
+narrow runtime-owned `mpla-storage-admin-v1` helper/profile beneath a typed
+lifecycle operation. That helper retains `CAP_SYS_ADMIN` and the qualified
+mount/namespace syscalls; ordinary `exec_command` remains mount-denied and
+cannot select the profile. Direct Docker execution may be used only for
+non-authoritative development diagnostics explicitly labeled as such, never
+as M2 pass evidence.
+
+The PoC must still use a real executable boundary, real Linux processes, real
+OverlayFS mounts, real Docker volumes, and real on-disk state.
 
 ## 2. Selected implementation strategy
 
@@ -53,13 +74,23 @@ Bypass the gateway, manager router, production workspace publication orchestrati
 
 ### 2.2 Firm recommendation
 
-Implement `sandbox-runtime-mpla-poc` as an explicit workspace member. Build a static Linux `mpla-poc` binary with serve/control/test-driver modes and a separately compiled `mpla-poc-oracle` binary that does not import the candidate scanner/encoder modules, plus a narrow host wrapper at `ephemeral-sandbox/bin/mpla-poc`. Run them in a labeled Docker container with four named volumes: payload, control, fixtures, and evidence. Mount real OverlayFS inside that container and execute real child processes against the merged mount.
+Implement `sandbox-runtime-mpla-poc` as an explicit workspace member. Build a
+static Linux `mpla-poc` binary with serve/control/test-driver modes and a
+separately compiled `mpla-poc-oracle` binary that does not import the candidate
+scanner/encoder modules, plus a narrow host wrapper at
+`ephemeral-sandbox/bin/mpla-poc`. Run the authoritative campaign through the
+supported public CLIs in a labeled sandbox with four named volumes: payload,
+control, fixtures, and evidence. A runtime-owned storage/projection process
+runs with `mpla-storage-admin-v1`, mounts real OverlayFS, and launches or joins
+real workload processes only after preserving the ordinary workload privilege
+boundary.
 
 This hybrid is the fastest route to credible evidence because it preserves every physical property that matters while avoiding today's intentionally incompatible scratch/copy orchestration. Current LayerStack I2 publication/materialization runs inside the same Linux/Docker/storage profile for matched controls.
 
 Claims this PoC cannot make:
 
-- production manager/gateway/API integration or backward compatibility;
+- production MPLA API completeness or backward compatibility beyond the
+  narrow public lifecycle/storage-admin seam;
 - LayerStack v3 object-format compatibility;
 - native macOS, native Windows-container, or non-OverlayFS adapter support;
 - power-loss correctness stronger than the process/container crash plus `fsync` model actually tested;
@@ -89,7 +120,7 @@ flowchart TD
     D --> E{"All SM-01…SM-14 pass<br/><150 s target, zero unexplained storage?"}
     E -- "No" --> Y["Change only the failed subsystem<br/>and rerun its dependent rows"]
     E -- "Yes" --> F["M2: existing-size, 1 GiB copy-up/stream,<br/>250k files, four workers/overload,<br/>full crash sweep, R0, lifecycle"]
-    F --> G{"All HV-01…HV-10 pass<br/><480 s target and honest performance guards?"}
+    F --> G{"All HV-01…HV-10 pass<br/>their phase-local caps and honest performance guards?"}
     G -- "No" --> Z["Reject or revise adoption<br/>retain the exact falsification artifact"]
     G -- "Yes" --> H["Recommend production adapter integration<br/>Mechanism earned broader orchestration work"]
     P["Deferred until M2 passes:<br/>gateway/manager integration, public API,<br/>auth, compatibility, production GC"] -.->|"adds no early mechanism evidence"| H
@@ -106,7 +137,12 @@ AI-agent estimates assume a warm repository and Docker image, autonomous tool us
 | **M1 complete smoke evidence**             |                  **10–16 h** |                                       **7–11 h** |                    **18–28** | **24 elapsed h** |
 | **M2 complete adoption-decision evidence** |                  **20–32 h** |                                      **12–20 h** |                    **36–55** | **48 elapsed h** |
 
-These are implementation-and-verification estimates, not suite budgets. Once built, one clean smoke run still targets 150 seconds and one clean heavy run 480 seconds. At a replan threshold, the lead must emit the failing artifact and reconsider the subsystem or PoC scope; it must not silently continue toward production integration.
+These are implementation-and-verification estimates, not suite budgets. Once
+built, the smoke loop retains its own development target; formal heavy
+qualification uses only the matrix's independent phase-local caps and has no
+aggregate wall-clock target. At a replan threshold, the lead must emit the
+failing artifact and reconsider the subsystem or PoC scope; it must not
+silently continue toward production integration.
 
 The minimality boundary is test-derived:
 
@@ -127,6 +163,14 @@ Thus a smaller implementation would omit a required non-mockable claim; a broade
 - Docker Desktop remains at exactly 4 vCPU and 4 GiB. Qualification records the observed values and fails rather than requesting a change.
 - Use the Linux/arm64 Ubuntu 24.04 image digest required by `test_matrix.md` (`sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90`), with network disabled after image availability is checked.
 - The Linux container receives only the mount/cgroup/process capabilities qualification proves necessary. The receipt records architecture, kernel, OverlayFS features/options, filesystem types/mount IDs, cgroup v2, `pidfd`, `syncfs`, xattr/whiteout behavior, and free bytes/inodes.
+- The exact storage/projection lifecycle process uses
+  `mpla-storage-admin-v1`: effective/permitted/bounding `CAP_SYS_ADMIN`, the
+  qualified `mount(2)`, `umount2(2)`, and required namespace syscalls, and
+  `NoNewPrivs=1` where compatible. Selection is fixed by trusted operation
+  identity, run ID, execution lease, target namespace, and allocation roots.
+- Arbitrary workload commands use the ordinary hardened capability/seccomp
+  profile. Qualification fails if they retain `CAP_SYS_ADMIN`, can invoke
+  `mount(2)`/`umount2(2)`, or can request the storage-admin profile.
 - Payload and control are distinct Docker named volumes/mount IDs. No payload pathname is ever renamed into control storage. The R0 host corpus is transferred to the fixtures volume before the suite timer, never bind-mounted into the timed candidate path.
 - A delegated `mpla-storage` cgroup sets `memory.high=96 MiB` and `memory.max=128 MiB`. Workload children use separate session cgroups. If writable nested cgroups cannot be qualified, the PoC fails qualification; it does not weaken the memory claim.
 
@@ -349,6 +393,10 @@ Cancellation before durable `Sealing` drains the fence and restores `Open`. Canc
 - Fixture generation/transfer is outside suite timers only where the matrix permits it and is always separately timed/reported.
 - Cheap repeated cases emit every raw sample, plus median and maximum. One-off/expensive cases emit raw samples and maxima. No p95 is calculated.
 - “Real” below means real Docker volume filesystems, kernel OverlayFS, fsync, cgroups, child processes, owner/ref files, and physical accounting. The harness only supplies deterministic callers/fault timing.
+- Authoritative physical cases enter through the supported public CLIs. The
+  mount lifecycle executes in `mpla-storage-admin-v1`; workload commands remain
+  in the ordinary profile. Each campaign records positive mount/strict-unmount
+  proof and a negative arbitrary-workload mount probe.
 
 ### 6.2 Smoke traceability
 
@@ -524,20 +572,16 @@ Fixture generation may populate a still-`WorkspaceOwned` permanent allocation be
 
 The host wrapper arms a 150 s target warning and terminates at 179 s, leaving the required hard stop under 180 s. A timeout is a failed/incomplete suite with raw partial artifacts.
 
-### 9.3 Heavy envelope
+### 9.3 Heavy phase-local envelopes
 
-The declared case budgets remain the matrix values: 35 + 20 + 25 + 60 + 50 + 45 + 60 + 60 + 60 + 30 = 445 s.
-
-| Category | Budget |
-| --- | ---: |
-| Daemon reset and immutable-fixture verification | 5 s |
-| Non-restart work across HV cases | 375 s |
-| Process/container restart and recovery portions, primarily HV-07/HV-10 | 70 s |
-| Reporting and reconciliation | 7 s |
-| Scheduler reserve | 23 s |
-| **Target** | **480 s** |
-
-The heavy wrapper warns at 480 s and hard-terminates at 599 s. HV-08 has a visible 120 s diagnostic cap; spending its additional 60 s consumes hard-limit margin and is a performance miss. To preserve mandatory ownership/semantic/memory/hidden-copy/reconciliation cells, the scheduler may mark a later performance-only repeat `NOT_RUN_BUDGET`, but the heavy suite cannot pass with any matrix row omitted.
+The heavy rows do not share a wrapper deadline or cumulative budget. Each row
+starts a fresh phase-local clock and records its suggested budget, selected
+multiplier, calculated cap, and elapsed wall time. `HV-08` has the fixed
+`120 s` diagnostic cap; every other heavy row uses the matrix's declared
+`1.0×–2.0×` phase-local range. A phase overrun fails that phase only. Unused
+time never carries forward, and a fast phase cannot compensate for a slow one.
+The heavy qualification still cannot pass with any mandatory matrix row
+omitted.
 
 The cross-cutting guards consume existing case budgets rather than adding a suite: HV-02 reserves at most 15 s for six interleaved 1-GiB streams and 5 s for resets/reporting; HV-08 reuses the three required projection constructions at depths 1/4/8 for cold classification; HV-10 reserves 18 s for the three workloads × three pairs × two implementations, 10 s for metadata lifecycle/fanout, and 2 s for in-case reconciliation. Missing these allocations is a case timeout/performance failure, not a reason to move work outside the timer.
 
@@ -606,6 +650,7 @@ All implementation changes below are future PoC work. This planning task changes
 | **10. Current controls and R0**: `src/controls.rs`, `src/fixtures.rs`, `src/throughput_probe.rs`; `tests/cases/r0.rs`; `tests/cases/heavy.rs` | Wrap real hidden publisher/materializer controls, exact preserved corpus, matched labels/boundaries, and tiny fixed-window PERF-002/003 probes. ~1,050 LOC / **1–1.5 agent h** | Steps 5–9 and LayerStack public API; HV-01/02/08/10 | Three-pair controls, bounded-memory stream pairs, normal-throughput pairs, and exact R0 sequence fit budgets with raw receipts; incompatible controls become `UNKNOWN` | Programmatic I2 controls and a direct in-session probe are acceptable; do not integrate the production gateway or an observability stack just to create controls |
 | **11. Evacuation and full crash sweep**: `src/evacuation.rs`, `src/recovery.rs`; `tests/crash_matrix.rs` | Explicit pack/reader pin/retirement debt and deterministic replay at all points. ~1,000 LOC / **1–2 agent h** | Steps 7–10; HV-07/09 | Held reader survives locator swap; every fault converges with one owner/ref and zero final debt | One pack at a time and coarse recovery lock are acceptable |
 | **12. Campaign CLI/reporting**: `src/cli.rs`, `src/report.rs`; `tests/cases/mod.rs`, `smoke.rs`, `heavy.rs`; `tests/artifact_schema.rs` | One-test/suite/crash/report/clean commands, verdicts, budget scheduler. ~850 LOC / **45–75 agent min** | All prior; all matrix rows | Fresh smoke and heavy runs produce complete schema-valid artifacts and human summary within hard stops | Keep local-only JSON protocol; no HTTP, dashboard, metrics backend, or production API |
+| **13. M2 corrective public lifecycle profile and real fault wiring**: lead-owned runtime security/profile/config/catalog files plus exact transferred PoC runner/recovery tests | Implement `mpla-storage-admin-v1`, bind it to exact lease-authorized MPLA lifecycle operations, preserve the ordinary workload policy, and route all 46 HV-07 markers through their corresponding real operation before the marker. | Ratified `SD-04.6-002`, integrated M2 host checkpoint `d49c44b35eabbb40b98874d907edcdd40decf6e3`, blockers `B-006`/`B-007`; unlocks M2 physical rerun | Positive public lifecycle mount/strict-unmount passes; arbitrary workload cannot select profile or mount and lacks `CAP_SYS_ADMIN`; all 46 faultpoint children perform the named core operation and the ledger accepts physical completeness only after real SIGKILL evidence | Keep one narrowly typed storage-admin path and the existing general command profile. Do not add a generic privileged-exec option, direct-Docker evidence path, or marker-only fault result |
 
 Pure first-pass code generation for roughly 10,000–11,000 PoC/test/wrapper LOC is estimated at 12–18 agent-hours; that is not the completion estimate. Including compilation, Docker/OverlayFS integration, fault-replay debugging, and full-suite reruns gives the decision schedule in §2.3: 3–5 elapsed hours to M0, 7–11 elapsed hours to M1 with three agents, and 12–20 elapsed hours / 36–55 cumulative agent-hours to M2. A single agent should expect 20–32 elapsed hours to M2. These are coding-agent estimates; the four-active-data-worker runtime limit remains unchanged. If step 4 falsifies stationary adoption, stop before building the semantic/benchmark surface.
 
@@ -617,7 +662,21 @@ Vertical milestones:
 
 ## 12. Commands and developer workflow
 
-The wrapper owns only resources labeled `com.ephemeralos.mpla-poc=true` and the exact validated run ID (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`). It rejects empty IDs, globs, `/`, `~`, and `all`.
+Before any authoritative manual sandbox operation, rebuild the gateway with
+`bin/start-sandbox-docker-gateway --rebuild-binary`. Create/destroy sandboxes
+only through `sandbox-manager-cli`, create/run/stop workspace and MPLA
+lifecycle operations only through `sandbox-runtime-cli`, and audit exact state
+through `sandbox-observability-cli`. The lead must freeze the exact typed
+operation/profile contract before worker implementation; no worker may invent
+a generic privileged-exec parameter.
+
+The host wrapper remains useful for build, fixture, evidence, and host-only
+developer dispatch. It owns only resources labeled
+`com.ephemeralos.mpla-poc=true` and the exact validated run ID
+(`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`). It rejects empty IDs, globs, `/`, `~`, and
+`all`. Its physical commands are authoritative only when dispatched through
+the public runtime lifecycle with a valid `mpla-storage-admin-v1` operation
+receipt; direct Docker dispatch is diagnostic and cannot produce a PASS.
 
 ```bash
 # Build the host wrapper dependencies and the static Linux PoC/oracle selected
@@ -632,6 +691,8 @@ ephemeral-sandbox/bin/mpla-poc fixture prepare \
   --r0-source /Users/yifanxu/Ephemeral-AI-Lab/experiment/materialization-benchmark-20260727/corpus/console-release
 
 # Run one case, the bounded suites, or one deterministic crash point.
+# These physical commands are payloads of the public runtime lifecycle; they
+# are not authorization to use docker exec.
 ephemeral-sandbox/bin/mpla-poc test --run-id dev-001 SM-03
 ephemeral-sandbox/bin/mpla-poc suite --run-id smoke-001 smoke
 ephemeral-sandbox/bin/mpla-poc suite --run-id heavy-001 heavy
@@ -656,6 +717,17 @@ cargo test --manifest-path ephemeral-sandbox/Cargo.toml \
 ```
 
 The wrapper prints the absolute evidence directory and exact Docker commands to `commands.jsonl`. It never invokes shell utilities inside the workload image for readiness; it uses the uploaded binary and direct syscalls. Image pulls, rebuilds, and fixture preparation are explicit commands and never hidden in `suite`.
+
+Every authoritative run additionally records:
+
+- the public manager/runtime/observability request and response identities;
+- the selected `mpla-storage-admin-v1` profile and exact executable digest;
+- run, operation, lease, namespace, allocation-root, and cgroup bindings;
+- storage-admin and workload `/proc/<pid>/status` capability,
+  `NoNewPrivs`, and seccomp witnesses;
+- positive mount and strict-unmount receipts plus the negative workload mount
+  result; and
+- exact public-CLI cleanup with zero remaining run-labeled resources.
 
 ## 13. Evidence artifacts
 
@@ -737,6 +809,7 @@ R0 additionally preserves:
 
 | Risk | Falsifying tests/evidence | Decision on failure |
 | --- | --- | --- |
+| The scoped storage-admin profile is absent, too broad, or inherited by workload code | Public-path capability qualification: positive lifecycle mount/strict-unmount, negative general-workload mount, effective capability/seccomp/`NoNewPrivs` witnesses, authorization replay/mismatch probes | Stop before fixture preparation. Implement or narrow `mpla-storage-admin-v1`; never substitute direct Docker execution, a generic privileged shell, or `CAP_SYS_ADMIN` on arbitrary `exec_command` |
 | OverlayFS lower/upper semantics, whiteouts, opaque dirs, hardlinks, xattrs, or sparse extents do not round-trip | SM-01 qualification, SM-09, HV-03, HV-08 oracle | Stop adoption recommendation. Fix the Linux adapter/semantic interpreter; do not redefine identity to OverlayFS representation or substitute copying |
 | Writer revocation cannot be proven after adoption | SM-04, SM-12/HV-07 post-Sealing faults, `/proc` audits | Stop. Strengthen admission/open checks and cgroup/namespace holder control; no owner transition while any writable reference remains |
 | Durable owner transition can yield zero or two owners | SM-12, HV-07 exact selectors/journals | Stop. Reduce to coarser allocation lock and simpler selector protocol; never mask ambiguity with reconciliation |
@@ -779,6 +852,10 @@ M1 is complete only when a fresh run:
 
 M2 is complete only when:
 
+- the public lifecycle selects `mpla-storage-admin-v1` only for the exact
+  lease-bound storage/projection process, positive mount and strict-unmount
+  pass, and a general workload command both lacks `CAP_SYS_ADMIN` and remains
+  unable to mount;
 - every HV-01 through HV-10 row executes within the heavy hard stop and the target/diagnostic status is honestly reported;
 - valid-receipt small publication is independent of 1/5/≤9 GiB existing size and meets its absolute gate;
 - 1 GiB streaming includes real scan/hash/flush/adopt work and meets the throughput floor without a second payload;
@@ -809,4 +886,9 @@ Change the specific subsystem, then rerun all dependent rows, when:
 - pack reader safety fails: change generation pin/retirement protocol;
 - matched control is unavailable: retain mechanism results but do not claim aggregate speedup.
 
-The implementation agent should build in the file order above, stop after the M0 fail-fast slice if any foundational invariant fails, and avoid production integration until M2 establishes that the physical mechanism, durability protocol, resource shape, and claimed performance are worth carrying into the product.
+The corrective implementation agent starts from step 13 and the exact blocked
+M2 checkpoint. It changes only the narrow public storage/projection lifecycle
+seam and real HV-07 operation wiring, then reruns the unchanged M2 envelope.
+Broader production MPLA integration remains deferred until M2 establishes that
+the physical mechanism, durability protocol, resource shape, and claimed
+performance are worth carrying into the product.

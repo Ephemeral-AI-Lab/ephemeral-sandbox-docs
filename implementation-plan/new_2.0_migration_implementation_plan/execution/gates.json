@@ -1,0 +1,101 @@
+{
+  "$schema": "schemas/gate-catalog.schema.json",
+  "schema_version": 1,
+  "phases": [
+    {
+      "id": "00",
+      "capability_ceiling": "candidate-blind evidence and judge production; no candidate evaluation",
+      "entry_condition": "separate durable owner authorization receipt plus independently verified phase-entry attestation for Phase 0 result-bearing work"
+    },
+    {
+      "id": "01",
+      "capability_ceiling": "isolated reversible candidate evaluation, implementation, and qualification; legacy remains sole live truth",
+      "entry_condition": "accepted unchanged Phase 0 seal plus separate Phase 1 authorization receipt and independently verified phase-entry attestation"
+    },
+    {
+      "id": "02",
+      "capability_ceiling": "separately authorized exact-artifact live mutation and release; destructive legacy-byte deletion excluded",
+      "entry_condition": "accepted unchanged H_PRECUTOVER and Hqual plus separate live-change authorization receipt and independently verified phase-entry attestation"
+    }
+  ],
+  "gates": [
+    {
+      "id": "00-evidence-seal",
+      "phase_id": "00",
+      "pass_output_sets": [
+        ["candidate-independent-judge-evidence-seal"]
+      ]
+    },
+    {
+      "id": "01a-profile-selection",
+      "phase_id": "01",
+      "pass_output_sets": [
+        ["H_PROFILE"],
+        ["NO_WINNER"]
+      ]
+    },
+    {
+      "id": "01b-canonical-format",
+      "phase_id": "01",
+      "pass_output_sets": [
+        ["H_FMT"]
+      ]
+    },
+    {
+      "id": "01c-selected-state",
+      "phase_id": "01",
+      "pass_output_sets": [
+        ["Hstore"]
+      ]
+    },
+    {
+      "id": "01d-permanent-integration",
+      "phase_id": "01",
+      "pass_output_sets": [
+        ["Hpermanent"]
+      ]
+    },
+    {
+      "id": "01e-precutover-artifact",
+      "phase_id": "01",
+      "pass_output_sets": [
+        ["H_PRECUTOVER"]
+      ]
+    },
+    {
+      "id": "01f-byte-identical-qualification",
+      "phase_id": "01",
+      "pass_output_sets": [
+        ["Hqual"]
+      ]
+    },
+    {
+      "id": "02a-cutover",
+      "phase_id": "02",
+      "pass_output_sets": [
+        ["cutover-fleet-completion-record"]
+      ]
+    },
+    {
+      "id": "02b-observation",
+      "phase_id": "02",
+      "pass_output_sets": [
+        ["observation-horizon-record"]
+      ]
+    },
+    {
+      "id": "02c-retirement-release-build",
+      "phase_id": "02",
+      "pass_output_sets": [
+        ["H_RELEASE", "qualification-gate-disposition"]
+      ]
+    },
+    {
+      "id": "02d-live-release",
+      "phase_id": "02",
+      "pass_output_sets": [
+        ["live-release-record"]
+      ]
+    }
+  ]
+}

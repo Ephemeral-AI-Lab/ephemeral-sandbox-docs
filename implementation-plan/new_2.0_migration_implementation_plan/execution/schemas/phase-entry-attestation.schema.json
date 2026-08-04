@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "phase-entry-attestation.schema.json",
+  "title": "Externally authenticated phase-entry authorization attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "catalog_sha256",
+    "phase_id",
+    "gate_id",
+    "lineage_id",
+    "authorization_receipt_sha256",
+    "authorized_actors",
+    "authorizer",
+    "validity"
+  ],
+  "properties": {
+    "$schema": {"const": "phase-entry-attestation.schema.json"},
+    "schema_version": {"const": 2},
+    "catalog_sha256": {"$ref": "#/$defs/digest"},
+    "phase_id": {"type": "string", "pattern": "^[0-9]{2}$"},
+    "gate_id": {"type": "string", "pattern": "^[0-9]{2}[a-z]?-[a-z0-9-]+$"},
+    "lineage_id": {"type": "string", "pattern": "^[a-z0-9-]+-r[0-9]{4}$"},
+    "authorization_receipt_sha256": {"$ref": "#/$defs/digest"},
+    "authorized_actors": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/authorizedActor"}
+    },
+    "authorizer": {"$ref": "#/$defs/principal"},
+    "validity": {"$ref": "#/$defs/validity"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "credential_fingerprint", "control_domain_fingerprint", "proof"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "credential_fingerprint": {"$ref": "#/$defs/digest"},
+        "control_domain_fingerprint": {"$ref": "#/$defs/digest"},
+        "proof": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,4096}$"}
+      }
+    },
+    "authorizedActor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "credential_fingerprint", "control_domain_fingerprint", "capabilities"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "credential_fingerprint": {"$ref": "#/$defs/digest"},
+        "control_domain_fingerprint": {"$ref": "#/$defs/digest"},
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^(produce|accept):[0-9]{2}[a-z]?-[a-z0-9-]+$"}
+        }
+      }
+    },
+    "validity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issued_at",
+        "not_before",
+        "expires_at",
+        "revocation_checked_at",
+        "revocation_status",
+        "revocation_evidence_sha256"
+      ],
+      "properties": {
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "not_before": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "revocation_checked_at": {"$ref": "#/$defs/timestamp"},
+        "revocation_status": {"const": "GOOD"},
+        "revocation_evidence_sha256": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

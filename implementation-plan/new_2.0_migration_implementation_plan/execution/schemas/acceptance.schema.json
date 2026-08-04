@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "acceptance.schema.json",
+  "title": "State Storage V2 independent gate verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "phase_id", "gate_id", "lineage_id", "disposition", "disposition_detail", "manifest_sha256", "accepted_outputs", "accepted_by", "accepted_at"],
+  "properties": {
+    "$schema": {"type": "string", "pattern": "^(\\.\\./){1,2}schemas/acceptance\\.schema\\.json$"},
+    "schema_version": {"const": 2},
+    "phase_id": {"type": "string", "pattern": "^(TEMPLATE|[0-9]{2})$"},
+    "gate_id": {"type": "string", "pattern": "^(TEMPLATE|[0-9]{2}[a-z]?-[a-z0-9-]+)$"},
+    "lineage_id": {"type": "string", "pattern": "^(TEMPLATE|[a-z0-9-]+-r[0-9]{4})$"},
+    "disposition": {"enum": ["NOT_RUN", "PARTIAL", "PASS", "FAIL", "BLOCKED"]},
+    "disposition_detail": {"type": ["string", "null"]},
+    "manifest_sha256": {"$ref": "#/$defs/nullableDigest"},
+    "accepted_outputs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/output"}
+    },
+    "accepted_by": {
+      "anyOf": [{"$ref": "#/$defs/acceptor"}, {"type": "null"}]
+    },
+    "accepted_at": {"type": ["string", "null"], "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"disposition": {"const": "NOT_RUN"}}, "required": ["disposition"]},
+      "then": {
+        "properties": {
+          "disposition_detail": {"type": "null"},
+          "manifest_sha256": {"type": "null"},
+          "accepted_outputs": {"maxItems": 0},
+          "accepted_by": {"type": "null"},
+          "accepted_at": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"disposition": {"enum": ["PARTIAL", "PASS", "FAIL", "BLOCKED"]}}, "required": ["disposition"]},
+      "then": {
+        "properties": {
+          "disposition_detail": {"type": "string", "minLength": 1},
+          "manifest_sha256": {"$ref": "#/$defs/digest"},
+          "accepted_by": {"$ref": "#/$defs/acceptor"},
+          "accepted_at": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"disposition": {"const": "PASS"}}, "required": ["disposition"]},
+      "then": {"properties": {"accepted_outputs": {"minItems": 1}}}
+    },
+    {
+      "if": {"properties": {"disposition": {"enum": ["PARTIAL", "FAIL", "BLOCKED"]}}, "required": ["disposition"]},
+      "then": {
+        "properties": {
+          "accepted_outputs": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"phase_id": {"const": "TEMPLATE"}}, "required": ["phase_id"]},
+      "then": {
+        "properties": {
+          "gate_id": {"const": "TEMPLATE"},
+          "lineage_id": {"const": "TEMPLATE"},
+          "disposition": {"const": "NOT_RUN"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"phase_id": {"not": {"const": "TEMPLATE"}}}, "required": ["phase_id"]},
+      "then": {
+        "properties": {
+          "gate_id": {"type": "string", "pattern": "^[0-9]{2}[a-z]?-[a-z0-9-]+$"},
+          "lineage_id": {"type": "string", "pattern": "^[a-z0-9-]+-r[0-9]{4}$"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableDigest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "acceptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "credential_fingerprint", "control_domain_fingerprint", "proof"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "credential_fingerprint": {"$ref": "#/$defs/digest"},
+        "control_domain_fingerprint": {"$ref": "#/$defs/digest"},
+        "proof": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,4096}$"}
+      }
+    }
+  }
+}

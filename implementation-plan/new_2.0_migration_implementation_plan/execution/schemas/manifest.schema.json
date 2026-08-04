@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "State Storage V2 gate packet manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "phase_id", "gate_id", "lineage_id", "packet_maturity", "reported_status", "report_detail", "catalog_sha256", "generated_at", "source_context", "predecessors", "input_lock_sha256", "producer", "artifacts", "outputs"],
+  "properties": {
+    "$schema": {"type": "string", "pattern": "^(\\.\\./){1,2}schemas/manifest\\.schema\\.json$"},
+    "schema_version": {"const": 3},
+    "phase_id": {"type": "string", "pattern": "^(TEMPLATE|[0-9]{2})$"},
+    "gate_id": {"type": "string", "pattern": "^(TEMPLATE|[0-9]{2}[a-z]?-[a-z0-9-]+)$"},
+    "lineage_id": {"type": "string", "pattern": "^(TEMPLATE|[a-z0-9-]+-r[0-9]{4})$"},
+    "packet_maturity": {"enum": ["TEMPLATE", "DRAFT", "INPUT_LOCKED", "SEALED"]},
+    "reported_status": {"enum": ["NOT_RUN", "PARTIAL", "PASS", "FAIL", "BLOCKED"]},
+    "report_detail": {"type": "string", "minLength": 1},
+    "catalog_sha256": {"$ref": "#/$defs/nullableDigest"},
+    "generated_at": {"type": ["string", "null"], "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "source_context": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "predecessors": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {"$ref": "#/$defs/predecessor"}
+    },
+    "input_lock_sha256": {"$ref": "#/$defs/nullableDigest"},
+    "producer": {
+      "anyOf": [
+        {"$ref": "#/$defs/actionPrincipal"},
+        {"type": "null"}
+      ]
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "outputs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/output"}
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableDigest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "actionPrincipal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "credential_fingerprint", "control_domain_fingerprint", "proof"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "credential_fingerprint": {"$ref": "#/$defs/digest"},
+        "control_domain_fingerprint": {"$ref": "#/$defs/digest"},
+        "proof": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,4096}$"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "path", "branch", "head", "dirty", "notes"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "pattern": "^/"},
+        "branch": {"type": ["string", "null"]},
+        "head": {"anyOf": [{"$ref": "#/$defs/gitObjectId"}, {"type": "null"}]},
+        "dirty": {"type": "boolean"},
+        "notes": {"type": "string"}
+      }
+    },
+    "gitObjectId": {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"},
+    "predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "lineage_id", "manifest_sha256", "acceptance_sha256"],
+      "properties": {
+        "gate_id": {"type": "string", "pattern": "^[0-9]{2}[a-z]?-[a-z0-9-]+$"},
+        "lineage_id": {"type": "string", "pattern": "^[a-z0-9-]+-r[0-9]{4}$"},
+        "manifest_sha256": {"$ref": "#/$defs/digest"},
+        "acceptance_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "sha256"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))[^/]+(?:/[^/]+)*$"},
+        "role": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/nullableDigest"}
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "state": {"enum": ["EXPECTED", "PRODUCED", "NOT_APPLICABLE"]},
+        "sha256": {"$ref": "#/$defs/nullableDigest"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "PRODUCED"}}, "required": ["state"]},
+          "then": {"properties": {"sha256": {"$ref": "#/$defs/digest"}}}
+        },
+        {
+          "if": {"properties": {"state": {"enum": ["EXPECTED", "NOT_APPLICABLE"]}}, "required": ["state"]},
+          "then": {"properties": {"sha256": {"type": "null"}}}
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"packet_maturity": {"const": "TEMPLATE"}}, "required": ["packet_maturity"]},
+      "then": {
+        "properties": {
+          "phase_id": {"const": "TEMPLATE"},
+          "gate_id": {"const": "TEMPLATE"},
+          "lineage_id": {"const": "TEMPLATE"},
+          "catalog_sha256": {"type": "null"},
+          "generated_at": {"type": "null"},
+          "source_context": {"maxItems": 0},
+          "predecessors": {"maxItems": 0},
+          "input_lock_sha256": {"type": "null"},
+          "producer": {"type": "null"},
+          "artifacts": {
+            "items": {"properties": {"sha256": {"type": "null"}}}
+          },
+          "outputs": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"packet_maturity": {"enum": ["INPUT_LOCKED", "SEALED"]}}, "required": ["packet_maturity"]},
+      "then": {"properties": {"input_lock_sha256": {"$ref": "#/$defs/digest"}}}
+    },
+    {
+      "if": {"properties": {"packet_maturity": {"const": "DRAFT"}}, "required": ["packet_maturity"]},
+      "then": {
+        "properties": {
+          "reported_status": {"const": "NOT_RUN"},
+          "input_lock_sha256": {"type": "null"},
+          "producer": {"type": "null"},
+          "artifacts": {"items": {"properties": {"sha256": {"$ref": "#/$defs/digest"}}}},
+          "outputs": {"not": {"contains": {"properties": {"state": {"const": "PRODUCED"}}, "required": ["state"]}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"packet_maturity": {"const": "INPUT_LOCKED"}}, "required": ["packet_maturity"]},
+      "then": {
+        "properties": {
+          "reported_status": {"const": "NOT_RUN"},
+          "producer": {"type": "null"},
+          "artifacts": {"items": {"properties": {"sha256": {"$ref": "#/$defs/digest"}}}},
+          "outputs": {"not": {"contains": {"properties": {"state": {"const": "PRODUCED"}}, "required": ["state"]}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"packet_maturity": {"const": "SEALED"}}, "required": ["packet_maturity"]},
+      "then": {
+        "properties": {
+          "reported_status": {"enum": ["PARTIAL", "PASS", "FAIL", "BLOCKED"]},
+          "producer": {"$ref": "#/$defs/actionPrincipal"},
+          "artifacts": {"items": {"properties": {"sha256": {"$ref": "#/$defs/digest"}}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"phase_id": {"const": "TEMPLATE"}}, "required": ["phase_id"]},
+      "then": {"properties": {"packet_maturity": {"const": "TEMPLATE"}}}
+    },
+    {
+      "if": {"properties": {"phase_id": {"not": {"const": "TEMPLATE"}}}, "required": ["phase_id"]},
+      "then": {
+        "properties": {
+          "gate_id": {"type": "string", "pattern": "^[0-9]{2}[a-z]?-[a-z0-9-]+$"},
+          "lineage_id": {"type": "string", "pattern": "^[a-z0-9-]+-r[0-9]{4}$"},
+          "catalog_sha256": {"$ref": "#/$defs/digest"},
+          "generated_at": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+          "source_context": {"minItems": 1}
+        }
+      }
+    }
+  ]
+}

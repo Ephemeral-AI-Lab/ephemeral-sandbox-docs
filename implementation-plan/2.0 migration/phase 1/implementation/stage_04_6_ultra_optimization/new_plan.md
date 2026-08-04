@@ -1,7 +1,7 @@
 # Stage 04.6 Ultra Optimization
 ## Merkle–Promoted Locator Architecture (MPLA)
 
-**Status:** selected architecture for implementation and measured qualification; `SD-04.6-001` ratified, performance and fault evidence still pending<br>
+**Status:** selected architecture for implementation and measured qualification; `SD-04.6-001` and `SD-04.6-002` ratified, performance and fault evidence still pending<br>
 **Scope:** Phase 1, Stage 04.6 only<br>
 **Normative authority:** `requirements_and_prohibitions.md` overrides this document; this document overrides earlier Stage 04.6 proposals where they conflict<br>
 **Required production path:** arbitrary OCI images on the qualified host-OS path<br>
@@ -31,12 +31,24 @@ seal-and-publish boundary; post-commit successor restart is measured
 separately when requested. Every correctness, portability, resource, and space
 constraint remains in force.
 
+Ratified `SD-04.6-002` makes the OCI privilege boundary equally explicit.
+The public runtime may invoke a dedicated `mpla-storage-admin-v1`
+storage/projection process with `CAP_SYS_ADMIN` and the qualified mount
+syscalls. Arbitrary workload commands keep the hardened unprivileged profile
+and cannot select or inherit this authority. The capability is therefore
+available where OverlayFS lifecycle requires it without becoming a general
+workload privilege.
+
 ### 1.1 Release assertions
 
 The architecture is qualified only if all of the following remain true:
 
 - The required path needs no reflink, FUSE, KVM, ublk/NBD/device mapper, block dirty map, custom kernel, host snapshot API, payload tmpfs, or helper inside the image.
-- The storage/projection service requests no additional capability except `CAP_SYS_ADMIN`; that capability is not passed to the workload. Networking privilege is a separate, non-required profile.
+- The `mpla-storage-admin-v1` storage/projection process may retain
+  `CAP_SYS_ADMIN` and permit the qualified `mount`/`umount2`/namespace syscalls.
+  Profile selection is authenticated and lease-bound, and the capability is
+  neither caller-selectable on general `exec_command` nor passed to the
+  workload. Networking privilege is a separate, non-required profile.
 - Publication peak is the active upper plus metadata and bounded scratch, not the upper plus a second payload copy.
 - Generic mutation handling contains no package, application, filename, or language heuristic.
 - Queued work owns descriptors only: zero queued payload, upper, mount, carrier, or staging bytes.
@@ -70,6 +82,7 @@ The architecture is qualified only if all of the following remain true:
 | Immediate Firecracker/WASI implementation versus Phase 1 OCI scope | OCI implementation plus frozen adapter fixtures wins | Future adapters must reproduce the same normalized publisher semantics; their caches never become truth. |
 | Cross-mount path promotion versus host portability | Stationary allocation adoption wins | The upper starts under `layer-stack/objects/allocations/...` with a stable `AllocationId`; the workspace stores only a lease reference. Publication changes durable ownership, not the pathname. `AllocationId` is backend-local locator metadata and never enters `RootId`, `AttributionRootId`, or a ref. |
 | Preserved non-closing campaign versus `SPACE-006/007` on the required host | **Resolved by ratified `SD-04.6-001`** | Retain the retired behavior on `I0/I2` as unpooled compatibility controls only. `I3` and every accepted production/public path use closing `seal_publish`; the controls are not equivalent candidate evidence and cannot block release. |
+| OverlayFS lifecycle versus the hardened general command child | **Resolved by ratified `SD-04.6-002`** | Public lifecycle operations use the dedicated `mpla-storage-admin-v1` helper/profile with `CAP_SYS_ADMIN` and the required mount syscalls. General workload commands retain the current capability drop and mount-denying seccomp policy. |
 
 ### 2.2 Ratified specification decision SD-04.6-001 — closing portable canonical checkpoint
 
@@ -89,6 +102,28 @@ benchmark protocol now record this decision.
 Ratification removes the specification contradiction; it does not supply
 implementation, performance, space, or fault evidence. `stage04_6_release`
 remains disabled until every remaining gate in this plan passes.
+
+### 2.3 Ratified specification decision SD-04.6-002 — scoped OCI storage authority
+
+**Status: RATIFIED — 2026-07-28.** The required Linux OCI adapter is allowed
+to use the maximum additional capability already permitted by `PORT-003`.
+
+| Required decision field | Record |
+|---|---|
+| Authorized subject | A dedicated runtime-owned storage/projection lifecycle process, or the exact lease-bound MPLA qualification/campaign entrypoint running as that process. |
+| Capability/syscalls | Retain `CAP_SYS_ADMIN`; permit only the qualified adapter's `mount(2)`, `umount2(2)`, and namespace syscalls such as `setns(2)` where required. `NoNewPrivs=1` may remain set. |
+| Public boundary | `sandbox-manager-cli`, `sandbox-runtime-cli`, and `sandbox-observability-cli` remain the supported transport/control surface. The privileged helper is an implementation detail beneath a typed lifecycle operation, not direct Docker execution. |
+| Workload boundary | Arbitrary `exec_command` remains mount-denied and does not inherit `CAP_SYS_ADMIN`. The helper stays separate or drops capability and enters the ordinary workload policy before user code runs. |
+| Authorization | Exact executable/operation identity, run ID, execution lease, target namespace, allocation roots, and lifecycle verb are fixed by trusted control-plane input. Missing/mismatched/replayed authorization fails closed. |
+| Evidence | Record capability/seccomp/no-new-privileges state, profile and executable identity, mountinfo before/after, mount and strict-unmount receipts, workload-negative probe, and exact cleanup. |
+| Decision | A scoped storage-admin profile is required for the authoritative OCI campaign. A generic privileged shell or caller-controlled privileged command is forbidden. |
+
+This decision corrects the integration assumption exposed by M2: the original
+architecture allowed `CAP_SYS_ADMIN` and the initial PoC runner supplied it,
+but the public-path campaign later placed the mount call inside a hardened
+general command child. The architecture itself did not omit the capability;
+the PoC handoff failed to bind it to the actual lifecycle process. M2 physical
+results remain unknown until the corrected boundary is implemented and run.
 
 ---
 
@@ -584,9 +619,13 @@ adapters are not implemented or claimed by Stage 04.6. The adoption protocol
 has no `EXDEV` branch because it performs no cross-mount rename. The OCI
 storage service uses raw host/VM syscalls and supports scratch, distroless,
 non-root, and read-only images without executing a helper inside them.
-`CAP_SYS_ADMIN` belongs only to the isolated storage/projection setup process.
-Optional networking setup may have a distinct privilege profile but is not
-part of storage qualification.
+Under `SD-04.6-002`, `CAP_SYS_ADMIN` belongs only to the isolated
+`mpla-storage-admin-v1` storage/projection lifecycle process. Its seccomp
+profile permits the qualified adapter's mount, unmount, and required namespace
+syscalls; it is selected only by an authenticated, lease-bound lifecycle
+operation. The workload process uses the ordinary hardened profile and cannot
+inherit or request that capability. Optional networking setup may have a
+distinct privilege profile but is not part of storage qualification.
 
 ### 6.2 Required and optional mechanisms
 
@@ -2625,8 +2664,13 @@ The report maps these legacy names bijectively to §10’s physical categories s
 | Sync dominates small checkpoint target | Seal sync p95 >100 ms | Measure filesystem/dirtying policy, bounded pre-sealing with total-work reporting | Qualified durability primitive with same crash semantics |
 | Stage 05 is unavailable | Retirement handoff backlog | Retain/account and eventually reject new debt-producing operations | Frozen Stage 05 authority becomes available |
 | Future backend cannot express oracle | Cross-backend fixture mismatch | Reject unsupported operation/backend; canonical schema remains truth | Versioned semantic extension approved |
+| Storage-admin authority leaks into a workload command | A general `exec_command` can mount, reports `CAP_SYS_ADMIN`, or can select the privileged profile | Fail qualification immediately; keep the helper separate or drop the capability and install the ordinary seccomp profile before workload exec | A narrower, independently verified lifecycle boundary |
 
-No risk permits a silent capability escalation, image helper, metadata loss, higher memory cap, hidden copy, or false timing boundary.
+No risk permits a silent or caller-controlled capability escalation, image
+helper, metadata loss, higher memory cap, hidden copy, or false timing
+boundary. The explicit `mpla-storage-admin-v1` grant in `SD-04.6-002` is
+qualifying only at the trusted lifecycle boundary and never authorizes a
+privileged arbitrary workload.
 
 ---
 
@@ -2637,6 +2681,7 @@ No risk permits a silent capability escalation, image helper, metadata loss, hig
 | `PORT-001`, `PORT-002`, `PORT-003`, `PORT-004`, `PORT-005`, `PORT-006` | Sections 1.1, 2.1, 6 and 14: host/product-neutral canonical model, arbitrary OCI images, maximum additional `CAP_SYS_ADMIN`, forbidden dependency list, optional accelerators, shared backend identity. |
 | `SEM-001`, `SEM-002`, `SEM-003`, `SEM-004`, `SEM-005`, `SEM-006` | Sections 3.1, 4, 7.5, 8.2, 13 and 16.3: complete metadata oracle, root/attribution authority, immutable visibility, final ref-last, rollback/squash identity and heuristic prohibition. |
 | Ratified `SD-04.6-001` | Sections 1, 2.2, 4.7, 7.2–7.3, 8.1, 12 and 16: closing portable publication, immutable `PublicationCommitted`, separate idempotent successor activation, and non-gating `I0/I2` compatibility controls. |
+| Ratified `SD-04.6-002` | Sections 1.1, 2.3, 6.1, 16.1 and 18: public lifecycle transport, dedicated lease-bound `mpla-storage-admin-v1` authority, required mount/namespace syscalls, ordinary-workload capability separation, positive/negative evidence, and fail-closed cleanup. |
 | `MULTI-001`, `MULTI-002`, `MULTI-003`, `MULTI-004`, `MULTI-005`, `MULTI-006`, `MULTI-007`, `MULTI-008` | Sections 8.8, 10.3, 11 and 16: independent clients/roots, metadata-only rollout nodes, 16 siblings, 1,000 zero-payload forks, no `A×B`, portable activation and no storage permit held by long exec. |
 | Complexity symbols and `TIME-001`, `TIME-002`, `TIME-003` | Sections 8 and 9: all required symbols, total-work accounting, incremental bound, first-ingest/cold-build/copy-up lower bounds, read/write/dedup bounds. |
 | Quantitative gates and `PERF-001`, `PERF-002`, `PERF-003`, `PERF-004`, `PERF-005` | Sections 9.1 and 16: every p95/throughput gate, 100× requirement, honest 500× stretch, both ≤5% guards and conditional 48% cold exception. |
@@ -2648,7 +2693,7 @@ No risk permits a silent capability escalation, image helper, metadata loss, hig
 | Evidence policy and `BENCH-001`, `BENCH-002`, `BENCH-003`, `BENCH-004` | Section 16: complete measurement list, required workloads, offline package fixtures, distinct publication/materialization/lookup labels, outer versus total work and matched comparison metadata. |
 | Physical layout and locator witness | Sections 2.1, 5.1–5.3, 7.4, 8.7, 8.9 and 12: stable internal allocations under the existing object family, lightweight workspace lease references, roots/refs free of `AllocationId` or physical locator fields, scoped selector witness, adoption receipt, descendant recognition and OCC rebase. |
 | Explicit prohibitions | Sections 1.1, 2.1, 6.2, 10.5 and 17: no forbidden accelerator dependency, no image helper, no hidden copy, no unauthorized GC, no unbounded queue/resident state, no heuristic or false complexity claim. |
-| Acceptance checklist | Section 16.5 plus milestone exits: all 16 completion conditions have an explicit gate or cross-backend fixture. |
+| Acceptance checklist | Section 16.5 plus milestone exits: all 17 completion conditions have an explicit gate or cross-backend fixture. |
 
 ---
 
@@ -2669,12 +2714,16 @@ Stage 04.6 is complete only when:
 11. OCI plus Firecracker/WASI adapter fixtures produce identical canonical roots, attribution, OCC and recovery decisions;
 12. large-file copy-up, first ingestion, cold construction and many-small-file floors are measured without a universal speedup claim;
 13. every published/superseded allocation remains counted until later authorized deletion;
-14. all feature gates, rollback readers and mixed-version recovery tests pass; and
-15. the final evidence report names every miss and contains no result whose label excludes work required by that operation; and
+14. all feature gates, rollback readers and mixed-version recovery tests pass;
+15. the final evidence report names every miss and contains no result whose label excludes work required by that operation;
 16. ratified `SD-04.6-001` is reflected consistently in the product API and
     evidence labels: closing `seal_publish` qualifies, `PublicationCommitted`
     and post-commit activation have separate exact identities/results, and any
     preserved same-upper `I0/I2` rows remain non-qualifying compatibility
-    controls.
+    controls; and
+17. ratified `SD-04.6-002` is implemented and independently proven: the
+    public lifecycle can mount and strictly unmount through
+    `mpla-storage-admin-v1`, while an arbitrary workload command cannot select
+    the profile, does not retain `CAP_SYS_ADMIN`, and remains unable to mount.
 
 Until all conditions hold, `stage04_6_release` remains disabled.

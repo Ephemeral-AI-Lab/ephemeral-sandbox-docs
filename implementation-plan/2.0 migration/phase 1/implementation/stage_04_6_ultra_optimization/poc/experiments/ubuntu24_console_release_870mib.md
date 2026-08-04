@@ -114,17 +114,18 @@ denominator for the later 1 MiB publication.
   below a measured `10 GiB` physical union throughout `HV-08R`; crossing it is
   `FIXTURE_ENVELOPE_FAILURE`.
 - `HV-08R`, including its co-scheduled matched activation controls, has a
-  projected 60-second target inside the heavy campaign.
+  projected 60-second phase-local target.
 - A visible performance miss may continue for diagnostics, but the
-  `HV-08R` campaign is terminated at 120 seconds.
-- Time beyond 60 seconds consumes the heavy suite's diagnostic margin; the
-  complete heavy suite still stops before 600 seconds.
+  `HV-08R` phase is terminated at its fixed 120-second cap.
+- Time beyond 60 seconds consumes only `HV-08R`'s phase-local diagnostic
+  allowance. It does not consume, extend, or define another phase's budget;
+  there is no aggregate suite deadline.
 
 The target is a falsifiable hypothesis. The earlier 107-second publisher makes
 a miss plausible; the result remains valuable if every physical span is
 reported honestly. Exceeding the control budget makes the corresponding ratio
 `UNKNOWN` and the booster verdict `POC_100X_NOT_SUPPORTED`; it never authorizes
-dropping the control boundary or extending the 600-second suite hard stop.
+dropping the control boundary or extending the phase-local 120-second cap.
 
 ---
 

@@ -1,5 +1,12 @@
 # Phase 1 — LayerStack 2.0 storage
 
+> **Historical phase — superseded.** The current Phase 01 selected
+> filesystem-native complete-Version storage in the existing LayerStack
+> package; it did not select this CDC/CAS object graph, its exact `/eos`
+> layout, or its retention/lease/GC model. Start current work from the V2
+> [architecture](../../../ephemeral-sandbox-v2/architecture_design.md), not
+> this work order. See the [archive compatibility map](../../README.md).
+>
 > Overview for the first phase of the
 > [Ephemeral Sandbox 2.0 migration](../index.md).
 

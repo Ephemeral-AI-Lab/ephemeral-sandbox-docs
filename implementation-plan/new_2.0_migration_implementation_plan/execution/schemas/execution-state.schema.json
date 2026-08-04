@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution-state.schema.json",
+  "title": "State Storage V2 authenticated execution-frontier record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "catalog_sha256", "instantiated_gate_count", "invalidations", "transition"],
+  "properties": {
+    "$schema": {"const": "schemas/execution-state.schema.json"},
+    "schema_version": {"const": 2},
+    "catalog_sha256": {"$ref": "#/$defs/digest"},
+    "instantiated_gate_count": {"type": "integer", "minimum": 1},
+    "invalidations": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/invalidationEvent"}
+    },
+    "transition": {
+      "anyOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/transition"}
+      ]
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gateId": {"type": "string", "pattern": "^[0-9]{2}[a-z]?-[a-z0-9-]+$"},
+    "lineageId": {"type": "string", "pattern": "^[a-z0-9-]+-r[0-9]{4}$"},
+    "boundedToken": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "credential_fingerprint", "control_domain_fingerprint"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "credential_fingerprint": {"$ref": "#/$defs/digest"},
+        "control_domain_fingerprint": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "actionPrincipal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "credential_fingerprint", "control_domain_fingerprint", "proof"],
+      "properties": {
+        "principal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "credential_fingerprint": {"$ref": "#/$defs/digest"},
+        "control_domain_fingerprint": {"$ref": "#/$defs/digest"},
+        "proof": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,4096}$"}
+      }
+    },
+    "packetIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "lineage_id", "manifest_sha256", "acceptance_sha256"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/gateId"},
+        "lineage_id": {"$ref": "#/$defs/lineageId"},
+        "manifest_sha256": {"$ref": "#/$defs/digest"},
+        "acceptance_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "lineageIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "lineage_id"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/gateId"},
+        "lineage_id": {"$ref": "#/$defs/lineageId"}
+      }
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "manifest_sha256", "acceptance_sha256"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/gateId"},
+        "manifest_sha256": {"$ref": "#/$defs/digest"},
+        "acceptance_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "invalidationEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger_sha256", "recorded_at", "affected"],
+      "properties": {
+        "trigger_sha256": {"$ref": "#/$defs/digest"},
+        "recorded_at": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+        "affected": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/archive"}
+        }
+      }
+    },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "operation_id", "prior_token", "lease_id", "fencing_token", "authority"],
+      "properties": {
+        "method": {"enum": ["CONDITIONAL_WRITE", "EXCLUSIVE_LEASE"]},
+        "operation_id": {"$ref": "#/$defs/boundedToken"},
+        "prior_token": {"$ref": "#/$defs/boundedToken"},
+        "lease_id": {
+          "anyOf": [
+            {"$ref": "#/$defs/boundedToken"},
+            {"type": "null"}
+          ]
+        },
+        "fencing_token": {"type": ["integer", "null"], "minimum": 0},
+        "authority": {"$ref": "#/$defs/principal"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"method": {"const": "CONDITIONAL_WRITE"}}, "required": ["method"]},
+          "then": {"properties": {"lease_id": {"type": "null"}, "fencing_token": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"method": {"const": "EXCLUSIVE_LEASE"}}, "required": ["method"]},
+          "then": {"properties": {"lease_id": {"$ref": "#/$defs/boundedToken"}, "fencing_token": {"type": "integer", "minimum": 0}}}
+        }
+      ]
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "prior_state_sha256", "prior_packets", "replacement", "published_at", "published_by", "publication"],
+      "properties": {
+        "kind": {"enum": ["ADVANCE", "INVALIDATE"]},
+        "prior_state_sha256": {"$ref": "#/$defs/digest"},
+        "prior_packets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/packetIdentity"}
+        },
+        "replacement": {"$ref": "#/$defs/lineageIdentity"},
+        "published_at": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+        "published_by": {"$ref": "#/$defs/actionPrincipal"},
+        "publication": {"$ref": "#/$defs/publication"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"transition": {"type": "null"}}, "required": ["transition"]},
+      "then": {
+        "properties": {
+          "instantiated_gate_count": {"const": 1},
+          "invalidations": {"maxItems": 0}
+        }
+      }
+    }
+  ]
+}

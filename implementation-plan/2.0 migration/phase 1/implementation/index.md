@@ -1,5 +1,12 @@
 # LayerStack Phase 1 implementation plan
 
+> **HISTORICAL POC PLAN — NOT THE CURRENT V2 IMPLEMENTATION PATH.** The status
+> and acceptance labels below apply only to this older CDC/CAS exercise. They
+> do not select LayerStack-0 storage, satisfy current Phase 01, or authorize
+> work after current Phase 01. Use the
+> [archive compatibility map](../../../README.md) and current
+> [R0 architecture](../../../../ephemeral-sandbox-v2/architecture_design.md).
+
 Status: Stage 02 portable-root and Stage 03 corrected-identity/private-publication
 slices are **POC PASS**. Stage 04 implementation exists, and the Stage 04.5
 materialization/GC alignment gate is **PASS WITH OWNER-APPROVED PERFORMANCE

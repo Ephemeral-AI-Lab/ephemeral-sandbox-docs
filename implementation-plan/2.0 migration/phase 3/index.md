@@ -1,5 +1,11 @@
 # Phase 3 — portable execution backends
 
+> **HISTORICAL PROPOSAL — NOT A CURRENT V2 PHASE.** Its CDC/CAS state-plane
+> premise was not selected. Current phase order and storage constraints come
+> from the [V2 program plan](../../../ephemeral-sandbox-v2/PLAN.md) and selected
+> [R0 architecture](../../../ephemeral-sandbox-v2/architecture_design.md); see
+> the [archive compatibility map](../../README.md).
+
 > Abstract and dependency order for adding Firecracker and WebAssembly/WASI
 > execution without creating a second LayerStack architecture.
 
